@@ -58,11 +58,7 @@ impl TracerClient {
             .unwrap_or_else(|_| "https://app.tracer.bio/api/data-collector-api".to_string());
 
         Ok(Self {
-            api_key: if config.api_key.is_empty() {
-                "RbGK7dN6A2hlDn0uqEuVA".to_string()
-            } else {
-                config.api_key
-            },
+            api_key: config.api_key,
             targets: config.targets,
             seen: HashMap::new(),
             system: System::new_all(),
