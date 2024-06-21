@@ -430,10 +430,10 @@ setup_tracer_configuration_file() {
     # Create the destination directory if it doesn't exist
     mkdir -p ~/.config/tracer
 
-    # Remove the first line and add the api_key line at the beginning
+    # Add the api_key line at the beginning
     {
         echo "api_key = \"$API_KEY\""
-        tail -n +2 "$TEMP_FILE"
+        cat "$TEMP_FILE"
     } >~/.config/tracer/tracer.toml
 
     # Remove the temporary file
