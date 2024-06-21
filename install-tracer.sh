@@ -425,8 +425,8 @@ setup_tracer_configuration_file() {
         return 1
     fi
 
-    # Replace the api_key line with the provided API_KEY
-    TRACER_TOML_CONTENT=$(echo "$TRACER_TOML_CONTENT" | sed "s/api_key = \".*\"/api_key = \"$API_KEY\"/")
+    # Remove the first line and replace with the api_key
+    TRACER_TOML_CONTENT=$(echo "$TRACER_TOML_CONTENT" | sed "1s/.*/api_key = \"$API_KEY\"/")
 
     # Create the destination directory if it doesn't exist
     mkdir -p ~/.config/tracer
@@ -441,7 +441,6 @@ setup_tracer_configuration_file() {
         echo "Failed to create and move tracer.toml"
     fi
 }
-
 
 #-------------------------------------------------------------------------------
 #          NAME:  main
