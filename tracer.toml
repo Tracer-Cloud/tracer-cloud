@@ -1,3 +1,4 @@
+api_key = "RbGK7dN6A2hlDn0uqEuVA"
 polling_interval_ms = 1500
 targets = [
     "STAR",
