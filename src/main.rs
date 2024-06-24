@@ -33,10 +33,13 @@ async fn async_main() -> Result<()> {
     let mut tr = TracerClient::from_config(config)?;
 
     loop {
-        tr.remove_completed_processes().await?;
-        tr.poll_processes().await?;
+        // tr.remove_completed_processes().await?;
+        // tr.poll_processes().await?;
+        //
+        // tr.send_metrics().await?;
+        tr.remove_completed_processes()?;
+        tr.poll_processes()?;
 
-        tr.send_metrics().await?;
         tr.refresh();
     }
 }
