@@ -35,8 +35,7 @@ async fn async_main() -> Result<()> {
     loop {
         tr.remove_completed_processes().await?;
         tr.poll_processes().await?;
-
-        // tr.send_metrics().await?;
+        tr.send_event().await?;
 
         tr.refresh();
     }
