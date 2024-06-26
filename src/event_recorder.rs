@@ -1,6 +1,5 @@
 // src/event_recorder.rs
 
-
 use chrono::serde::ts_seconds;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
