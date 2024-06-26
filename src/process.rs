@@ -1,66 +1,24 @@
+/// src/process.rs
 use anyhow::Result;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::{collections::HashMap, time::Duration, time::Instant};
-use sysinfo::{Disks, Pid, System};
+use chrono::Utc;
+use serde_json::json;
+use std::{time::Duration, time::Instant};
+use sysinfo::{Disks, System};
 
 use crate::config_manager::ConfigFile;
+use crate::event_recorder::{EventRecorder, EventType};
 use crate::http_client::HttpClient;
+use crate::process_watcher::ProcessWatcher;
 
 pub struct TracerClient {
     http_client: HttpClient,
     api_key: String,
-    targets: Vec<String>,
-    seen: HashMap<Pid, Proc>,
     system: System,
     service_url: String,
     last_sent: Instant,
     interval: Duration,
-    logs: Vec<Log>,
-}
-
-struct Proc {
-    name: String,
-    start_time: DateTime<Utc>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Log {
-    message: String,
-    event_type: String,
-    process_type: String,
-    process_status: String,
-    attributes: Option<Value>,
-}
-
-impl Log {
-    pub fn new(process_status: EventStatus, message: String, attributes: Option<Value>) -> Log {
-        Log {
-            message,
-            event_type: "process_status".to_owned(),
-            process_type: "pipeline".to_owned(),
-            process_status: process_status.as_str().to_owned(),
-            attributes,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum EventStatus {
-    FinishedRun,
-    ToolExecution,
-    MetricEvent,
-}
-
-impl EventStatus {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            EventStatus::FinishedRun => "finished_run",
-            EventStatus::ToolExecution => "tool_execution",
-            EventStatus::MetricEvent => "metric_event",
-        }
-    }
+    logs: EventRecorder,
+    process_watcher: ProcessWatcher,
 }
 
 impl TracerClient {
@@ -73,13 +31,12 @@ impl TracerClient {
         Ok(TracerClient {
             http_client: HttpClient::new(service_url.clone(), config.api_key.clone()),
             api_key: config.api_key,
-            targets: config.targets,
-            seen: HashMap::new(),
             system: System::new_all(),
             last_sent: Instant::now(),
             interval: Duration::from_millis(config.polling_interval_ms),
-            logs: Vec::new(),
+            logs: EventRecorder::new(),
             service_url,
+            process_watcher: ProcessWatcher::new(config.targets),
         })
     }
 
@@ -91,7 +48,7 @@ impl TracerClient {
                 client.service_url, client.api_key
             );
 
-            let data = json!({ "logs": client.logs });
+            let data = json!({ "logs": client.logs.get_events() });
 
             println!("{:#?}", data); // Log to file located at `/tmp/tracerd.out`
 
@@ -105,82 +62,28 @@ impl TracerClient {
     }
 
     pub async fn poll_processes(tracer_client: &mut TracerClient) -> Result<()> {
-        let mut logs: Vec<Log> = Vec::new();
-        for (pid, proc) in tracer_client.system.processes().iter() {
-            if !tracer_client.seen.contains_key(pid)
-                && tracer_client.targets.contains(&proc.name().to_string())
-            {
-                tracer_client.seen.insert(
-                    *pid,
-                    Proc {
-                        name: proc.name().to_string(),
-                        start_time: Utc::now(),
-                    },
-                );
-
-                let Some(p) = tracer_client.system.process(*pid) else {
-                    eprintln!("[{}] Process({}) wasn't found", Utc::now(), proc.name());
-                    continue;
-                };
-
-                let start_time = Utc::now();
-                let properties = json!({
-                    "tool_name": proc.name(),
-                    "tool_pid": pid.to_string(),
-                    "tool_binary_path": p.exe(),
-                    "start_timestamp": start_time.to_string(),
-                });
-
-                let l = Log::new(
-                    EventStatus::ToolExecution,
-                    format!("[{}] Tool process: {}", start_time, proc.name()),
-                    Some(properties),
-                );
-                logs.push(l);
-            }
-        }
-        tracer_client.logs.append(&mut logs);
-
+        tracer_client
+            .process_watcher
+            .poll_processes(&mut tracer_client.system, &mut tracer_client.logs)?;
         Ok(())
     }
 
     pub async fn remove_completed_processes(tracer_client: &mut TracerClient) -> Result<()> {
-        let mut to_remove = vec![];
-        let mut logs = vec![];
-        for (pid, proc) in tracer_client.seen.iter() {
-            if !tracer_client.system.processes().contains_key(pid) {
-                let duration = (Utc::now() - proc.start_time).to_std()?.as_millis();
-                let properties = json!({
-                    "execution_duration": duration,
-                });
-
-                let l = Log::new(
-                    EventStatus::FinishedRun,
-                    format!("[{}] {} exited", Utc::now(), &proc.name),
-                    Some(properties),
-                );
-                logs.push(l);
-                to_remove.push(*pid);
-            }
-        }
-
-        tracer_client.logs.append(&mut logs);
-
-        // cleanup exited processes
-        for i in to_remove.iter() {
-            tracer_client.seen.remove(i);
-        }
-
+        tracer_client
+            .process_watcher
+            .remove_completed_processes(&mut tracer_client.system, &mut tracer_client.logs)?;
         Ok(())
     }
 
     // Sends current load of a system to the server
-    fn send_global_stat(system: &mut System, logs: &mut Vec<Log>) -> Result<()> {
+    fn send_global_stat(system: &mut System, logs: &mut EventRecorder) -> Result<()> {
         let used_memory = system.used_memory();
         let total_memory = system.total_memory();
         let memory_utilization = (used_memory as f64 / total_memory as f64) * 100.0;
 
         let cpu_usage = system.global_cpu_info().cpu_usage();
+
+        // please fix:
 
         let disks = Disks::new_with_refreshed_list();
 
@@ -218,11 +121,11 @@ impl TracerClient {
             "disk_data": d_stats,
         });
 
-        logs.push(Log::new(
-            EventStatus::MetricEvent,
+        logs.record(
+            EventType::MetricEvent,
             format!("[{}] System's resources metric", Utc::now()),
             Some(attributes),
-        ));
+        );
 
         Ok(())
     }
@@ -255,20 +158,20 @@ mod test {
     #[tokio::test]
     async fn tool_exec() {
         let mut tr = TracerClient::from_config(create_conf()).unwrap();
-        tr.targets = vec!["sleep".to_string()];
+        tr.process_watcher = ProcessWatcher::new(vec!["sleep".to_string()]);
 
         let mut cmd = std::process::Command::new("sleep")
             .arg("1")
             .spawn()
             .unwrap();
 
-        while tr.seen.len() <= 0 {
+        while tr.process_watcher.get_seen().is_empty() {
             TracerClient::refresh(&mut tr);
             TracerClient::poll_processes(&mut tr).await.unwrap();
         }
 
         cmd.wait().unwrap();
 
-        assert!(tr.seen.len() > 0)
+        assert!(!tr.process_watcher.get_seen().is_empty())
     }
 }

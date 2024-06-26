@@ -1,7 +1,9 @@
 // src/main.rs
 mod config_manager;
+mod event_recorder;
 mod http_client;
 mod process;
+mod process_watcher;
 
 use anyhow::{Context, Result};
 use daemonize::Daemonize;
