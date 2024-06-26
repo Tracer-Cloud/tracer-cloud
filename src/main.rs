@@ -2,8 +2,8 @@
 mod config_manager;
 mod event_recorder;
 mod http_client;
-mod process;
 mod process_watcher;
+mod tracer_client;
 
 use anyhow::{Context, Result};
 use daemonize::Daemonize;
@@ -11,7 +11,7 @@ use std::fs::File;
 use tokio::time::{sleep, Duration};
 
 use crate::config_manager::ConfigManager;
-use crate::process::TracerClient;
+use crate::tracer_client::TracerClient;
 
 const PID_FILE: &str = "/tmp/tracerd.pid";
 const WORKING_DIR: &str = "/tmp";
