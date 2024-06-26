@@ -15,12 +15,13 @@ pub struct ConfigManager;
 
 impl ConfigManager {
     pub fn load_config() -> Result<ConfigFile> {
+        Self::load_config_with_home(None)
+    }
+
+    pub fn load_config_with_home(home_dir: Option<PathBuf>) -> Result<ConfigFile> {
         let config_path = std::env::var("TRACER_CONFIG").unwrap_or_else(|_| {
-            let home_dir = std::env::var("HOME").unwrap();
-            PathBuf::from(home_dir)
-                .join(DEFAULT_CONFIG_PATH)
-                .to_string_lossy()
-                .to_string()
+            let home = home_dir.unwrap_or_else(|| PathBuf::from(std::env::var("HOME").unwrap()));
+            home.join(DEFAULT_CONFIG_PATH).to_string_lossy().to_string()
         });
 
         println!("Loading config from: {}", config_path); // Debug statement
@@ -36,9 +37,9 @@ impl ConfigManager {
 mod tests {
     use super::*;
     use std::env;
-    use std::fs::File;
+    use std::fs::{self, File};
     use std::io::Write;
-    use std::path::PathBuf;
+    use tempfile::TempDir;
 
     fn create_test_config(content: &str, path: &str) {
         let mut file = File::create(path).unwrap();
@@ -65,20 +66,28 @@ mod tests {
             config.targets,
             vec!["target1".to_string(), "target2".to_string()]
         );
+
+        fs::remove_file(test_config_path).unwrap();
     }
 
     #[test]
     fn test_load_default_config_path() {
-        let home_dir = env::var("HOME").unwrap();
-        let default_config_path = PathBuf::from(home_dir).join(DEFAULT_CONFIG_PATH);
+        let temp_dir = TempDir::new().unwrap();
+        let home_dir = temp_dir.path().to_path_buf();
+        let config_dir = home_dir.join(".config").join("tracer");
+        fs::create_dir_all(&config_dir).unwrap();
+
+        let config_path = config_dir.join("tracer.toml");
         let config_content = r#"
             api_key = "test_api_key"
             polling_interval_ms = 1000
             targets = ["target1", "target2"]
         "#;
-        create_test_config(config_content, default_config_path.to_str().unwrap());
 
-        let config = ConfigManager::load_config().unwrap();
+        let mut file = File::create(&config_path).unwrap();
+        file.write_all(config_content.as_bytes()).unwrap();
+
+        let config = ConfigManager::load_config_with_home(Some(home_dir)).unwrap();
 
         assert_eq!(config.api_key.trim(), "test_api_key");
         assert_eq!(config.polling_interval_ms, 1000);

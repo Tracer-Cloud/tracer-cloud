@@ -57,26 +57,37 @@ async fn process_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
 mod tests {
     use super::*;
     use std::env;
-    use std::fs::File;
+    use std::fs::{self, File};
     use std::io::Write;
+    use std::path::PathBuf;
+    use tempfile::TempDir;
     use tokio::time::timeout;
 
-    const TEST_CONFIG_PATH: &str = "/tmp/test_tracer.toml";
-    const TEST_CONFIG_CONTENT: &str = r#"
-        api_key = "_Zx2h6toXUnD1i_QjuRvD"
-        polling_interval_ms = 1000
-        targets = ["target1", "target2"]
-    "#;
-
-    fn create_test_config() {
-        let mut file = File::create(TEST_CONFIG_PATH).unwrap();
-        file.write_all(TEST_CONFIG_CONTENT.as_bytes()).unwrap();
+    fn create_test_config(content: &str, path: &PathBuf) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut file = File::create(path).unwrap();
+        file.write_all(content.as_bytes()).unwrap();
     }
 
     #[tokio::test]
     async fn test_run() {
-        create_test_config();
-        env::set_var("TRACER_CONFIG", TEST_CONFIG_PATH);
+        let temp_dir = TempDir::new().unwrap();
+        let config_dir = temp_dir.path().join(".config").join("tracer");
+        let config_path = config_dir.join("tracer.toml");
+
+        let config_content = r#"
+            api_key = "_Zx2h6toXUnD1i_QjuRvD"
+            polling_interval_ms = 1000
+            targets = ["target1", "target2"]
+        "#;
+
+        create_test_config(config_content, &config_path);
+
+        // Set the HOME environment variable to our temp directory
+        env::set_var("HOME", temp_dir.path());
+
+        // Remove TRACER_CONFIG if it's set, to ensure we use the default path
+        env::remove_var("TRACER_CONFIG");
 
         let result = timeout(Duration::from_secs(5), run()).await;
         assert!(
@@ -84,7 +95,6 @@ mod tests {
             "run() should not complete within 5 seconds"
         );
 
-        env::remove_var("TRACER_CONFIG");
-        std::fs::remove_file(TEST_CONFIG_PATH).unwrap();
+        // Clean up is handled automatically by TempDir when it goes out of scope
     }
 }
