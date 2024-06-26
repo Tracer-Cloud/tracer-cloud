@@ -1,0 +1,1 @@
+Error while sending send_http_event: 400 Bad Request - {"error":"Invalid input: expected an array of logs","body":{"event_type":"process_status","message":"starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}}
