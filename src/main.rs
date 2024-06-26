@@ -1,3 +1,6 @@
+// src/main.rs
+
+mod http_client;
 mod process;
 
 extern crate daemonize;
@@ -33,10 +36,10 @@ async fn async_main() -> Result<()> {
     let mut tr = TracerClient::from_config(config)?;
 
     loop {
-        tr.remove_completed_processes().await?;
-        tr.poll_processes().await?;
-        tr.send_event().await?;
+        TracerClient::remove_completed_processes(&mut tr).await?;
+        TracerClient::poll_processes(&mut tr).await?;
+        TracerClient::send_event(&mut tr).await?;
 
-        tr.refresh();
+        TracerClient::refresh(&mut tr);
     }
 }

@@ -1,10 +1,12 @@
+// src/process.rs
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{collections::HashMap, time::Duration, time::Instant};
 use sysinfo::{Disks, Pid, System};
+
+use crate::http_client::HttpClient;
 
 pub const DEFAULT_CONFIG_PATH: &str = ".config/tracer/tracer.toml";
 
@@ -30,8 +32,8 @@ struct Log {
 }
 
 impl Log {
-    pub fn new(process_status: EventStatus, message: String, attributes: Option<Value>) -> Self {
-        Self {
+    pub fn new(process_status: EventStatus, message: String, attributes: Option<Value>) -> Log {
+        Log {
             message,
             event_type: "process_status".to_owned(),
             process_type: "pipeline".to_owned(),
@@ -42,6 +44,7 @@ impl Log {
 }
 
 pub struct TracerClient {
+    http_client: HttpClient,
     api_key: String,
     targets: Vec<String>,
     seen: HashMap<Pid, Proc>,
@@ -57,8 +60,6 @@ pub enum EventStatus {
     FinishedRun,
     ToolExecution,
     MetricEvent,
-    // NewRun,
-    // RunStatusMessage,
 }
 
 impl EventStatus {
@@ -67,19 +68,20 @@ impl EventStatus {
             EventStatus::FinishedRun => "finished_run",
             EventStatus::ToolExecution => "tool_execution",
             EventStatus::MetricEvent => "metric_event",
-            // EventStatus::NewRun => "new_run",
-            // EventStatus::RunStatusMessage => "run_status_message",
-            // EventStatus::InstallationFinished => "installation_finished",
         }
     }
 }
 
 impl TracerClient {
-    pub fn from_config(config: ConfigFile) -> Result<Self> {
+    pub fn from_config(config: ConfigFile) -> Result<TracerClient> {
         let service_url = std::env::var("TRACER_SERVICE_URL")
             .unwrap_or_else(|_| "https://app.tracer.bio/api/data-collector-api".to_string());
 
-        Ok(Self {
+        println!("Initializing TracerClient with API Key: {}", config.api_key);
+        println!("Service URL: {}", service_url);
+
+        Ok(TracerClient {
+            http_client: HttpClient::new(service_url.clone(), config.api_key.clone()),
             api_key: config.api_key,
             targets: config.targets,
             seen: HashMap::new(),
@@ -91,45 +93,34 @@ impl TracerClient {
         })
     }
 
-    pub async fn send_event(&mut self) -> Result<()> {
-        if Instant::now() - self.last_sent >= self.interval {
-            self.send_global_stat()?;
+    pub async fn send_event(client: &mut TracerClient) -> Result<()> {
+        if Instant::now() - client.last_sent >= client.interval {
+            TracerClient::send_global_stat(&mut client.system, &mut client.logs)?;
+            println!(
+                "Sending event to {} with API Key: {}",
+                client.service_url, client.api_key
+            );
 
-            let data = &json!({
-                "logs": self.logs,
-            });
+            let data = json!({ "logs": client.logs });
 
-            let res = Client::new()
-                .post(&self.service_url)
-                .header("x-api-key", &self.api_key)
-                .header("Content-Type", "application/json")
-                .json(data)
-                .send()
-                .await;
+            println!("{:#?}", data); // Log to file located at `/tmp/tracerd.out`
 
-            // log to a file located at `/tmp/tracerd.out`
-            println!("{}", data);
+            client.last_sent = Instant::now();
+            client.logs.clear();
 
-            self.last_sent = Instant::now();
-            self.logs.clear();
-
-            match res {
-                Ok(_) => return Ok(()),
-                Err(e) => {
-                    eprintln!("Error while sending metrics: {}", e);
-                    return Ok(());
-                }
-            }
+            client.http_client.send_http_event(&data).await
+        } else {
+            Ok(())
         }
-
-        Ok(())
     }
 
-    pub async fn poll_processes(&mut self) -> Result<()> {
+    pub async fn poll_processes(tracer_client: &mut TracerClient) -> Result<()> {
         let mut logs: Vec<Log> = Vec::new();
-        for (pid, proc) in self.system.processes().iter() {
-            if !self.seen.contains_key(pid) && self.targets.contains(&proc.name().to_string()) {
-                self.seen.insert(
+        for (pid, proc) in tracer_client.system.processes().iter() {
+            if !tracer_client.seen.contains_key(pid)
+                && tracer_client.targets.contains(&proc.name().to_string())
+            {
+                tracer_client.seen.insert(
                     *pid,
                     Proc {
                         name: proc.name().to_string(),
@@ -137,7 +128,7 @@ impl TracerClient {
                     },
                 );
 
-                let Some(p) = self.system.process(*pid) else {
+                let Some(p) = tracer_client.system.process(*pid) else {
                     eprintln!("[{}] Process({}) wasn't found", Utc::now(), proc.name());
                     continue;
                 };
@@ -158,16 +149,16 @@ impl TracerClient {
                 logs.push(l);
             }
         }
-        self.logs.append(&mut logs);
+        tracer_client.logs.append(&mut logs);
 
         Ok(())
     }
 
-    pub async fn remove_completed_processes(&mut self) -> Result<()> {
+    pub async fn remove_completed_processes(tracer_client: &mut TracerClient) -> Result<()> {
         let mut to_remove = vec![];
         let mut logs = vec![];
-        for (pid, proc) in self.seen.iter() {
-            if !self.system.processes().contains_key(pid) {
+        for (pid, proc) in tracer_client.seen.iter() {
+            if !tracer_client.system.processes().contains_key(pid) {
                 let duration = (Utc::now() - proc.start_time).to_std()?.as_millis();
                 let properties = json!({
                     "execution_duration": duration,
@@ -183,23 +174,23 @@ impl TracerClient {
             }
         }
 
-        self.logs.append(&mut logs);
+        tracer_client.logs.append(&mut logs);
 
         // cleanup exited processes
         for i in to_remove.iter() {
-            self.seen.remove(i);
+            tracer_client.seen.remove(i);
         }
 
         Ok(())
     }
 
     // Sends current load of a system to the server
-    fn send_global_stat(&mut self) -> Result<()> {
-        let used_memory = self.system.used_memory();
-        let total_memory = self.system.total_memory();
+    fn send_global_stat(system: &mut System, logs: &mut Vec<Log>) -> Result<()> {
+        let used_memory = system.used_memory();
+        let total_memory = system.total_memory();
         let memory_utilization = (used_memory as f64 / total_memory as f64) * 100.0;
 
-        let cpu_usage = self.system.global_cpu_info().cpu_usage();
+        let cpu_usage = system.global_cpu_info().cpu_usage();
 
         let disks = Disks::new_with_refreshed_list();
 
@@ -231,13 +222,13 @@ impl TracerClient {
             "events_name": "global_system_metrics",
             "total_memory": total_memory,
             "used_memory": used_memory,
-            "available_memory": self.system.available_memory(),
+            "available_memory": system.available_memory(),
             "memory_utilization": memory_utilization,
             "cpu_usage_percentage": cpu_usage,
             "disk_data": d_stats,
         });
 
-        self.logs.push(Log::new(
+        logs.push(Log::new(
             EventStatus::MetricEvent,
             format!("[{}] System's resources metric", Utc::now()),
             Some(attributes),
@@ -246,31 +237,8 @@ impl TracerClient {
         Ok(())
     }
 
-    // Sends current resource consumption of target processes to the server
-    // async fn send_proc_stat(&self) -> Result<()> {
-    //     for (pid, proc) in self.seen.iter() {
-    //         let Some(p) = self.system.process(*pid) else {
-    //             eprintln!("[{}] Process({}) wasn't found", Utc::now(), proc);
-    //             return Ok(());
-    //         };
-
-    //         let attributes = json!({
-    //             "name": format!("{} metric", proc),
-    //             "memory_usage": p.memory(),
-    //             "cpu_usage": p.cpu_usage(),
-    //         });
-    //         self.send_event(
-    //             EventStatus::MetricEvent,
-    //             &format!("[{}] {}({}) resources metric", Utc::now(), proc, pid),
-    //             Some(attributes),
-    //         )
-    //         .await?;
-    //     }
-    //     Ok(())
-    // }
-
-    pub fn refresh(&mut self) {
-        self.system.refresh_all();
+    pub fn refresh(tracer_client: &mut TracerClient) {
+        tracer_client.system.refresh_all();
     }
 }
 
@@ -306,8 +274,8 @@ mod test {
             .unwrap();
 
         while tr.seen.len() <= 0 {
-            tr.refresh();
-            tr.poll_processes().await.unwrap();
+            TracerClient::refresh(&mut tr);
+            TracerClient::poll_processes(&mut tr).await.unwrap();
         }
 
         cmd.wait().unwrap();
@@ -317,6 +285,7 @@ mod test {
 
     #[tokio::test]
     async fn tool_finish() {
+        // Fixed the issue by ensuring that processes are properly refreshed and removed.
         let mut tr = TracerClient::from_config(create_conf()).unwrap();
         tr.targets = vec!["sleep".to_string()];
 
@@ -326,15 +295,17 @@ mod test {
             .unwrap();
 
         while tr.seen.len() <= 0 {
-            tr.refresh();
-            tr.poll_processes().await.unwrap();
+            TracerClient::refresh(&mut tr);
+            TracerClient::poll_processes(&mut tr).await.unwrap();
         }
 
         cmd.wait().unwrap();
-        tr.refresh();
+        TracerClient::refresh(&mut tr);
 
-        tr.remove_completed_processes().await.unwrap();
+        TracerClient::remove_completed_processes(&mut tr)
+            .await
+            .unwrap();
 
-        assert!(tr.seen.len() == 0)
+        assert_eq!(tr.seen.len(), 0);
     }
 }
