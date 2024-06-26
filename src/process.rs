@@ -1,4 +1,3 @@
-// src/process.rs
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -6,15 +5,19 @@ use serde_json::{json, Value};
 use std::{collections::HashMap, time::Duration, time::Instant};
 use sysinfo::{Disks, Pid, System};
 
+use crate::config_manager::ConfigFile;
 use crate::http_client::HttpClient;
 
-pub const DEFAULT_CONFIG_PATH: &str = ".config/tracer/tracer.toml";
-
-#[derive(Deserialize)]
-pub struct ConfigFile {
-    pub api_key: String,
-    pub polling_interval_ms: u64,
-    pub targets: Vec<String>,
+pub struct TracerClient {
+    http_client: HttpClient,
+    api_key: String,
+    targets: Vec<String>,
+    seen: HashMap<Pid, Proc>,
+    system: System,
+    service_url: String,
+    last_sent: Instant,
+    interval: Duration,
+    logs: Vec<Log>,
 }
 
 struct Proc {
@@ -43,18 +46,6 @@ impl Log {
     }
 }
 
-pub struct TracerClient {
-    http_client: HttpClient,
-    api_key: String,
-    targets: Vec<String>,
-    seen: HashMap<Pid, Proc>,
-    system: System,
-    service_url: String,
-    last_sent: Instant,
-    interval: Duration,
-    logs: Vec<Log>,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub enum EventStatus {
     FinishedRun,
@@ -74,9 +65,7 @@ impl EventStatus {
 
 impl TracerClient {
     pub fn from_config(config: ConfigFile) -> Result<TracerClient> {
-        // let service_url = std::env::var("TRACER_SERVICE_URL")
-        //     .unwrap_or_else(|_| "https://app.tracer.bio/api/data-collector-api".to_string());
-        let service_url = "http://localhost:3000/api/data-collector-api".to_string();
+        let service_url = "https://app.tracer.bio/api/data-collector-api".to_string();
 
         println!("Initializing TracerClient with API Key: {}", config.api_key);
         println!("Service URL: {}", service_url);
@@ -243,7 +232,6 @@ impl TracerClient {
     }
 }
 
-// TODO: uncomment
 #[cfg(test)]
 mod test {
     use super::*;
@@ -283,30 +271,4 @@ mod test {
 
         assert!(tr.seen.len() > 0)
     }
-
-    // #[tokio::test]
-    // async fn tool_finish() {
-    //     // Fixed the issue by ensuring that processes are properly refreshed and removed.
-    //     let mut tr = TracerClient::from_config(create_conf()).unwrap();
-    //     tr.targets = vec!["sleep".to_string()];
-
-    //     let mut cmd = std::process::Command::new("sleep")
-    //         .arg("1")
-    //         .spawn()
-    //         .unwrap();
-
-    //     while tr.seen.len() <= 0 {
-    //         TracerClient::refresh(&mut tr);
-    //         TracerClient::poll_processes(&mut tr).await.unwrap();
-    //     }
-
-    //     cmd.wait().unwrap();
-    //     TracerClient::refresh(&mut tr);
-
-    //     TracerClient::remove_completed_processes(&mut tr)
-    //         .await
-    //         .unwrap();
-
-    //     assert_eq!(tr.seen.len(), 0);
-    // }
 }

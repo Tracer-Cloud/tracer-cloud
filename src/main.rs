@@ -1,16 +1,22 @@
-// src/main.rs
-
+mod config_manager;
 mod http_client;
 mod process;
 
 extern crate daemonize;
 
+use crate::config_manager::ConfigManager;
 use anyhow::Result;
 use daemonize::Daemonize;
-use process::*;
+use process::TracerClient;
 use std::fs::File;
 
 fn main() -> Result<()> {
+    start_daemon()?;
+
+    async_main()
+}
+
+fn start_daemon() -> Result<()> {
     let daemonize = Daemonize::new()
         .pid_file("/tmp/tracerd.pid")
         .working_directory("/tmp")
@@ -21,25 +27,19 @@ fn main() -> Result<()> {
         Ok(_) => println!("tracer-daemon started"),
         Err(e) => eprintln!("Error, {}", e),
     }
-
-    async_main()
+    Ok(())
 }
 
 #[tokio::main]
 async fn async_main() -> Result<()> {
-    let default_conf_path = format!("{}/{}", std::env::var("HOME")?, DEFAULT_CONFIG_PATH);
+    let config = ConfigManager::load_config()?;
 
-    let config: ConfigFile = toml::from_str(&std::fs::read_to_string(
-        std::env::var("TRACER_CONFIG").unwrap_or(default_conf_path),
-    )?)?;
-
-    let mut tr = TracerClient::from_config(config)?;
+    let mut tracer_client = TracerClient::from_config(config)?;
 
     loop {
-        TracerClient::remove_completed_processes(&mut tr).await?;
-        TracerClient::poll_processes(&mut tr).await?;
-        TracerClient::send_event(&mut tr).await?;
-
-        TracerClient::refresh(&mut tr);
+        TracerClient::remove_completed_processes(&mut tracer_client).await?;
+        TracerClient::poll_processes(&mut tracer_client).await?;
+        TracerClient::send_event(&mut tracer_client).await?;
+        TracerClient::refresh(&mut tracer_client);
     }
 }
