@@ -41,6 +41,12 @@ mod tests {
     use std::io::Write;
     use tempfile::TempDir;
 
+    const CONFIG_CONTENT: &str = r#"
+        api_key = "test_api_key"
+        polling_interval_ms = 1000
+        targets = ["target1", "target2"]
+    "#;
+
     fn create_test_config(content: &str, path: &str) {
         let mut file = File::create(path).unwrap();
         file.write_all(content.as_bytes()).unwrap();
@@ -49,12 +55,7 @@ mod tests {
     #[test]
     fn test_load_valid_config() {
         let test_config_path = "/tmp/test_tracer.toml";
-        let config_content = r#"
-            api_key = "test_api_key"
-            polling_interval_ms = 1000
-            targets = ["target1", "target2"]
-        "#;
-        create_test_config(config_content, test_config_path);
+        create_test_config(CONFIG_CONTENT, test_config_path);
 
         env::set_var("TRACER_CONFIG", test_config_path);
         let config = ConfigManager::load_config().unwrap();
@@ -78,14 +79,7 @@ mod tests {
         fs::create_dir_all(&config_dir).unwrap();
 
         let config_path = config_dir.join("tracer.toml");
-        let config_content = r#"
-            api_key = "test_api_key"
-            polling_interval_ms = 1000
-            targets = ["target1", "target2"]
-        "#;
-
-        let mut file = File::create(&config_path).unwrap();
-        file.write_all(config_content.as_bytes()).unwrap();
+        create_test_config(CONFIG_CONTENT, config_path.to_str().unwrap());
 
         let config = ConfigManager::load_config_with_home(Some(home_dir)).unwrap();
 

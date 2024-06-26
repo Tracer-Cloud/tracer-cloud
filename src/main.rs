@@ -1,3 +1,4 @@
+// src/main.rs
 mod config_manager;
 mod http_client;
 mod process;
@@ -63,6 +64,12 @@ mod tests {
     use tempfile::TempDir;
     use tokio::time::timeout;
 
+    const CONFIG_CONTENT: &str = r#"
+        api_key = "_Zx2h6toXUnD1i_QjuRvD"
+        polling_interval_ms = 1000
+        targets = ["target1", "target2"]
+    "#;
+
     fn create_test_config(content: &str, path: &PathBuf) {
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         let mut file = File::create(path).unwrap();
@@ -75,13 +82,7 @@ mod tests {
         let config_dir = temp_dir.path().join(".config").join("tracer");
         let config_path = config_dir.join("tracer.toml");
 
-        let config_content = r#"
-            api_key = "_Zx2h6toXUnD1i_QjuRvD"
-            polling_interval_ms = 1000
-            targets = ["target1", "target2"]
-        "#;
-
-        create_test_config(config_content, &config_path);
+        create_test_config(CONFIG_CONTENT, &config_path);
 
         // Set the HOME environment variable to our temp directory
         env::set_var("HOME", temp_dir.path());
