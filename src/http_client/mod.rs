@@ -81,7 +81,7 @@ impl HttpClient {
 mod tests {
     use super::*;
     use serde_json::json;
-    use tokio;
+    
 
     #[tokio::test]
     async fn test_send_http_event() {
