@@ -2,10 +2,10 @@
 use anyhow::{Context, Result};
 use log::{error, info};
 use reqwest::Client;
-use serde_json::json;
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
+
 pub struct HttpClient {
     client: Client,
     service_url: String,
@@ -22,7 +22,12 @@ impl HttpClient {
     }
 
     pub async fn send_http_event(&self, logs: &Value) -> Result<()> {
-        let logs_wrapper = json!({ "logs": logs });
+        // Ensure logs is always an array
+        let logs_array = match logs {
+            Value::Array(_) => logs.clone(),
+            _ => json!([logs]),
+        };
+        let logs_wrapper = json!({ "logs": logs_array });
 
         let response = self
             .client
