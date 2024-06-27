@@ -89,7 +89,7 @@ mod test {
     fn test_new() {
         let config = ConfigFile {
             api_key: "test_api_key".to_string(),
-            process_polling_interval_ms: 1000,
+            process_polling_interval_ms: 200,
             batch_submission_interval_ms: 5000,
             service_url: "https://app.tracer.bio/api/data-collector-api".to_string(),
             targets: vec!["target1".to_string(), "target2".to_string()],
@@ -102,7 +102,7 @@ mod test {
     async fn test_tool_exec() {
         let config = ConfigFile {
             api_key: "test_api_key".to_string(),
-            process_polling_interval_ms: 1000,
+            process_polling_interval_ms: 200,
             batch_submission_interval_ms: 5000,
             service_url: "https://app.tracer.bio/api/data-collector-api".to_string(),
             targets: vec!["target1".to_string(), "target2".to_string()],

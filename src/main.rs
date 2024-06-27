@@ -1,6 +1,7 @@
 // src/main.rs
 mod config_manager;
 mod event_recorder;
+mod events;
 mod http_client;
 mod metrics;
 mod process_watcher;
@@ -14,6 +15,7 @@ use tokio::sync::{mpsc, Mutex};
 use tokio::time::{interval, sleep, Duration};
 
 use crate::config_manager::ConfigManager;
+use crate::events::event_pipeline_run_start_new;
 use crate::tracer_client::TracerClient;
 
 const PID_FILE: &str = "/tmp/tracerd.pid";
@@ -23,11 +25,11 @@ const STDERR_FILE: &str = "/tmp/tracerd.err";
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    start_daemon()?;
+    start_daemon().await?;
     run().await
 }
 
-fn start_daemon() -> Result<()> {
+async fn start_daemon() -> Result<()> {
     Daemonize::new()
         .pid_file(PID_FILE)
         .working_directory(WORKING_DIR)
@@ -36,6 +38,8 @@ fn start_daemon() -> Result<()> {
         .start()
         .context("Failed to start daemon")?;
     println!("tracer-daemon started");
+    // Start new pipeline run event
+    event_pipeline_run_start_new().await?;
     Ok(())
 }
 

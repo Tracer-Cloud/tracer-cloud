@@ -89,7 +89,7 @@ mod tests {
         // This should return 200 OK as the server is expected to be running
         // let service_url = "http://localhost:3000/api/data-collector-api".to_string();
         let service_url = "https://app.tracer.bio/api/data-collector-api".to_string();
-        let api_key = "_Zx2h6toXUnD1i_QjuRvD".to_string();
+        let api_key = "QlXYPyzgjHTipUKUqgr__".to_string();
         let http_client = HttpClient::new(service_url.clone(), api_key.clone());
 
         // Define the log data to send
