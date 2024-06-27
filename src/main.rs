@@ -57,7 +57,7 @@ async fn run() -> Result<()> {
             interval.tick().await;
             if rx.recv().await.is_some() {
                 let mut tracer_client = tracer_client_clone.lock().await;
-                if let Err(e) = TracerClient::submit_batched_data(&mut *tracer_client).await {
+                if let Err(e) = TracerClient::submit_batched_data(&mut tracer_client).await {
                     eprintln!("Failed to submit batched data: {}", e);
                 }
             }
@@ -75,14 +75,14 @@ async fn process_tracer_client(
     tx: &mpsc::Sender<()>,
 ) -> Result<()> {
     let mut tracer_client = tracer_client.lock().await;
-    TracerClient::remove_completed_processes(&mut *tracer_client).await?;
-    TracerClient::poll_processes(&mut *tracer_client).await?;
+    TracerClient::remove_completed_processes(&mut tracer_client).await?;
+    TracerClient::poll_processes(&mut tracer_client).await?;
 
     if tx.send(()).await.is_err() {
         eprintln!("Failed to send signal for batch submission");
     }
 
-    TracerClient::refresh(&mut *tracer_client);
+    TracerClient::refresh(&mut tracer_client);
     Ok(())
 }
 
