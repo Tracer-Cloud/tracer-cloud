@@ -56,7 +56,7 @@ impl SystemMetricsCollector {
             "disk_data": d_stats,
         });
 
-        logs.record(
+        logs.record_event(
             EventType::MetricEvent,
             format!("[{}] System's resources metric", Utc::now()),
             Some(attributes),

@@ -86,7 +86,7 @@ impl ProcessWatcher {
             "start_timestamp": start_time.to_string(),
         });
 
-        event_logger.record(
+        event_logger.record_event(
             EventType::ToolExecution,
             format!("[{}] Tool process: {}", start_time, proc.name()),
             Some(properties),
@@ -101,7 +101,7 @@ impl ProcessWatcher {
             "execution_duration": duration,
         });
 
-        event_logger.record(
+        event_logger.record_event(
             EventType::FinishedRun,
             format!("[{}] {} exited", Utc::now(), &proc.name),
             Some(properties),

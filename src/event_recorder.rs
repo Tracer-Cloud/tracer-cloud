@@ -1,4 +1,3 @@
-// src/event_recorder.rs
 use chrono::serde::ts_seconds;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -24,6 +23,7 @@ pub enum EventType {
     FinishedRun,
     ToolExecution,
     MetricEvent,
+    TestEvent, // Added TestEvent variant
 }
 
 impl EventType {
@@ -32,6 +32,7 @@ impl EventType {
             EventType::FinishedRun => "finished_run",
             EventType::ToolExecution => "tool_execution",
             EventType::MetricEvent => "metric_event",
+            EventType::TestEvent => "test_event", // Handle TestEvent
         }
     }
 }
@@ -41,7 +42,12 @@ impl EventRecorder {
         EventRecorder { events: Vec::new() }
     }
 
-    pub fn record(&mut self, event_type: EventType, message: String, attributes: Option<Value>) {
+    pub fn record_event(
+        &mut self,
+        event_type: EventType,
+        message: String,
+        attributes: Option<Value>,
+    ) {
         let event = Event {
             timestamp: Utc::now(),
             message,
@@ -65,6 +71,7 @@ impl EventRecorder {
     pub fn is_empty(&self) -> bool {
         self.events.is_empty()
     }
+
     #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.events.len()
@@ -88,7 +95,7 @@ mod tests {
         let message = "Test event".to_string();
         let attributes = Some(json!({"key": "value"}));
 
-        recorder.record(
+        recorder.record_event(
             EventType::ToolExecution,
             message.clone(),
             attributes.clone(),
@@ -107,7 +114,7 @@ mod tests {
     #[test]
     fn test_clear_events() {
         let mut recorder = EventRecorder::new();
-        recorder.record(EventType::ToolExecution, "Test event".to_string(), None);
+        recorder.record_event(EventType::ToolExecution, "Test event".to_string(), None);
         assert_eq!(recorder.len(), 1);
 
         recorder.clear();
@@ -119,5 +126,24 @@ mod tests {
         assert_eq!(EventType::FinishedRun.as_str(), "finished_run");
         assert_eq!(EventType::ToolExecution.as_str(), "tool_execution");
         assert_eq!(EventType::MetricEvent.as_str(), "metric_event");
+        assert_eq!(EventType::TestEvent.as_str(), "test_event");
+    }
+
+    #[test]
+    fn test_record_test_event() {
+        let mut recorder = EventRecorder::new();
+        let message = "Test event for testing".to_string();
+        let attributes = Some(json!({"test_key": "test_value"}));
+
+        recorder.record_event(EventType::TestEvent, message.clone(), attributes.clone());
+
+        assert_eq!(recorder.len(), 1);
+
+        let event = &recorder.get_events()[0];
+        assert_eq!(event.message, message);
+        assert_eq!(event.event_type, "process_status");
+        assert_eq!(event.process_type, "pipeline");
+        assert_eq!(event.event_status, "test_event");
+        assert_eq!(event.attributes, attributes);
     }
 }

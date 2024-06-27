@@ -1,16 +1,14 @@
-// src/tracer_client.rs
-use anyhow::Result;
-use serde_json::json;
-use std::sync::Arc;
-use std::{time::Duration, time::Instant};
-use sysinfo::System;
-use tokio::sync::Mutex;
-
 use crate::config_manager::ConfigFile;
-use crate::event_recorder::EventRecorder;
+use crate::event_recorder::{EventRecorder, EventType};
 use crate::http_client::HttpClient;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
+use anyhow::Result;
+use serde_json::json;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use sysinfo::System;
+use tokio::sync::Mutex;
 
 pub struct TracerClient {
     http_client: HttpClient,
@@ -97,5 +95,38 @@ impl TracerClient {
     #[allow(dead_code)]
     pub fn get_processes_count(&self) -> usize {
         self.process_watcher.get_monitored_processes_count()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config_manager::ConfigManager;
+    use anyhow::{Context, Result};
+
+    // Change in the test function to correctly handle the asynchronous config loading
+    #[tokio::test]
+    async fn test_submit_batched_data() -> Result<()> {
+        // Correctly await the asynchronous function
+        let config = ConfigManager::load_config().context("Failed to load config")?;
+        let mut tracer_client =
+            TracerClient::new(config.clone()).context("Failed to create TracerClient")?;
+
+        // Record a test event
+        tracer_client
+            .logs
+            .record_event(EventType::TestEvent, "Test event".to_string(), None);
+
+        // Call the method to submit batched data
+        tracer_client.submit_batched_data().await?;
+
+        // Retrieve the submitted data for verification
+        let submitted_data = tracer_client.get_submitted_data().await;
+
+        // Assert that one batch of data was submitted and contains the test event
+        assert_eq!(submitted_data.len(), 1);
+        assert!(submitted_data[0].contains("Test event"));
+
+        Ok(())
     }
 }
