@@ -15,7 +15,7 @@ pub struct TracerClient {
     api_key: String,
     system: System,
     service_url: String,
-    last_sent: Instant,
+    last_sent: Option<Instant>,
     interval: Duration,
     logs: EventRecorder,
     process_watcher: ProcessWatcher,
@@ -34,7 +34,7 @@ impl TracerClient {
             http_client: HttpClient::new(service_url.clone(), config.api_key.clone()),
             api_key: config.api_key,
             system: System::new_all(),
-            last_sent: Instant::now(),
+            last_sent: None,
             interval: Duration::from_millis(config.process_polling_interval_ms),
             logs: EventRecorder::new(),
             service_url,
@@ -45,9 +45,13 @@ impl TracerClient {
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
-        if Instant::now() - self.last_sent >= self.interval {
-            self.metrics_collector
-                .collect_metrics(&mut self.system, &mut self.logs)?;
+        if self.last_sent.is_none() || Instant::now() - self.last_sent.unwrap() >= self.interval {
+            let collect_result = self.metrics_collector
+                .collect_metrics(&mut self.system, &mut self.logs);
+            if let Err(e) = collect_result {
+                eprintln!("Failed to collect metrics: {:?}", e);
+                return Err(e);
+            }
             println!(
                 "Sending event to {} with API Key: {}",
                 self.service_url, self.api_key
@@ -61,7 +65,7 @@ impl TracerClient {
             let mut submitted_data = self.submitted_data.lock().await;
             submitted_data.push(data.to_string());
 
-            self.last_sent = Instant::now();
+            self.last_sent = Some(Instant::now());
             self.logs.clear();
 
             self.http_client.send_http_event(&data).await
