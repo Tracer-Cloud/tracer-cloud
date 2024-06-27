@@ -30,6 +30,9 @@ jobs:
       - name: Build
         run: cargo build --release --verbose
 
+      - name: Copy config
+        run: mkdir -p $HOME/.config/tracer && cp tracer.toml $HOME/.config/tracer/tracer.toml
+
       - name: Run tests
         run: cargo test --verbose
 
