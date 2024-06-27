@@ -1,4 +1,3 @@
-// src/main.rs
 mod config_manager;
 mod event_recorder;
 mod http_client;
@@ -9,7 +8,10 @@ mod tracer_client;
 use anyhow::{Context, Result};
 use daemonize::Daemonize;
 use std::fs::File;
-use tokio::time::{sleep, Duration};
+use std::sync::Arc;
+use tokio::sync::mpsc;
+use tokio::sync::Mutex;
+use tokio::time::{interval, sleep, Duration};
 
 use crate::config_manager::ConfigManager;
 use crate::tracer_client::TracerClient;
@@ -19,6 +21,7 @@ const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
 const DEFAULT_POLLING_INTERVAL: Duration = Duration::from_micros(100); // 0.1 ms in microseconds
+const BATCH_SUBMISSION_INTERVAL: Duration = Duration::from_secs(5); // every 5 seconds
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -40,20 +43,46 @@ fn start_daemon() -> Result<()> {
 
 async fn run() -> Result<()> {
     let config = ConfigManager::load_config().context("Failed to load config")?;
-    let mut tracer_client =
-        TracerClient::from_config(config).context("Failed to create TracerClient")?;
+    let tracer_client = Arc::new(Mutex::new(
+        TracerClient::from_config(config).context("Failed to create TracerClient")?,
+    ));
+
+    let (tx, mut rx) = mpsc::channel::<()>(1);
+    let tracer_client_clone = Arc::clone(&tracer_client);
+
+    // Spawn a task for submitting batched data
+    tokio::spawn(async move {
+        let mut interval = interval(BATCH_SUBMISSION_INTERVAL);
+        loop {
+            interval.tick().await;
+            if rx.recv().await.is_some() {
+                let mut tracer_client = tracer_client_clone.lock().await;
+                if let Err(e) = TracerClient::submit_batched_data(&mut *tracer_client).await {
+                    eprintln!("Failed to submit batched data: {}", e);
+                }
+            }
+        }
+    });
 
     loop {
-        process_tracer_client(&mut tracer_client).await?;
+        process_tracer_client(&tracer_client, &tx).await?;
         sleep(DEFAULT_POLLING_INTERVAL).await;
     }
 }
 
-async fn process_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
-    TracerClient::remove_completed_processes(tracer_client).await?;
-    TracerClient::poll_processes(tracer_client).await?;
-    TracerClient::send_event(tracer_client).await?;
-    TracerClient::refresh(tracer_client);
+async fn process_tracer_client(
+    tracer_client: &Arc<Mutex<TracerClient>>,
+    tx: &mpsc::Sender<()>,
+) -> Result<()> {
+    let mut tracer_client = tracer_client.lock().await;
+    TracerClient::remove_completed_processes(&mut *tracer_client).await?;
+    TracerClient::poll_processes(&mut *tracer_client).await?;
+
+    if tx.send(()).await.is_err() {
+        eprintln!("Failed to send signal for batch submission");
+    }
+
+    TracerClient::refresh(&mut *tracer_client);
     Ok(())
 }
 

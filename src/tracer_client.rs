@@ -42,7 +42,7 @@ impl TracerClient {
         })
     }
 
-    pub async fn send_event(client: &mut TracerClient) -> Result<()> {
+    pub async fn submit_batched_data(client: &mut TracerClient) -> Result<()> {
         if Instant::now() - client.last_sent >= client.interval {
             client
                 .metrics_collector
