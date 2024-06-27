@@ -10,8 +10,7 @@ use anyhow::{Context, Result};
 use daemonize::Daemonize;
 use std::fs::File;
 use std::sync::Arc;
-use tokio::sync::mpsc;
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc, Mutex};
 use tokio::time::{interval, sleep, Duration};
 
 use crate::config_manager::ConfigManager;
@@ -42,38 +41,43 @@ fn start_daemon() -> Result<()> {
 
 async fn run() -> Result<()> {
     let config = ConfigManager::load_config().context("Failed to load config")?;
-
     let tracer_client = Arc::new(Mutex::new(
         TracerClient::new(config.clone()).context("Failed to create TracerClient")?,
     ));
+    let (tx, rx) = mpsc::channel::<()>(1);
 
-    let (tx, mut rx) = mpsc::channel::<()>(1);
-    let tracer_client_clone = Arc::clone(&tracer_client);
+    spawn_batch_submission_task(
+        Arc::clone(&tracer_client),
+        rx,
+        config.batch_submission_interval_ms,
+    );
 
-    let batch_submission_interval = Duration::from_millis(config.batch_submission_interval_ms);
-    let polling_interval = Duration::from_millis(config.process_polling_interval_ms);
+    loop {
+        monitor_processes_with_tracer_client(&tracer_client, &tx).await?;
+        sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
+    }
+}
 
-    // Spawn a task for submitting batched data
+fn spawn_batch_submission_task(
+    tracer_client: Arc<Mutex<TracerClient>>,
+    mut rx: mpsc::Receiver<()>,
+    interval_ms: u64,
+) {
     tokio::spawn(async move {
-        let mut interval = interval(batch_submission_interval);
+        let mut interval = interval(Duration::from_millis(interval_ms));
         loop {
             interval.tick().await;
             if rx.recv().await.is_some() {
-                let mut tracer_client = tracer_client_clone.lock().await;
+                let mut tracer_client = tracer_client.lock().await;
                 if let Err(e) = tracer_client.submit_batched_data().await {
                     eprintln!("Failed to submit batched data: {}", e);
                 }
             }
         }
     });
-
-    loop {
-        process_tracer_client(&tracer_client, &tx).await?;
-        sleep(polling_interval).await;
-    }
 }
 
-async fn process_tracer_client(
+async fn monitor_processes_with_tracer_client(
     tracer_client: &Arc<Mutex<TracerClient>>,
     tx: &mpsc::Sender<()>,
 ) -> Result<()> {
@@ -121,10 +125,7 @@ mod tests {
 
         create_test_config(CONFIG_CONTENT, &config_path);
 
-        // Set the HOME environment variable to our temp directory
         env::set_var("HOME", temp_dir.path());
-
-        // Remove TRACER_CONFIG if it's set, to ensure we use the default path
         env::remove_var("TRACER_CONFIG");
 
         let result = timeout(Duration::from_secs(5), run()).await;
@@ -132,7 +133,5 @@ mod tests {
             result.is_err(),
             "run() should not complete within 5 seconds"
         );
-
-        // Clean up is handled automatically by TempDir when it goes out of scope
     }
 }
