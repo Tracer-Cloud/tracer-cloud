@@ -1,8 +1,8 @@
 // src/events/mod.rs
-use crate::http_client::HttpClient;
+use crate::http_client::send_http_event;
 use anyhow::{Context, Result};
 use serde_json::json;
-use tracing::{info, instrument};
+use tracing::info;
 
 #[derive(Debug)]
 pub enum EventStatus {
@@ -18,12 +18,12 @@ impl ToString for EventStatus {
     }
 }
 
-#[instrument(skip(http_client))]
-pub async fn event_pipeline_run_start_new(http_client: &HttpClient) -> Result<()> {
+pub async fn event_pipeline_run_start_new(service_url: &str, api_key: &str) -> Result<()> {
     info!("Starting new pipeline...");
 
     log_event(
-        http_client,
+        service_url,
+        api_key,
         EventStatus::NewRun,
         "[CLI] Starting pipeline run",
     )
@@ -34,8 +34,12 @@ pub async fn event_pipeline_run_start_new(http_client: &HttpClient) -> Result<()
     Ok(())
 }
 
-#[instrument(skip(http_client))]
-async fn log_event(http_client: &HttpClient, status: EventStatus, message: &str) -> Result<()> {
+async fn log_event(
+    service_url: &str,
+    api_key: &str,
+    status: EventStatus,
+    message: &str,
+) -> Result<()> {
     let log_entry = json!({
         "message": message,
         "process_type": "pipeline",
@@ -43,8 +47,7 @@ async fn log_event(http_client: &HttpClient, status: EventStatus, message: &str)
         "event_type": "process_status"
     });
 
-    http_client
-        .send_http_event(&log_entry)
+    send_http_event(service_url, api_key, &log_entry)
         .await
         .context("Failed to send HTTP event")
 }
@@ -54,34 +57,13 @@ mod tests {
     use super::*;
     use crate::config_manager::ConfigManager;
     use anyhow::Error;
-    use std::sync::Once;
-
-    static INIT: Once = Once::new();
-
-    fn initialize() {
-        INIT.call_once(|| {
-            let _ = env_logger::builder().is_test(true).try_init();
-        });
-    }
-
-    async fn initialize_http_client() -> Result<HttpClient> {
-        let config = ConfigManager::load_config().context("Failed to load config")?;
-        let http_client = HttpClient::new(config.service_url, config.api_key);
-        Ok(http_client)
-    }
-
-    async fn create_test_http_client() -> Result<HttpClient> {
-        let config = ConfigManager::load_config().context("Failed to load config")?;
-        let http_client = HttpClient::new(config.service_url, config.api_key);
-        Ok(http_client)
-    }
 
     #[tokio::test]
     async fn test_event_pipeline_run_start_new() -> Result<(), Error> {
-        initialize();
-
-        let http_client = create_test_http_client().await?;
-        let result = event_pipeline_run_start_new(&http_client).await;
+        let config = ConfigManager::load_config().context("Failed to load config")?;
+        let result =
+            event_pipeline_run_start_new(&config.service_url.clone(), &config.api_key.clone())
+                .await;
 
         assert!(result.is_ok(), "Expected success, but got an error");
 
@@ -90,25 +72,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_log_event() -> Result<(), Error> {
-        initialize();
-
-        let http_client = create_test_http_client().await?;
+        let config = ConfigManager::load_config().context("Failed to load config")?;
         let message = "[shipping] Test log message from the test suite";
 
-        let result = log_event(&http_client, EventStatus::NewRun, message).await;
+        let result = log_event(&service_url, &api_key, EventStatus::NewRun, message).await;
 
         assert!(result.is_ok(), "Expected success, but got an error");
 
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_initialize_http_client() -> Result<(), Error> {
-        initialize();
-
-        let result = initialize_http_client().await;
-
-        assert!(result.is_ok(), "Expected success, but got an error");
         Ok(())
     }
 }

@@ -5,74 +5,71 @@ use serde_json::{json, Value};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
-pub struct HttpClient {
-    client: Client,
-    service_url: String,
-    api_key: String,
-}
+/// Todo: standardized values in the logs of the test "pipeline"
 
-impl HttpClient {
-    pub fn new(service_url: String, api_key: String) -> Self {
-        Self {
-            client: Client::new(),
-            service_url,
-            api_key,
-        }
-    }
+pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> Result<()> {
+    // Ensure logs is always an array
+    let logs_array = match logs {
+        Value::Array(_) => logs.clone(),
+        _ => json!([logs]),
+    };
+    let logs_wrapper = json!({ "logs": logs_array });
 
-    pub async fn send_http_event(&self, logs: &Value) -> Result<()> {
-        // Ensure logs is always an array
-        let logs_array = match logs {
-            Value::Array(_) => logs.clone(),
-            _ => json!([logs]),
-        };
-        let logs_wrapper = json!({ "logs": logs_array });
+    // Log request body
+    let request_body = logs_wrapper.to_string();
+    info!("Request body: {}", request_body);
 
-        let response = self
-            .client
-            .post(&self.service_url)
-            .header("x-api-key", &self.api_key)
-            .header("Content-Type", "application/json")
-            .json(&logs_wrapper)
-            .send()
-            .await
-            .context("Failed to send event data")?;
+    // Send request
+    let client = Client::new();
+    let response = client
+        .post(service_url)
+        .header("x-api-key", api_key)
+        .header("Content-Type", "application/json")
+        .json(&logs_wrapper)
+        .send()
+        .await
+        .context("Failed to send event data")?;
 
-        let status = response.status();
-        let response_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
+    let status = response.status();
+    let response_text = response
+        .text()
+        .await
+        .unwrap_or_else(|_| "Unknown error".to_string());
 
-        if status.is_success() {
-            info!(
-                "Successfully sent HTTP event: {} - {}",
-                status, response_text
-            );
-            Ok(())
-        } else {
-            error!(
-                "Error while sending send_http_event: {} - {}",
-                status, response_text
-            );
+    // Log response body
+    info!(
+        "Response status: {}, Response body: {}",
+        status, response_text
+    );
 
-            let mut file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open("error_log.txt")
-                .await?;
-            let log_message = format!(
-                "Error while sending send_http_event: {} - {}\n",
-                status, response_text
-            );
-            file.write_all(log_message.as_bytes()).await?;
+    if status.is_success() {
+        info!(
+            "Successfully sent HTTP event: {} - {}",
+            status, response_text
+        );
+        Ok(())
+    } else {
+        error!(
+            "Error while sending send_http_event: {} - {}",
+            status, response_text
+        );
 
-            Err(anyhow::anyhow!(
-                "Error while sending send_http_event: {} - {}",
-                status,
-                response_text
-            ))
-        }
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("error_log.txt")
+            .await?;
+        let log_message = format!(
+            "Error while sending send_http_event: {} - {}\nRequest body: {}\nResponse body: {}\n",
+            status, response_text, request_body, response_text
+        );
+        file.write_all(log_message.as_bytes()).await?;
+
+        Err(anyhow::anyhow!(
+            "Error while sending send_http_event: {} - {}",
+            status,
+            response_text
+        ))
     }
 }
 
@@ -81,6 +78,7 @@ mod tests {
     use super::*;
     use crate::config_manager::ConfigManager;
     use anyhow::Error;
+    use reqwest::Client;
     use serde_json::json;
 
     #[tokio::test]
@@ -91,12 +89,12 @@ mod tests {
         let config = ConfigManager::load_config().context("Failed to load config")?;
         let api_key = config.api_key.clone(); // Cloning here to avoid moving
         let service_url = config.service_url.clone(); // Cloning here to avoid moving
-        let http_client = HttpClient::new(service_url, api_key);
+        let client = Client::new();
 
         // Define the log data to send
         let logs = json!([
             {
-                "message": "starting RNA-seq pipeline RID 255050",
+                "message": "[test_send_http_event] starting RNA-seq pipeline RID 255050",
                 "process_type": "pipeline",
                 "process_status": "new_run",
                 "event_type": "process_status"
@@ -104,7 +102,7 @@ mod tests {
         ]);
 
         // Send the HTTP event
-        let result = http_client.send_http_event(&logs).await;
+        let result = send_http_event(&service_url, &api_key, &logs).await;
 
         // Ensure the request succeeded
         assert!(

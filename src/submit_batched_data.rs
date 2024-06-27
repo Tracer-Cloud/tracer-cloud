@@ -1,6 +1,6 @@
 // src/data_submission.rs
 use crate::event_recorder::EventRecorder;
-use crate::http_client::HttpClient;
+use crate::http_client::send_http_event;
 use crate::metrics::SystemMetricsCollector;
 
 use anyhow::{Context, Result};
@@ -12,7 +12,6 @@ use tokio::sync::Mutex;
 use tracing::info;
 
 pub async fn submit_batched_data(
-    http_client: &HttpClient,
     api_key: &str,
     service_url: &str,
     system: &mut System,
@@ -38,8 +37,7 @@ pub async fn submit_batched_data(
         *last_sent = Instant::now();
         logs.clear();
 
-        http_client
-            .send_http_event(&data)
+        send_http_event(&service_url, &api_key, &data)
             .await
             .context("Failed to send HTTP event")
     } else {
@@ -52,7 +50,6 @@ mod tests {
     use super::*;
     use crate::config_manager::ConfigManager;
     use crate::event_recorder::{EventRecorder, EventType};
-    use crate::http_client::HttpClient;
     use crate::metrics::SystemMetricsCollector;
     use anyhow::Result;
     use std::sync::Arc;
@@ -65,7 +62,6 @@ mod tests {
         let config = ConfigManager::load_config().context("Failed to load config")?;
         let service_url = config.service_url.clone();
         let api_key = config.api_key.clone();
-        let http_client = HttpClient::new(service_url.clone(), api_key.clone());
 
         let mut system = System::new();
         let mut logs = EventRecorder::new();
@@ -79,7 +75,6 @@ mod tests {
 
         // Call the method to submit batched data
         submit_batched_data(
-            &http_client,
             &api_key,
             &service_url,
             &mut system,

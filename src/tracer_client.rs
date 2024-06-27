@@ -1,18 +1,18 @@
 // src/tracer_client.rs
 use crate::config_manager::ConfigFile;
-use crate::data_submission::submit_batched_data;
 use crate::event_recorder::EventRecorder;
-use crate::http_client::HttpClient;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
+use crate::submit_batched_data::submit_batched_data;
 use anyhow::Result;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use sysinfo::System;
 use tokio::sync::Mutex;
 
+// @todo refactor this code to not use self
+
 pub struct TracerClient {
-    pub http_client: HttpClient,
     api_key: String,
     system: System,
     service_url: String,
@@ -32,7 +32,6 @@ impl TracerClient {
         println!("Service URL: {}", service_url);
 
         Ok(TracerClient {
-            http_client: HttpClient::new(service_url.clone(), config.api_key.clone()),
             api_key: config.api_key,
             system: System::new_all(),
             last_sent: Instant::now(),
@@ -47,7 +46,6 @@ impl TracerClient {
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
         submit_batched_data(
-            &self.http_client,
             &self.api_key,
             &self.service_url,
             &mut self.system,
@@ -74,16 +72,5 @@ impl TracerClient {
 
     pub fn refresh(&mut self) {
         self.system.refresh_all();
-    }
-
-    // New methods for testing
-    #[allow(dead_code)]
-    pub async fn get_submitted_data(&self) -> Vec<String> {
-        self.submitted_data.lock().await.clone()
-    }
-
-    #[allow(dead_code)]
-    pub fn get_processes_count(&self) -> usize {
-        self.process_watcher.get_monitored_processes_count()
     }
 }

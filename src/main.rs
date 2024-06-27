@@ -1,10 +1,10 @@
 mod config_manager;
-mod data_submission;
 mod event_recorder;
 mod events;
 mod http_client;
 mod metrics;
 mod process_watcher;
+mod submit_batched_data;
 mod tracer_client;
 
 use anyhow::{Context, Result};
