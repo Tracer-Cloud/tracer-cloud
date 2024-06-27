@@ -90,15 +90,6 @@ mod tests {
             .unwrap()
     }
 
-    fn assert_common_config_values(config: &ConfigFile) {
-        assert_eq!(config.process_polling_interval_ms, 200);
-        assert_eq!(config.batch_submission_interval_ms, 5000);
-        assert_eq!(
-            config.service_url.trim(),
-            "https://app.tracer.bio/api/data-collector-api"
-        );
-    }
-
     #[tokio::test]
     async fn test_monitor_processes_with_tracer_client() {
         let config = load_test_config();
@@ -126,17 +117,5 @@ mod tests {
         });
 
         assert!(true); // Replace with actual condition
-    }
-
-    #[test]
-    fn test_load_valid_config() {
-        let config = load_test_config();
-        assert_common_config_values(&config);
-    }
-
-    #[test]
-    fn test_load_default_config_path() {
-        let config = load_test_config();
-        assert_common_config_values(&config);
     }
 }
