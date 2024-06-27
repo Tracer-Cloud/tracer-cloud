@@ -5,12 +5,8 @@ use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
 use crate::submit_batched_data::submit_batched_data;
 use anyhow::Result;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 use sysinfo::System;
-use tokio::sync::Mutex;
-
-// @todo refactor this code to not use self
 
 pub struct TracerClient {
     api_key: String,
@@ -21,7 +17,6 @@ pub struct TracerClient {
     pub logs: EventRecorder,
     process_watcher: ProcessWatcher,
     metrics_collector: SystemMetricsCollector,
-    submitted_data: Arc<Mutex<Vec<String>>>,
 }
 
 impl TracerClient {
@@ -40,7 +35,6 @@ impl TracerClient {
             system: System::new_all(),
             last_sent: Instant::now(),
             interval: Duration::from_millis(config.process_polling_interval_ms),
-            submitted_data: Arc::new(Mutex::new(Vec::new())),
             // Sub mannagers
             logs: EventRecorder::new(),
             process_watcher: ProcessWatcher::new(config.targets),
@@ -62,7 +56,6 @@ impl TracerClient {
     }
 
     /// These functions require logs and the system
-
     pub async fn poll_processes(&mut self) -> Result<()> {
         self.process_watcher
             .poll_processes(&mut self.system, &mut self.logs)?;
@@ -75,7 +68,6 @@ impl TracerClient {
         Ok(())
     }
 
-    // this one can also be moved
     pub fn refresh_sysinfo(&mut self) {
         self.system.refresh_all();
     }

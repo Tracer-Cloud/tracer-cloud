@@ -17,7 +17,7 @@ async fn record_all_outgoing_http_calls(
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
-        .open("logs_processing.txt")
+        .open("log_outgoing_http_calls.txt")
         .await?;
 
     let incoming_logs_string = format!(
@@ -71,7 +71,7 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open("error_log.txt")
+            .open("error_outgoing_http_calls.txt")
             .await?;
         let log_message = format!(
             "Error while sending send_http_event: {} - {}\nRequest body: {}\nResponse body: {}\n",
