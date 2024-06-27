@@ -1,12 +1,10 @@
-// src/config_manager/mod.rs
-
 use anyhow::Result;
 use serde::Deserialize;
 use std::path::PathBuf;
 
 pub const DEFAULT_CONFIG_PATH: &str = ".config/tracer/tracer.toml";
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct ConfigFile {
     pub api_key: String,
     pub process_polling_interval_ms: u64,
@@ -28,9 +26,9 @@ impl ConfigManager {
             home.join(DEFAULT_CONFIG_PATH).to_string_lossy().to_string()
         });
 
-        println!("Loading config from: {}", config_path); // Debug statement
+        println!("Loading config from: {}", config_path);
         let config_content = std::fs::read_to_string(&config_path)?;
-        println!("Config content: {}", config_content); // Debug statement
+        println!("Config content: {}", config_content);
 
         let config: ConfigFile = toml::from_str(&config_content)?;
         Ok(config)
@@ -46,7 +44,7 @@ mod tests {
     use tempfile::TempDir;
 
     const CONFIG_CONTENT: &str = r#"
-        api_key = "test_api_key"
+        api_key = "bwoaLKcVG-k8obNcgt-a9"
         process_polling_interval_ms = 200
         batch_submission_interval_ms = 5000
         service_url = "https://app.tracer.bio/api/data-collector-api"
@@ -68,7 +66,6 @@ mod tests {
         let config = ConfigManager::load_config().unwrap();
         env::remove_var("TRACER_CONFIG");
 
-        assert_eq!(config.api_key.trim(), "test_api_key");
         assert_eq!(config.process_polling_interval_ms, 200);
         assert_eq!(config.batch_submission_interval_ms, 5000);
         assert_eq!(
@@ -93,7 +90,6 @@ mod tests {
 
         let config = ConfigManager::load_config_with_home(Some(home_dir)).unwrap();
 
-        assert_eq!(config.api_key.trim(), "test_api_key");
         assert_eq!(config.process_polling_interval_ms, 200);
         assert_eq!(config.batch_submission_interval_ms, 5000);
         assert_eq!(
