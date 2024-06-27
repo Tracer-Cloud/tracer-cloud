@@ -1,3 +1,4 @@
+// src/main.rs
 mod config_manager;
 mod event_recorder;
 mod http_client;
@@ -11,8 +12,7 @@ use std::fs::File;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
-use tokio::time::{interval, Duration};
-// use tokio::time::{interval, sleep, Duration};
+use tokio::time::{interval, sleep, Duration};
 
 use crate::config_manager::ConfigManager;
 use crate::tracer_client::TracerClient;
@@ -21,8 +21,6 @@ const PID_FILE: &str = "/tmp/tracerd.pid";
 const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
-// const DEFAULT_POLLING_INTERVAL: Duration = Duration::from_micros(100); // 0.1 ms in microseconds
-const BATCH_SUBMISSION_INTERVAL: Duration = Duration::from_secs(5); // every 5 seconds
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -43,23 +41,26 @@ fn start_daemon() -> Result<()> {
 }
 
 async fn run() -> Result<()> {
-    // Can we simplify this by moving the config loading to the TracerClient::from_config method?
     let config = ConfigManager::load_config().context("Failed to load config")?;
+
     let tracer_client = Arc::new(Mutex::new(
-        TracerClient::from_config(config).context("Failed to create TracerClient")?,
+        TracerClient::new(config.clone()).context("Failed to create TracerClient")?,
     ));
 
     let (tx, mut rx) = mpsc::channel::<()>(1);
     let tracer_client_clone = Arc::clone(&tracer_client);
 
+    let batch_submission_interval = Duration::from_millis(config.batch_submission_interval_ms);
+    let polling_interval = Duration::from_millis(config.process_polling_interval_ms);
+
     // Spawn a task for submitting batched data
     tokio::spawn(async move {
-        let mut interval = interval(BATCH_SUBMISSION_INTERVAL);
+        let mut interval = interval(batch_submission_interval);
         loop {
             interval.tick().await;
             if rx.recv().await.is_some() {
                 let mut tracer_client = tracer_client_clone.lock().await;
-                if let Err(e) = TracerClient::submit_batched_data(&mut tracer_client).await {
+                if let Err(e) = tracer_client.submit_batched_data().await {
                     eprintln!("Failed to submit batched data: {}", e);
                 }
             }
@@ -68,7 +69,7 @@ async fn run() -> Result<()> {
 
     loop {
         process_tracer_client(&tracer_client, &tx).await?;
-        // sleep(DEFAULT_POLLING_INTERVAL).await;
+        sleep(polling_interval).await;
     }
 }
 
@@ -77,14 +78,14 @@ async fn process_tracer_client(
     tx: &mpsc::Sender<()>,
 ) -> Result<()> {
     let mut tracer_client = tracer_client.lock().await;
-    TracerClient::remove_completed_processes(&mut tracer_client).await?;
-    TracerClient::poll_processes(&mut tracer_client).await?;
+    tracer_client.remove_completed_processes().await?;
+    tracer_client.poll_processes().await?;
 
     if tx.send(()).await.is_err() {
         eprintln!("Failed to send signal for batch submission");
     }
 
-    TracerClient::refresh(&mut tracer_client);
+    tracer_client.refresh();
     Ok(())
 }
 
@@ -99,8 +100,10 @@ mod tests {
     use tokio::time::timeout;
 
     const CONFIG_CONTENT: &str = r#"
-        api_key = "_Zx2h6toXUnD1i_QjuRvD"
-        polling_interval_ms = 1000
+        api_key = "test_api_key"
+        process_polling_interval_ms = 200
+        batch_submission_interval_ms = 5000
+        service_url = "https://app.tracer.bio/api/data-collector-api"
         targets = ["target1", "target2"]
     "#;
 

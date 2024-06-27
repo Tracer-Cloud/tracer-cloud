@@ -1,4 +1,4 @@
-/// src/tracer_client.rs
+// src/tracer_client.rs
 use anyhow::Result;
 use serde_json::json;
 use std::{time::Duration, time::Instant};
@@ -23,11 +23,8 @@ pub struct TracerClient {
 }
 
 impl TracerClient {
-    pub fn from_config(config: ConfigFile) -> Result<TracerClient> {
-        // [1] TODO this service_url is not in the correct place and should be managed by the config manager
-        // [2] Also Can we simplify this by moving the incoming config file, by loading the config file in the config manager?
-        // [3] Is there a more appropiate naming converntion than "from_config" for this method?
-        let service_url = "https://app.tracer.bio/api/data-collector-api".to_string();
+    pub fn new(config: ConfigFile) -> Result<TracerClient> {
+        let service_url = config.service_url.clone();
 
         println!("Initializing TracerClient with API Key: {}", config.api_key);
         println!("Service URL: {}", service_url);
@@ -37,7 +34,7 @@ impl TracerClient {
             api_key: config.api_key,
             system: System::new_all(),
             last_sent: Instant::now(),
-            interval: Duration::from_millis(config.polling_interval_ms),
+            interval: Duration::from_millis(config.process_polling_interval_ms),
             logs: EventRecorder::new(),
             service_url,
             process_watcher: ProcessWatcher::new(config.targets),
@@ -45,45 +42,42 @@ impl TracerClient {
         })
     }
 
-    pub async fn submit_batched_data(client: &mut TracerClient) -> Result<()> {
-        if Instant::now() - client.last_sent >= client.interval {
-            client
-                .metrics_collector
-                .collect_metrics(&mut client.system, &mut client.logs)?;
+    pub async fn submit_batched_data(&mut self) -> Result<()> {
+        if Instant::now() - self.last_sent >= self.interval {
+            self.metrics_collector
+                .collect_metrics(&mut self.system, &mut self.logs)?;
             println!(
                 "Sending event to {} with API Key: {}",
-                client.service_url, client.api_key
+                self.service_url, self.api_key
             );
 
-            let data = json!({ "logs": client.logs.get_events() });
+            let data = json!({ "logs": self.logs.get_events() });
 
             println!("{:#?}", data); // Log to file located at `/tmp/tracerd.out`
 
-            client.last_sent = Instant::now();
-            client.logs.clear();
+            self.last_sent = Instant::now();
+            self.logs.clear();
 
-            client.http_client.send_http_event(&data).await
+            self.http_client.send_http_event(&data).await
         } else {
             Ok(())
         }
     }
 
-    pub async fn poll_processes(tracer_client: &mut TracerClient) -> Result<()> {
-        tracer_client
-            .process_watcher
-            .poll_processes(&mut tracer_client.system, &mut tracer_client.logs)?;
+    pub async fn poll_processes(&mut self) -> Result<()> {
+        self.process_watcher
+            .poll_processes(&mut self.system, &mut self.logs)?;
         Ok(())
     }
 
-    pub async fn remove_completed_processes(tracer_client: &mut TracerClient) -> Result<()> {
-        tracer_client
-            .process_watcher
-            .remove_completed_processes(&mut tracer_client.system, &mut tracer_client.logs)?;
+    pub async fn remove_completed_processes(&mut self) -> Result<()> {
+        self.process_watcher
+            .remove_completed_processes(&mut self.system, &mut self.logs)?;
         Ok(())
     }
 
-    pub fn refresh(tracer_client: &mut TracerClient) {
-        tracer_client.system.refresh_all();
+    pub fn refresh(&mut self) {
+        self.system.refresh_all();
     }
 }
 
@@ -91,25 +85,29 @@ impl TracerClient {
 mod test {
     use super::*;
 
-    fn create_conf() -> ConfigFile {
-        toml::from_str(
-            &std::fs::read_to_string(
-                std::env::var("TRACER_CONFIG").unwrap_or("tracer.toml".to_string()),
-            )
-            .unwrap(),
-        )
-        .unwrap()
-    }
-
     #[test]
-    fn from_config() {
-        let tr = TracerClient::from_config(create_conf());
+    fn test_new() {
+        let config = ConfigFile {
+            api_key: "test_api_key".to_string(),
+            process_polling_interval_ms: 1000,
+            batch_submission_interval_ms: 5000,
+            service_url: "https://app.tracer.bio/api/data-collector-api".to_string(),
+            targets: vec!["target1".to_string(), "target2".to_string()],
+        };
+        let tr = TracerClient::new(config);
         assert!(tr.is_ok())
     }
 
     #[tokio::test]
-    async fn tool_exec() {
-        let mut tr = TracerClient::from_config(create_conf()).unwrap();
+    async fn test_tool_exec() {
+        let config = ConfigFile {
+            api_key: "test_api_key".to_string(),
+            process_polling_interval_ms: 1000,
+            batch_submission_interval_ms: 5000,
+            service_url: "https://app.tracer.bio/api/data-collector-api".to_string(),
+            targets: vec!["target1".to_string(), "target2".to_string()],
+        };
+        let mut tr = TracerClient::new(config).unwrap();
         tr.process_watcher = ProcessWatcher::new(vec!["sleep".to_string()]);
 
         let mut cmd = std::process::Command::new("sleep")
@@ -118,8 +116,8 @@ mod test {
             .unwrap();
 
         while tr.process_watcher.get_seen().is_empty() {
-            TracerClient::refresh(&mut tr);
-            TracerClient::poll_processes(&mut tr).await.unwrap();
+            tr.refresh();
+            tr.poll_processes().await.unwrap();
         }
 
         cmd.wait().unwrap();

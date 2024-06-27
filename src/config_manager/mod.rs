@@ -1,14 +1,16 @@
-/// config_manager/mod.rs
+// src/config_manager/mod.rs
 use anyhow::Result;
 use serde::Deserialize;
 use std::path::PathBuf;
 
 pub const DEFAULT_CONFIG_PATH: &str = ".config/tracer/tracer.toml";
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct ConfigFile {
     pub api_key: String,
-    pub polling_interval_ms: u64,
+    pub process_polling_interval_ms: u64,
+    pub batch_submission_interval_ms: u64,
+    pub service_url: String,
     pub targets: Vec<String>,
 }
 
@@ -44,7 +46,9 @@ mod tests {
 
     const CONFIG_CONTENT: &str = r#"
         api_key = "test_api_key"
-        polling_interval_ms = 1000
+        process_polling_interval_ms = 200
+        batch_submission_interval_ms = 5000
+        service_url = "https://app.tracer.bio/api/data-collector-api"
         targets = ["target1", "target2"]
     "#;
 
@@ -63,7 +67,12 @@ mod tests {
         env::remove_var("TRACER_CONFIG");
 
         assert_eq!(config.api_key.trim(), "test_api_key");
-        assert_eq!(config.polling_interval_ms, 1000);
+        assert_eq!(config.process_polling_interval_ms, 200);
+        assert_eq!(config.batch_submission_interval_ms, 5000);
+        assert_eq!(
+            config.service_url.trim(),
+            "https://app.tracer.bio/api/data-collector-api"
+        );
         assert_eq!(
             config.targets,
             vec!["target1".to_string(), "target2".to_string()]
@@ -85,7 +94,12 @@ mod tests {
         let config = ConfigManager::load_config_with_home(Some(home_dir)).unwrap();
 
         assert_eq!(config.api_key.trim(), "test_api_key");
-        assert_eq!(config.polling_interval_ms, 1000);
+        assert_eq!(config.process_polling_interval_ms, 200);
+        assert_eq!(config.batch_submission_interval_ms, 5000);
+        assert_eq!(
+            config.service_url.trim(),
+            "https://app.tracer.bio/api/data-collector-api"
+        );
         assert_eq!(
             config.targets,
             vec!["target1".to_string(), "target2".to_string()]
