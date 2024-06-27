@@ -1,4 +1,5 @@
 mod config_manager;
+mod data_submission;
 mod event_recorder;
 mod events;
 mod http_client;

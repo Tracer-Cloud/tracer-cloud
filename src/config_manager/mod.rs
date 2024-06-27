@@ -1,8 +1,11 @@
 use anyhow::Result;
 use serde::Deserialize;
-use std::path::PathBuf;
+mod targets;
 
-pub const DEFAULT_CONFIG_PATH: &str = ".config/tracer/tracer.toml";
+const DEFAULT_API_KEY: &str = "ZZLKWZBTggarV3PZ5dCSQ";
+const SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
+const PROCESS_POLLING_INTERVAL_MS: u64 = 200;
+const BATCH_SUBMISSION_INTERVAL_MS: u64 = 5000;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct ConfigFile {
@@ -17,20 +20,18 @@ pub struct ConfigManager;
 
 impl ConfigManager {
     pub fn load_config() -> Result<ConfigFile> {
-        Self::load_config_with_home(None)
-    }
+        // Load the API key from the environment variable or use the default
+        let api_key =
+            std::env::var("TRACER_API_KEY").unwrap_or_else(|_| DEFAULT_API_KEY.to_string());
 
-    pub fn load_config_with_home(home_dir: Option<PathBuf>) -> Result<ConfigFile> {
-        let config_path = std::env::var("TRACER_CONFIG").unwrap_or_else(|_| {
-            let home = home_dir.unwrap_or_else(|| PathBuf::from(std::env::var("HOME").unwrap()));
-            home.join(DEFAULT_CONFIG_PATH).to_string_lossy().to_string()
-        });
+        let config = ConfigFile {
+            api_key,
+            process_polling_interval_ms: PROCESS_POLLING_INTERVAL_MS,
+            batch_submission_interval_ms: BATCH_SUBMISSION_INTERVAL_MS,
+            service_url: SERVICE_URL.to_string(),
+            targets: targets::TARGETS.iter().map(|&s| s.to_string()).collect(),
+        };
 
-        println!("Loading config from: {}", config_path);
-        let config_content = std::fs::read_to_string(&config_path)?;
-        println!("Config content: {}", config_content);
-
-        let config: ConfigFile = toml::from_str(&config_content)?;
         Ok(config)
     }
 }
@@ -39,51 +40,21 @@ impl ConfigManager {
 mod tests {
     use super::*;
     use std::env;
-    use std::fs::{self, File};
-    use std::io::Write;
-    use tempfile::TempDir;
-
-    fn create_test_config_file(path: &str) {
-        let config_content = include_str!("../../tracer.toml");
-        let mut file = File::create(path).unwrap();
-        file.write_all(config_content.as_bytes()).unwrap();
-    }
 
     #[test]
-    fn test_load_valid_config() {
-        let temp_dir = TempDir::new().unwrap();
-        let test_config_path = temp_dir.path().join("tracer.toml");
-        create_test_config_file(test_config_path.to_str().unwrap());
-
-        env::set_var("TRACER_CONFIG", test_config_path.to_str().unwrap());
+    fn test_default_config() {
+        env::remove_var("TRACER_API_KEY");
         let config = ConfigManager::load_config().unwrap();
-        env::remove_var("TRACER_CONFIG");
-
-        assert_eq!(config.process_polling_interval_ms, 200);
-        assert_eq!(config.batch_submission_interval_ms, 5000);
+        assert_eq!(config.api_key, DEFAULT_API_KEY);
+        assert_eq!(config.service_url, SERVICE_URL);
         assert_eq!(
-            config.service_url.trim(),
-            "https://app.tracer.bio/api/data-collector-api"
+            config.process_polling_interval_ms,
+            PROCESS_POLLING_INTERVAL_MS
         );
-    }
-
-    #[test]
-    fn test_load_default_config_path() {
-        let temp_dir = TempDir::new().unwrap();
-        let home_dir = temp_dir.path().to_path_buf();
-        let config_dir = home_dir.join(".config").join("tracer");
-        fs::create_dir_all(&config_dir).unwrap();
-
-        let config_path = config_dir.join("tracer.toml");
-        create_test_config_file(config_path.to_str().unwrap());
-
-        let config = ConfigManager::load_config_with_home(Some(home_dir)).unwrap();
-
-        assert_eq!(config.process_polling_interval_ms, 200);
-        assert_eq!(config.batch_submission_interval_ms, 5000);
         assert_eq!(
-            config.service_url.trim(),
-            "https://app.tracer.bio/api/data-collector-api"
+            config.batch_submission_interval_ms,
+            BATCH_SUBMISSION_INTERVAL_MS
         );
+        assert!(!config.targets.is_empty());
     }
 }

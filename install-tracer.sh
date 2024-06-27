@@ -5,7 +5,7 @@
 #   DESCRIPTION:  Parameters used in the rest of this script
 #-------------------------------------------------------------------------------
 SCRIPT_VERSION="v0.0.1"
-TRACER_VERSION="v0.0.38"
+TRACER_VERSION="v0.0.40"
 TRACER_LINUX_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-x86_64-unknown-linux-gnu.tar.gz"
 TRACER_MACOS_AARCH_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-aarch64-apple-darwin.tar.gz"
 TRACER_MACOS_UNIVERSAL_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-universal-apple-darwin.tar.gz"
@@ -428,7 +428,7 @@ main() {
     send_event "start_installation" "Start Tracer installation for key: ${API_KEY}"
     make_temp_dir
     download_tracer
-    setup_tracer_configuration_file
+    # setup_tracer_configuration_file
 
     printsucc "Tracer CLI has been successfully installed."
     send_event "finished_installation" "Successfully installed Tracer for key: ${API_KEY}"

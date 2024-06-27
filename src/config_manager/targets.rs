@@ -1,8 +1,4 @@
-api_key = "zM-aPw8y1Q-G1T5z5qsFi"
-service_url = "https://app.tracer.bio/api/data-collector-api"
-process_polling_interval_ms = 200
-batch_submission_interval_ms = 5000
-targets = [
+pub const TARGETS: &[&str] = &[
     "uptime",
     "STAR",
     "bowtie2",
@@ -77,4 +73,4 @@ targets = [
     "libdeflate",
     "ncurses",
     "pthread",
-]
+];
