@@ -1,4 +1,4 @@
-/// src/process_watcher.rs
+// src/process_watcher.rs
 use crate::event_recorder::EventRecorder;
 use crate::event_recorder::EventType;
 use anyhow::Result;
@@ -108,6 +108,11 @@ impl ProcessWatcher {
         );
 
         Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub fn get_monitored_processes_count(&self) -> usize {
+        self.seen.len()
     }
 
     #[allow(dead_code)]

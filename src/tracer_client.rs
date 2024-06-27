@@ -1,8 +1,10 @@
-/// src/tracer_client.rs
+// src/tracer_client.rs
 use anyhow::Result;
 use serde_json::json;
+use std::sync::Arc;
 use std::{time::Duration, time::Instant};
 use sysinfo::System;
+use tokio::sync::Mutex;
 
 use crate::config_manager::ConfigFile;
 use crate::event_recorder::EventRecorder;
@@ -20,6 +22,7 @@ pub struct TracerClient {
     logs: EventRecorder,
     process_watcher: ProcessWatcher,
     metrics_collector: SystemMetricsCollector,
+    submitted_data: Arc<Mutex<Vec<String>>>,
 }
 
 impl TracerClient {
@@ -39,6 +42,7 @@ impl TracerClient {
             service_url,
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
+            submitted_data: Arc::new(Mutex::new(Vec::new())),
         })
     }
 
@@ -54,6 +58,10 @@ impl TracerClient {
             let data = json!({ "logs": self.logs.get_events() });
 
             println!("{:#?}", data); // Log to file located at `/tmp/tracerd.out`
+
+            // Store the submitted data for testing purposes
+            let mut submitted_data = self.submitted_data.lock().await;
+            submitted_data.push(data.to_string());
 
             self.last_sent = Instant::now();
             self.logs.clear();
@@ -78,5 +86,16 @@ impl TracerClient {
 
     pub fn refresh(&mut self) {
         self.system.refresh_all();
+    }
+
+    // New methods for testing
+    #[allow(dead_code)]
+    pub async fn get_submitted_data(&self) -> Vec<String> {
+        self.submitted_data.lock().await.clone()
+    }
+
+    #[allow(dead_code)]
+    pub fn get_processes_count(&self) -> usize {
+        self.process_watcher.get_monitored_processes_count()
     }
 }

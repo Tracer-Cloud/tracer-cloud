@@ -1,5 +1,5 @@
 [package]
-name = "tracer-daemon"
+name = "tracer"
 version = "0.0.36"
 edition = "2021"
 
