@@ -7,7 +7,7 @@ use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
 /// Todo: standardized values in the logs of the test "pipeline"
-async fn record_outgoing_http_events_to_local_log(
+async fn record_all_outgoing_http_calls(
     service_url: &str,
     api_key: &str,
     request_body: &str,
@@ -40,7 +40,7 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
     let request_body = logs_wrapper.to_string();
     info!("Request body: {}", request_body);
 
-    record_outgoing_http_events_to_local_log(&service_url, &api_key, &request_body).await?;
+    record_all_outgoing_http_calls(&service_url, &api_key, &request_body).await?;
     // Send request
     let client = Client::new();
     let response = client
