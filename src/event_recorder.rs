@@ -1,5 +1,4 @@
 // src/event_recorder.rs
-
 use chrono::serde::ts_seconds;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -10,10 +9,10 @@ pub struct Event {
     #[serde(with = "ts_seconds")]
     timestamp: DateTime<Utc>,
     message: String,
-    event_type: String,
+    pub event_type: String,
     process_type: String,
     event_status: String,
-    attributes: Option<Value>,
+    pub attributes: Option<Value>,
 }
 
 pub struct EventRecorder {

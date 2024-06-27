@@ -2,10 +2,10 @@
 use anyhow::Result;
 use serde_json::json;
 use std::{time::Duration, time::Instant};
-use sysinfo::{Disks, System};
+use sysinfo::System;
 
 use crate::config_manager::ConfigFile;
-use crate::event_recorder::{EventRecorder, EventType};
+use crate::event_recorder::EventRecorder;
 use crate::http_client::HttpClient;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;

@@ -65,3 +65,34 @@ impl SystemMetricsCollector {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::event_recorder::EventRecorder;
+
+    #[test]
+    fn test_collect_metrics() {
+        let mut system = System::new_all();
+        let mut logs = EventRecorder::new();
+        let collector = SystemMetricsCollector::new();
+
+        collector.collect_metrics(&mut system, &mut logs).unwrap();
+
+        let events = logs.get_events();
+        assert_eq!(events.len(), 1);
+
+        let event = &events[0];
+
+        assert!(event.attributes.is_some());
+
+        let attributes = event.attributes.as_ref().unwrap();
+        assert_eq!(attributes["events_name"], "global_system_metrics");
+        assert!(attributes["total_memory"].is_number());
+        assert!(attributes["used_memory"].is_number());
+        assert!(attributes["available_memory"].is_number());
+        assert!(attributes["memory_utilization"].is_number());
+        assert!(attributes["cpu_usage_percentage"].is_number());
+        assert!(attributes["disk_data"].is_array());
+    }
+}
