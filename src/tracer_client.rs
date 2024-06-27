@@ -13,9 +13,7 @@ use tokio::sync::Mutex;
 
 pub struct TracerClient {
     pub http_client: HttpClient,
-    api_key: String,
     system: System,
-    service_url: String,
     last_sent: Option<Instant>,
     interval: Duration,
     pub logs: EventRecorder,
@@ -33,12 +31,10 @@ impl TracerClient {
 
         Ok(TracerClient {
             http_client: HttpClient::new(service_url.clone(), config.api_key.clone()),
-            api_key: config.api_key,
             system: System::new_all(),
             last_sent: None,
             interval: Duration::from_millis(config.process_polling_interval_ms),
             logs: EventRecorder::new(),
-            service_url,
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
             submitted_data: Arc::new(Mutex::new(Vec::new())),
