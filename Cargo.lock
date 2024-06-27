@@ -1391,7 +1391,7 @@ checksum = "b6bc1c9ce2b5135ac7f93c72918fc37feb872bdc6a5533a8b85eb4b86bfdae52"
 
 [[package]]
 name = "tracer-daemon"
-version = "0.0.27"
+version = "0.0.28"
 dependencies = [
  "anyhow",
  "chrono",

@@ -6,14 +6,14 @@ use serde_json::json;
 #[derive(Debug)]
 pub enum EventStatus {
     NewRun,
-    FinishedRun,
+    // FinishedRun,
 }
 
 impl EventStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
             EventStatus::NewRun => "new_run",
-            EventStatus::FinishedRun => "finished_run",
+            // EventStatus::FinishedRun => "finished_run",
         }
     }
 }
@@ -33,21 +33,21 @@ pub async fn event_pipeline_run_start_new() -> Result<()> {
     Ok(())
 }
 
-pub async fn event_pipeline_run_end() -> Result<()> {
-    let http_client = initialize_http_client().await?;
+// pub async fn event_pipeline_run_end() -> Result<()> {
+//     let http_client = initialize_http_client().await?;
 
-    println!("Ending tracer session...");
+//     println!("Ending tracer session...");
 
-    log_event(
-        &http_client,
-        EventStatus::FinishedRun,
-        "Pipeline run concluded successfully",
-    )
-    .await?;
-    println!("Ended pipeline run successfully...");
+//     log_event(
+//         &http_client,
+//         EventStatus::FinishedRun,
+//         "Pipeline run concluded successfully",
+//     )
+//     .await?;
+//     println!("Ended pipeline run successfully...");
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 async fn log_event(http_client: &HttpClient, status: EventStatus, message: &str) -> Result<()> {
     let log_entry = json!({
@@ -104,12 +104,12 @@ mod tests {
         assert!(result.is_ok(), "Expected success, but got an error");
     }
 
-    #[tokio::test]
-    async fn test_event_pipeline_run_end() {
-        let _ = env_logger::builder().is_test(true).try_init();
+    // #[tokio::test]
+    // async fn test_event_pipeline_run_end() {
+    //     let _ = env_logger::builder().is_test(true).try_init();
 
-        let result = event_pipeline_run_end().await;
+    //     let result = event_pipeline_run_end().await;
 
-        assert!(result.is_ok(), "Expected success, but got an error");
-    }
+    //     assert!(result.is_ok(), "Expected success, but got an error");
+    // }
 }
