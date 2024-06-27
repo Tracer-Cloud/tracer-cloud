@@ -24,7 +24,11 @@ pub async fn submit_batched_data(
         metrics_collector
             .collect_metrics(system, logs)
             .context("Failed to collect metrics")?;
-        info!("Sending event to {} with API Key: {}", http_client.get_service_url(), http_client.get_api_key());
+        info!(
+            "Sending event to {} with API Key: {}",
+            http_client.get_service_url(),
+            http_client.get_api_key()
+        );
 
         let data = json!({ "logs": logs.get_events() });
 

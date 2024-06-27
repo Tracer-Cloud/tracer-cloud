@@ -82,7 +82,6 @@ impl HttpClient {
     pub fn get_api_key(&self) -> &String {
         &self.api_key
     }
-
 }
 
 #[cfg(test)]

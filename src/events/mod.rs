@@ -12,9 +12,13 @@ pub enum EventStatus {
 
 impl std::fmt::Display for EventStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            EventStatus::NewRun => "new_run".to_string(),
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                EventStatus::NewRun => "new_run".to_string(),
+            }
+        )
     }
 }
 
