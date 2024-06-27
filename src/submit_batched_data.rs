@@ -15,20 +15,19 @@ pub async fn submit_batched_data(
     system: &mut System,
     logs: &mut EventRecorder, // Todo and change: there should be a distinction between logs array and event recorder. The logs appears as vector while it isn't
     metrics_collector: &mut SystemMetricsCollector,
-    last_sent: &mut Instant,
+    last_sent: &mut Option<Instant>,
     interval: Duration,
 ) -> Result<()> {
-    if Instant::now() - *last_sent >= interval {
+    if last_sent.is_none() || Instant::now() - last_sent.unwrap() >= interval {
         metrics_collector
             .collect_metrics(system, logs)
             .context("Failed to collect metrics")?;
-        info!("Sending event to {} with API Key: {}", service_url, api_key);
 
         let data = json!({ "logs": logs.get_events() });
 
         info!("Payload: {:#?}", data);
 
-        *last_sent = Instant::now();
+        *last_sent = Some(Instant::now());
         logs.clear();
 
         send_http_event(&service_url, &api_key, &data)
@@ -46,7 +45,7 @@ mod tests {
     use crate::event_recorder::{EventRecorder, EventType};
     use crate::metrics::SystemMetricsCollector;
     use anyhow::Result;
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
     use sysinfo::System;
 
     #[tokio::test]
@@ -58,7 +57,7 @@ mod tests {
         let mut system = System::new();
         let mut logs = EventRecorder::new();
         let mut metrics_collector = SystemMetricsCollector::new();
-        let mut last_sent = Instant::now() - Duration::from_secs(3600); // Set to a past time
+        let mut last_sent = None;
         let interval = Duration::from_secs(60);
 
         // Record a test event

@@ -9,14 +9,14 @@ use std::time::{Duration, Instant};
 use sysinfo::System;
 
 pub struct TracerClient {
-    api_key: String,
     system: System,
-    service_url: String,
-    last_sent: Instant,
+    last_sent: Option<Instant>,
     interval: Duration,
     pub logs: EventRecorder,
     process_watcher: ProcessWatcher,
     metrics_collector: SystemMetricsCollector,
+    api_key: String,
+    service_url: String,
 }
 
 impl TracerClient {
@@ -33,7 +33,7 @@ impl TracerClient {
 
             // updated values
             system: System::new_all(),
-            last_sent: Instant::now(),
+            last_sent: None,
             interval: Duration::from_millis(config.process_polling_interval_ms),
             // Sub mannagers
             logs: EventRecorder::new(),
