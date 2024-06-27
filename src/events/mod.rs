@@ -62,7 +62,7 @@ async fn log_event(http_client: &HttpClient, status: EventStatus, message: &str)
 
 async fn initialize_http_client() -> Result<HttpClient> {
     let service_url = "https://app.tracer.bio/api/data-collector-api".to_string();
-    let api_key = "5PcFXIgHGeTIZqihPefoL".to_string();
+    let api_key = "QlXYPyzgjHTipUKUqgr__".to_string();
     let http_client = HttpClient::new(service_url, api_key);
     Ok(http_client)
 }
@@ -86,7 +86,7 @@ mod tests {
 
         let service_url = "https://app.tracer.bio/api/data-collector-api".to_string();
 
-        let api_key = "5PcFXIgHGeTIZqihPefoL".to_string();
+        let api_key = "QlXYPyzgjHTipUKUqgr__".to_string();
         let http_client = HttpClient::new(service_url, api_key);
         let message = "[shipping] Test log message from the test suite";
 

@@ -1,3 +1,4 @@
+// src/main.rs
 mod config_manager;
 mod event_recorder;
 mod events;
@@ -14,7 +15,7 @@ use tokio::sync::{mpsc, Mutex};
 use tokio::time::{interval, sleep, Duration};
 
 use crate::config_manager::ConfigManager;
-use crate::events::{event_pipeline_run_end, event_pipeline_run_start_new};
+use crate::events::event_pipeline_run_start_new;
 use crate::tracer_client::TracerClient;
 
 const PID_FILE: &str = "/tmp/tracerd.pid";
@@ -24,11 +25,11 @@ const STDERR_FILE: &str = "/tmp/tracerd.err";
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    start_daemon()?;
-    manage_pipeline().await
+    start_daemon().await?;
+    run().await
 }
 
-fn start_daemon() -> Result<()> {
+async fn start_daemon() -> Result<()> {
     Daemonize::new()
         .pid_file(PID_FILE)
         .working_directory(WORKING_DIR)
@@ -37,18 +38,17 @@ fn start_daemon() -> Result<()> {
         .start()
         .context("Failed to start daemon")?;
     println!("tracer-daemon started");
+    // Start new pipeline run event
+    event_pipeline_run_start_new().await?;
     Ok(())
 }
 
-async fn manage_pipeline() -> Result<()> {
+async fn run() -> Result<()> {
     let config = ConfigManager::load_config().context("Failed to load config")?;
     let tracer_client = Arc::new(Mutex::new(
         TracerClient::new(config.clone()).context("Failed to create TracerClient")?,
     ));
     let (tx, rx) = mpsc::channel::<()>(1);
-
-    // Start new pipeline run event
-    event_pipeline_run_start_new().await?;
 
     spawn_batch_submission_task(
         Arc::clone(&tracer_client),
@@ -56,18 +56,8 @@ async fn manage_pipeline() -> Result<()> {
         config.batch_submission_interval_ms,
     );
 
-    let mut no_new_process_interval = interval(Duration::from_secs(120));
-
     loop {
-        tokio::select! {
-            _ = no_new_process_interval.tick() => {
-                event_pipeline_run_end().await?;
-            }
-            _ = monitor_processes_with_tracer_client(&tracer_client, &tx) => {
-                // Reset the interval if a new process is identified
-                no_new_process_interval = interval(Duration::from_secs(120));
-            }
-        }
+        monitor_processes_with_tracer_client(&tracer_client, &tx).await?;
         sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
     }
 }
@@ -132,7 +122,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_manage_pipeline() {
+    async fn test_run() {
         let temp_dir = TempDir::new().unwrap();
         let config_dir = temp_dir.path().join(".config").join("tracer");
         let config_path = config_dir.join("tracer.toml");
@@ -142,10 +132,10 @@ mod tests {
         env::set_var("HOME", temp_dir.path());
         env::remove_var("TRACER_CONFIG");
 
-        let result = timeout(Duration::from_secs(5), manage_pipeline()).await;
+        let result = timeout(Duration::from_secs(5), run()).await;
         assert!(
             result.is_err(),
-            "manage_pipeline() should not complete within 5 seconds"
+            "run() should not complete within 5 seconds"
         );
     }
 }
