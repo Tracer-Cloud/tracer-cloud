@@ -2,6 +2,7 @@
 mod config_manager;
 mod event_recorder;
 mod http_client;
+mod metrics;
 mod process_watcher;
 mod tracer_client;
 
