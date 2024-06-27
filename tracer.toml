@@ -1,5 +1,6 @@
-api_key = "RbGK7dN6A2hlDn0uqEuVA"
-polling_interval_ms = 30000
+api_key = "_Zx2h6toXUnD1i_QjuRvD"
+process_polling_interval_ms = 200
+batch_submission_interval_ms = 5000
 targets = [
     "STAR",
     "bowtie2",

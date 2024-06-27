@@ -1,15 +1,20 @@
 [package]
 name = "tracer-daemon"
-version = "0.0.18"
+version = "0.0.23"
 edition = "2021"
 
 [dependencies]
 anyhow = "1.0.86"
-chrono = "0.4.38"
+chrono = { version = "0.4.38", features = ["serde"] }
 daemonize = "0.5"
+log = "0.4.21"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["std", "derive", "serde_derive"] }
 serde_json = "1.0.117"
 sysinfo = "0.30"
 tokio = { version = "1.38.0", features = ["full"] }
 toml = "0.8.14"
+
+[dev-dependencies]
+env_logger = "0.9"
+tempfile = "3.2"
