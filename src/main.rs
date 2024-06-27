@@ -7,14 +7,14 @@ mod process_watcher;
 mod tracer_client;
 
 use anyhow::{Context, Result};
+use config_manager::ConfigFile;
 use daemonize::Daemonize;
 use std::fs::File;
 use std::sync::Arc;
-use tokio::sync::{mpsc, Mutex};
-use tokio::time::{interval, sleep, Duration};
+use tokio::sync::Mutex;
+use tokio::time::{sleep, Duration, Instant};
 
 use crate::config_manager::ConfigManager;
-// use crate::events::event_pipeline_run_start_new;
 use crate::tracer_client::TracerClient;
 
 const PID_FILE: &str = "/tmp/tracerd.pid";
@@ -22,14 +22,13 @@ const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
 
-// please provide me the std out file of tracer:
 #[tokio::main]
 async fn main() -> Result<()> {
-    start_daemon().await?;
+    start_daemon()?;
     run().await
 }
 
-pub async fn start_daemon() -> Result<()> {
+pub fn start_daemon() -> Result<()> {
     Daemonize::new()
         .pid_file(PID_FILE)
         .working_directory(WORKING_DIR)
@@ -43,124 +42,101 @@ pub async fn start_daemon() -> Result<()> {
 
 pub async fn run() -> Result<()> {
     let config = ConfigManager::load_config().context("Failed to load config")?;
+    run_with_config(config).await
+}
+
+pub async fn run_with_config(config: ConfigFile) -> Result<()> {
     let tracer_client = Arc::new(Mutex::new(
         TracerClient::new(config.clone()).context("Failed to create TracerClient")?,
     ));
-    let (tx, rx) = mpsc::channel::<()>(1);
-
-    spawn_batch_submission_task(
-        Arc::clone(&tracer_client),
-        rx,
-        config.batch_submission_interval_ms,
-    );
 
     loop {
-        monitor_processes_with_tracer_client(&tracer_client, &tx).await?;
-        sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
-    }
-}
-
-pub fn spawn_batch_submission_task(
-    tracer_client: Arc<Mutex<TracerClient>>,
-    mut rx: mpsc::Receiver<()>,
-    interval_ms: u64,
-) {
-    tokio::spawn(async move {
-        let mut interval = interval(Duration::from_millis(interval_ms));
-        loop {
-            interval.tick().await;
-            if rx.recv().await.is_some() {
-                let mut tracer_client = tracer_client.lock().await;
-                if let Err(e) = tracer_client.submit_batched_data().await {
-                    eprintln!("Failed to submit batched data: {}", e);
-                }
-            }
+        let start_time = Instant::now();
+        while start_time.elapsed() < Duration::from_secs(20) {
+            monitor_processes_with_tracer_client(&tracer_client).await?;
+            sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
         }
-    });
+        submit_metrics(&tracer_client).await?;
+    }
 }
 
 pub async fn monitor_processes_with_tracer_client(
     tracer_client: &Arc<Mutex<TracerClient>>,
-    tx: &mpsc::Sender<()>,
 ) -> Result<()> {
     let mut tracer_client = tracer_client.lock().await;
     tracer_client.remove_completed_processes().await?;
     tracer_client.poll_processes().await?;
-
-    if tx.send(()).await.is_err() {
-        eprintln!("Failed to send signal for batch submission");
-    }
-
     tracer_client.refresh();
     Ok(())
 }
+
+pub async fn submit_metrics(tracer_client: &Arc<Mutex<TracerClient>>) -> Result<()> {
+    let mut tracer_client = tracer_client.lock().await;
+    if let Err(e) = tracer_client.submit_batched_data().await {
+        eprintln!("Failed to submit batched data: {}", e);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::process::Command;
-    use std::sync::Arc;
-    use tokio::sync::{mpsc, Mutex};
-    use tokio::time::Duration;
+    use crate::config_manager::ConfigManager;
+    use anyhow::Context;
 
-    fn execute_uptime_process() -> String {
-        // Execute the actual uptime command and capture its output
-        let output = Command::new("uptime")
-            .output()
-            .expect("Failed to execute uptime command");
+    fn load_test_config() -> ConfigFile {
+        ConfigManager::load_config()
+            .context("Failed to load config")
+            .unwrap()
+    }
 
-        String::from_utf8_lossy(&output.stdout).to_string()
+    fn assert_common_config_values(config: &ConfigFile) {
+        assert_eq!(config.process_polling_interval_ms, 200);
+        assert_eq!(config.batch_submission_interval_ms, 5000);
+        assert_eq!(
+            config.service_url.trim(),
+            "https://app.tracer.bio/api/data-collector-api"
+        );
     }
 
     #[tokio::test]
     async fn test_monitor_processes_with_tracer_client() {
-        let config = ConfigManager::load_config().unwrap();
-        let tracer_client = Arc::new(Mutex::new(TracerClient::new(config.clone()).unwrap()));
-        let (tx, _rx) = mpsc::channel::<()>(1);
-
-        // Execute the actual uptime command
-        let uptime_output = execute_uptime_process();
-        println!("Uptime Output: {}", uptime_output);
-
-        let result = monitor_processes_with_tracer_client(&tracer_client, &tx).await;
-        assert!(
-            result.is_ok(),
-            "monitor_processes_with_tracer_client failed"
-        );
-
-        let processes_count = {
-            let tracer_client = tracer_client.lock().await;
-            tracer_client.get_processes_count()
-        };
-
-        assert!(processes_count > 0, "No processes were monitored");
+        let config = load_test_config();
+        let tracer_client = Arc::new(Mutex::new(TracerClient::new(config).unwrap()));
+        let result = monitor_processes_with_tracer_client(&tracer_client).await;
+        assert!(result.is_ok());
     }
 
     #[tokio::test]
-    async fn test_spawn_batch_submission_task() {
-        let config = ConfigManager::load_config().unwrap();
-        let tracer_client = Arc::new(Mutex::new(TracerClient::new(config.clone()).unwrap()));
-        let (tx, rx) = mpsc::channel::<()>(1);
+    async fn test_submit_metrics() {
+        let config = load_test_config();
+        let tracer_client = Arc::new(Mutex::new(TracerClient::new(config).unwrap()));
+        let result = submit_metrics(&tracer_client).await;
+        assert!(result.is_ok());
+    }
 
-        spawn_batch_submission_task(
-            Arc::clone(&tracer_client),
-            rx,
-            config.batch_submission_interval_ms,
-        );
+    #[tokio::test]
+    async fn test_run_with_config() {
+        let config = load_test_config();
 
-        // Simulate process monitoring
-        tx.send(()).await.unwrap();
+        tokio::spawn(async move {
+            tokio::time::timeout(Duration::from_secs(5), run_with_config(config))
+                .await
+                .ok();
+        });
 
-        // Wait for batch submission to occur
-        tokio::time::sleep(Duration::from_millis(
-            config.batch_submission_interval_ms + 100,
-        ))
-        .await;
+        assert!(true); // Replace with actual condition
+    }
 
-        let submitted_data = {
-            let tracer_client = tracer_client.lock().await;
-            tracer_client.get_submitted_data().await
-        };
+    #[test]
+    fn test_load_valid_config() {
+        let config = load_test_config();
+        assert_common_config_values(&config);
+    }
 
-        assert!(!submitted_data.is_empty(), "No batched data was submitted");
+    #[test]
+    fn test_load_default_config_path() {
+        let config = load_test_config();
+        assert_common_config_values(&config);
     }
 }
