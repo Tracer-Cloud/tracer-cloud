@@ -1,6 +1,6 @@
-use crate::config_manager::ConfigManager;
+/// src/events/mod.rs
 use crate::http_client::HttpClient;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde_json::json;
 
 #[derive(Debug)]
@@ -52,7 +52,7 @@ pub async fn event_pipeline_run_end() -> Result<()> {
 async fn log_event(http_client: &HttpClient, status: EventStatus, message: &str) -> Result<()> {
     let log_entry = json!({
         "message": message,
-        "process_type": status.as_str(),
+        "process_type": "pipeline".to_string(),
         "process_status": status.as_str(),
         "event_type": "process_status"
     });
@@ -61,8 +61,9 @@ async fn log_event(http_client: &HttpClient, status: EventStatus, message: &str)
 }
 
 async fn initialize_http_client() -> Result<HttpClient> {
-    let config = ConfigManager::load_config().context("Failed to load config")?;
-    let http_client = HttpClient::new(config.service_url.clone(), config.api_key.clone());
+    let service_url = "https://app.tracer.bio/api/data-collector-api".to_string();
+    let api_key = "5PcFXIgHGeTIZqihPefoL".to_string();
+    let http_client = HttpClient::new(service_url, api_key);
     Ok(http_client)
 }
 
@@ -84,7 +85,8 @@ mod tests {
         let _ = env_logger::builder().is_test(true).try_init();
 
         let service_url = "https://app.tracer.bio/api/data-collector-api".to_string();
-        let api_key = "_Zx2h6toXUnD1i_QjuRvD".to_string();
+
+        let api_key = "5PcFXIgHGeTIZqihPefoL".to_string();
         let http_client = HttpClient::new(service_url, api_key);
         let message = "[shipping] Test log message from the test suite";
 
