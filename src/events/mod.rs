@@ -1,24 +1,12 @@
-/// src/events/mod.rs
-use anyhow::Result;
+use crate::config_manager::ConfigManager;
+use crate::http_client::HttpClient;
+use anyhow::{Context, Result};
 use serde_json::json;
-
-use crate::TracerAppConfig;
-
-use anyhow::Result;
-use serde_json::{json, Value};
-
-use crate::TracerAppConfig;
-
-use super::utils::handle_response;
 
 #[derive(Debug)]
 pub enum EventStatus {
     NewRun,
     FinishedRun,
-    RunStatusMessage,
-    ToolExecution,
-    InstallationFinished,
-    MetricEvent,
 }
 
 impl EventStatus {
@@ -26,89 +14,100 @@ impl EventStatus {
         match self {
             EventStatus::NewRun => "new_run",
             EventStatus::FinishedRun => "finished_run",
-            EventStatus::RunStatusMessage => "run_status_message",
-            EventStatus::ToolExecution => "tool_execution",
-            EventStatus::InstallationFinished => "installation_finished",
-            EventStatus::MetricEvent => "metric_event",
         }
     }
 }
 
-pub struct Tool {
-    pub name: String,
-    pub version: String,
-}
-
 pub async fn event_pipeline_run_start_new() -> Result<()> {
+    let http_client = initialize_http_client().await?;
     println!("Starting new pipeline...");
-    let config = TracerAppConfig::load_config()?;
 
-    event_metrics().await?;
-    event_pipeline_new_run(&config, "[CLI] Starting pipeline run").await?;
+    log_event(
+        &http_client,
+        EventStatus::NewRun,
+        "[CLI] Starting pipeline run",
+    )
+    .await?;
     println!("Started pipeline run successfully...");
 
     Ok(())
 }
 
 pub async fn event_pipeline_run_end() -> Result<()> {
-    println!("Ending tracer session...");
-    let config = TracerAppConfig::load_config()?;
+    let http_client = initialize_http_client().await?;
 
-    event_metrics().await?;
-    event_pipeline_finish_run(&config).await?;
+    println!("Ending tracer session...");
+
+    log_event(
+        &http_client,
+        EventStatus::FinishedRun,
+        "Pipeline run concluded successfully",
+    )
+    .await?;
+    println!("Ended pipeline run successfully...");
+
     Ok(())
 }
 
-async fn event_pipeline_new_run(config: &TracerAppConfig, msg: &str) -> Result<()> {
-    send_event(
-        config,
-        EventStatus::NewRun.as_str(),
-        &format!("Initialized pipeline run with name: {}", msg),
-        None,
-        false,
-    )
-    .await
-}
-
-async fn event_tool_process(config: &TracerAppConfig, tool: &Tool) -> Result<()> {
-    let properties = json!({
-        "tool_version": &tool.version,
-        "tool_name": &tool.name,
+async fn log_event(http_client: &HttpClient, status: EventStatus, message: &str) -> Result<()> {
+    let log_entry = json!({
+        "message": message,
+        "process_type": status.as_str(),
+        "process_status": status.as_str(),
+        "event_type": "process_status"
     });
 
-    send_event(
-        config,
-        EventStatus::ToolExecution.as_str(),
-        &format!("Tool process: {}", &tool.name),
-        Some(properties),
-        false,
-    )
-    .await
+    http_client.send_http_event(&log_entry).await
 }
 
-async fn event_log_message(config: &TracerAppConfig, message: &str) -> Result<()> {
-    send_event(
-        config,
-        EventStatus::RunStatusMessage.as_str(),
-        message,
-        None,
-        false,
-    )
-    .await
+async fn initialize_http_client() -> Result<HttpClient> {
+    let config = ConfigManager::load_config().context("Failed to load config")?;
+    let http_client = HttpClient::new(config.service_url.clone(), config.api_key.clone());
+    Ok(http_client)
 }
 
-async fn event_pipeline_finish_run(config: &TracerAppConfig) -> Result<()> {
-    send_event(
-        config,
-        EventStatus::FinishedRun.as_str(),
-        "Pipeline run concluded successfully",
-        None,
-        false,
-    )
-    .await
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-async fn event_metrics() -> Result<()> {
-    // Assuming there is some implementation for metrics collection
-    Ok(())
+    #[tokio::test]
+    async fn test_event_pipeline_run_start_new() {
+        let _ = env_logger::builder().is_test(true).try_init();
+
+        let result = event_pipeline_run_start_new().await;
+
+        assert!(result.is_ok(), "Expected success, but got an error");
+    }
+
+    #[tokio::test]
+    async fn test_log_event() {
+        let _ = env_logger::builder().is_test(true).try_init();
+
+        let service_url = "https://app.tracer.bio/api/data-collector-api".to_string();
+        let api_key = "_Zx2h6toXUnD1i_QjuRvD".to_string();
+        let http_client = HttpClient::new(service_url, api_key);
+        let message = "[shipping] Test log message from the test suite";
+
+        let result = log_event(&http_client, EventStatus::NewRun, message).await;
+
+        assert!(result.is_ok(), "Expected success, but got an error");
+    }
+
+    #[tokio::test]
+    async fn test_initialize_http_client() {
+        let _ = env_logger::builder().is_test(true).try_init();
+
+        let result = initialize_http_client().await;
+
+        assert!(result.is_ok(), "Expected success, but got an error");
+    }
+
+    #[tokio::test]
+    async fn test_event_pipeline_run_end() {
+        let _ = env_logger::builder().is_test(true).try_init();
+
+        let result = event_pipeline_run_end().await;
+
+        assert!(result.is_ok(), "Expected success, but got an error");
+    }
 }

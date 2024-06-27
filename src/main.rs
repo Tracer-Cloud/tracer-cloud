@@ -1,6 +1,6 @@
-// src/main.rs
 mod config_manager;
 mod event_recorder;
+mod events;
 mod http_client;
 mod metrics;
 mod process_watcher;
@@ -14,6 +14,7 @@ use tokio::sync::{mpsc, Mutex};
 use tokio::time::{interval, sleep, Duration};
 
 use crate::config_manager::ConfigManager;
+use crate::events::{event_pipeline_run_end, event_pipeline_run_start_new};
 use crate::tracer_client::TracerClient;
 
 const PID_FILE: &str = "/tmp/tracerd.pid";
@@ -24,7 +25,7 @@ const STDERR_FILE: &str = "/tmp/tracerd.err";
 #[tokio::main]
 async fn main() -> Result<()> {
     start_daemon()?;
-    run().await
+    manage_pipeline().await
 }
 
 fn start_daemon() -> Result<()> {
@@ -39,12 +40,15 @@ fn start_daemon() -> Result<()> {
     Ok(())
 }
 
-async fn run() -> Result<()> {
+async fn manage_pipeline() -> Result<()> {
     let config = ConfigManager::load_config().context("Failed to load config")?;
     let tracer_client = Arc::new(Mutex::new(
         TracerClient::new(config.clone()).context("Failed to create TracerClient")?,
     ));
     let (tx, rx) = mpsc::channel::<()>(1);
+
+    // Start new pipeline run event
+    event_pipeline_run_start_new().await?;
 
     spawn_batch_submission_task(
         Arc::clone(&tracer_client),
@@ -52,8 +56,18 @@ async fn run() -> Result<()> {
         config.batch_submission_interval_ms,
     );
 
+    let mut no_new_process_interval = interval(Duration::from_secs(120));
+
     loop {
-        monitor_processes_with_tracer_client(&tracer_client, &tx).await?;
+        tokio::select! {
+            _ = no_new_process_interval.tick() => {
+                event_pipeline_run_end().await?;
+            }
+            _ = monitor_processes_with_tracer_client(&tracer_client, &tx) => {
+                // Reset the interval if a new process is identified
+                no_new_process_interval = interval(Duration::from_secs(120));
+            }
+        }
         sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
     }
 }
@@ -118,7 +132,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_run() {
+    async fn test_manage_pipeline() {
         let temp_dir = TempDir::new().unwrap();
         let config_dir = temp_dir.path().join(".config").join("tracer");
         let config_path = config_dir.join("tracer.toml");
@@ -128,10 +142,10 @@ mod tests {
         env::set_var("HOME", temp_dir.path());
         env::remove_var("TRACER_CONFIG");
 
-        let result = timeout(Duration::from_secs(5), run()).await;
+        let result = timeout(Duration::from_secs(5), manage_pipeline()).await;
         assert!(
             result.is_err(),
-            "run() should not complete within 5 seconds"
+            "manage_pipeline() should not complete within 5 seconds"
         );
     }
 }
