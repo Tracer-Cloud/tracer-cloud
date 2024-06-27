@@ -60,10 +60,11 @@ mod tests {
 
     #[test]
     fn test_load_valid_config() {
-        let test_config_path = "/tmp/test_tracer.toml";
-        create_test_config(CONFIG_CONTENT, test_config_path);
+        let temp_dir = TempDir::new().unwrap();
+        let test_config_path = temp_dir.path().join("test_tracer.toml");
+        create_test_config(CONFIG_CONTENT, test_config_path.to_str().unwrap());
 
-        env::set_var("TRACER_CONFIG", test_config_path);
+        env::set_var("TRACER_CONFIG", test_config_path.to_str().unwrap());
         let config = ConfigManager::load_config().unwrap();
         env::remove_var("TRACER_CONFIG");
 
@@ -78,8 +79,6 @@ mod tests {
             config.targets,
             vec!["target1".to_string(), "target2".to_string()]
         );
-
-        fs::remove_file(test_config_path).unwrap();
     }
 
     #[test]

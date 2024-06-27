@@ -1,4 +1,4 @@
-// src/tracer_client.rs
+/// src/tracer_client.rs
 use anyhow::Result;
 use serde_json::json;
 use std::{time::Duration, time::Instant};
@@ -84,29 +84,48 @@ impl TracerClient {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::config_manager::ConfigManager;
+    use std::fs::{self, File};
+    use std::io::Write;
+    use tempfile::TempDir;
+
+    const CONFIG_CONTENT: &str = r#"
+        api_key = "test_api_key"
+        process_polling_interval_ms = 200
+        batch_submission_interval_ms = 5000
+        service_url = "https://app.tracer.bio/api/data-collector-api"
+        targets = ["target1", "target2"]
+    "#;
+
+    fn create_test_config(content: &str, path: &str) {
+        let mut file = File::create(path).unwrap();
+        file.write_all(content.as_bytes()).unwrap();
+    }
 
     #[test]
     fn test_new() {
-        let config = ConfigFile {
-            api_key: "test_api_key".to_string(),
-            process_polling_interval_ms: 200,
-            batch_submission_interval_ms: 5000,
-            service_url: "https://app.tracer.bio/api/data-collector-api".to_string(),
-            targets: vec!["target1".to_string(), "target2".to_string()],
-        };
+        let temp_dir = TempDir::new().unwrap();
+        let test_config_path = temp_dir.path().join("test_tracer.toml");
+        create_test_config(CONFIG_CONTENT, test_config_path.to_str().unwrap());
+
+        std::env::set_var("TRACER_CONFIG", test_config_path.to_str().unwrap());
+        let config = ConfigManager::load_config().expect("Failed to load config");
+        std::env::remove_var("TRACER_CONFIG");
+
         let tr = TracerClient::new(config);
         assert!(tr.is_ok())
     }
 
     #[tokio::test]
     async fn test_tool_exec() {
-        let config = ConfigFile {
-            api_key: "test_api_key".to_string(),
-            process_polling_interval_ms: 200,
-            batch_submission_interval_ms: 5000,
-            service_url: "https://app.tracer.bio/api/data-collector-api".to_string(),
-            targets: vec!["target1".to_string(), "target2".to_string()],
-        };
+        let temp_dir = TempDir::new().unwrap();
+        let test_config_path = temp_dir.path().join("test_tracer.toml");
+        create_test_config(CONFIG_CONTENT, test_config_path.to_str().unwrap());
+
+        std::env::set_var("TRACER_CONFIG", test_config_path.to_str().unwrap());
+        let config = ConfigManager::load_config().expect("Failed to load config");
+        std::env::remove_var("TRACER_CONFIG");
+
         let mut tr = TracerClient::new(config).unwrap();
         tr.process_watcher = ProcessWatcher::new(vec!["sleep".to_string()]);
 
