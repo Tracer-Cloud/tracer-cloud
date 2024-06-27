@@ -1,0 +1,11 @@
+Error while sending send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
+[1719526520] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
+----------
+[1719526560] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
+----------
+[2024-06-27 22:19:20.114184 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
+----------

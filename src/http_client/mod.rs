@@ -1,4 +1,5 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result};
+use chrono::Utc;
 use log::{error, info};
 use reqwest::Client;
 use serde_json::{json, Value};
@@ -6,6 +7,26 @@ use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
 /// Todo: standardized values in the logs of the test "pipeline"
+async fn record_outgoing_http_events_to_local_log(
+    service_url: &str,
+    api_key: &str,
+    request_body: &str,
+) -> Result<()> {
+    // Log the request body to a log file so that we can test WHAT and IF there are any outgoing messages
+    let timestamp = Utc::now().to_utc();
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("logs_processing.txt")
+        .await?;
+
+    let incoming_logs_string = format!(
+        "[{}] send_http_event: {} - {}\nRequest body: {}\n----------\n",
+        timestamp, api_key, service_url, request_body,
+    );
+    file.write_all(incoming_logs_string.as_bytes()).await?;
+    Ok(())
+}
 
 pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> Result<()> {
     // Ensure logs is always an array
@@ -19,6 +40,7 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
     let request_body = logs_wrapper.to_string();
     info!("Request body: {}", request_body);
 
+    record_outgoing_http_events_to_local_log(&service_url, &api_key, &request_body).await?;
     // Send request
     let client = Client::new();
     let response = client
@@ -78,7 +100,6 @@ mod tests {
     use super::*;
     use crate::config_manager::ConfigManager;
     use anyhow::Error;
-    use reqwest::Client;
     use serde_json::json;
 
     #[tokio::test]
@@ -89,7 +110,6 @@ mod tests {
         let config = ConfigManager::load_config().context("Failed to load config")?;
         let api_key = config.api_key.clone(); // Cloning here to avoid moving
         let service_url = config.service_url.clone(); // Cloning here to avoid moving
-        let client = Client::new();
 
         // Define the log data to send
         let logs = json!([

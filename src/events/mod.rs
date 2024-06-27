@@ -75,7 +75,13 @@ mod tests {
         let config = ConfigManager::load_config().context("Failed to load config")?;
         let message = "[shipping] Test log message from the test suite";
 
-        let result = log_event(&service_url, &api_key, EventStatus::NewRun, message).await;
+        let result = log_event(
+            &config.service_url.clone(),
+            &config.api_key.clone(),
+            EventStatus::NewRun,
+            message,
+        )
+        .await;
 
         assert!(result.is_ok(), "Expected success, but got an error");
 

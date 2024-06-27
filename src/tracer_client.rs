@@ -32,15 +32,19 @@ impl TracerClient {
         println!("Service URL: {}", service_url);
 
         Ok(TracerClient {
+            // fixed values
             api_key: config.api_key,
+            service_url,
+
+            // updated values
             system: System::new_all(),
             last_sent: Instant::now(),
             interval: Duration::from_millis(config.process_polling_interval_ms),
+            submitted_data: Arc::new(Mutex::new(Vec::new())),
+            // Sub mannagers
             logs: EventRecorder::new(),
-            service_url,
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
-            submitted_data: Arc::new(Mutex::new(Vec::new())),
         })
     }
 
@@ -58,6 +62,8 @@ impl TracerClient {
         .await
     }
 
+    /// These functions require logs and the system
+
     pub async fn poll_processes(&mut self) -> Result<()> {
         self.process_watcher
             .poll_processes(&mut self.system, &mut self.logs)?;
@@ -70,7 +76,8 @@ impl TracerClient {
         Ok(())
     }
 
-    pub fn refresh(&mut self) {
+    // this one can also be moved
+    pub fn refresh_sysinfo(&mut self) {
         self.system.refresh_all();
     }
 }
