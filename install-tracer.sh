@@ -4,12 +4,11 @@
 #---  PARAMETERS  --------------------------------------------------------------
 #   DESCRIPTION:  Parameters used in the rest of this script
 #-------------------------------------------------------------------------------
-# https://github.com/davincios/tracer-daemon/releases/download/v0.0.8/tracer-daemon-universal-apple-darwin.tar.gz
 SCRIPT_VERSION="v0.0.1"
-TRACER_VERSION="v0.0.37"
-TRACER_LINUX_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-daemon-x86_64-unknown-linux-gnu.tar.gz"
-TRACER_MACOS_AARCH_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-daemon-aarch64-apple-darwin.tar.gz"
-TRACER_MACOS_UNIVERSAL_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-daemon-universal-apple-darwin.tar.gz"
+TRACER_VERSION="v0.0.38"
+TRACER_LINUX_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-x86_64-unknown-linux-gnu.tar.gz"
+TRACER_MACOS_AARCH_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-aarch64-apple-darwin.tar.gz"
+TRACER_MACOS_UNIVERSAL_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-universal-apple-darwin.tar.gz"
 
 TRACER_HOME="$HOME/.tracerbio"
 LOGFILE_NAME="tracer-installer.log"
@@ -274,14 +273,14 @@ function download_tracer() {
     printpinfo "Extracting package..."
     tar -xzf "${DLTARGET}/${PACKAGE_NAME}" -C "$EXTRACTTARGET"
     printmsg " done."
-    chmod +x "${EXTRACTTARGET}/tracer-daemon"
+    chmod +x "${EXTRACTTARGET}/tracer"
     if [ $? -ne 0 ]; then
         printerror "Failed to set executable permissions on extracted binary. Please check your permissions and mount flags."
         exit 1
     fi
 
     # move binary to bin dir
-    mv "${EXTRACTTARGET}/tracer-daemon" "$BINDIR/tracer-daemon"
+    mv "${EXTRACTTARGET}/tracer" "$BINDIR/tracer"
     if [ $? -ne 0 ]; then
         printerror "Failed to move Tracer binary to ${Blu}$BINDIR${RCol}. Please check your permissions and try again."
         exit 1
