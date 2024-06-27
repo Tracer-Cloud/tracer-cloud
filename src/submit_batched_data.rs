@@ -5,19 +5,16 @@ use crate::metrics::SystemMetricsCollector;
 
 use anyhow::{Context, Result};
 use serde_json::json;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 use sysinfo::System;
-use tokio::sync::Mutex;
 use tracing::info;
 
 pub async fn submit_batched_data(
     api_key: &str,
     service_url: &str,
     system: &mut System,
-    logs: &mut EventRecorder,
+    logs: &mut EventRecorder, // Todo and change: there should be a distinction between logs array and event recorder. The logs appears as vector while it isn't
     metrics_collector: &mut SystemMetricsCollector,
-    submitted_data: Arc<Mutex<Vec<String>>>,
     last_sent: &mut Instant,
     interval: Duration,
 ) -> Result<()> {
@@ -30,9 +27,6 @@ pub async fn submit_batched_data(
         let data = json!({ "logs": logs.get_events() });
 
         info!("Payload: {:#?}", data);
-
-        let mut submitted_data = submitted_data.lock().await;
-        submitted_data.push(data.to_string());
 
         *last_sent = Instant::now();
         logs.clear();
@@ -52,10 +46,8 @@ mod tests {
     use crate::event_recorder::{EventRecorder, EventType};
     use crate::metrics::SystemMetricsCollector;
     use anyhow::Result;
-    use std::sync::Arc;
     use std::time::{Duration, Instant};
     use sysinfo::System;
-    use tokio::sync::Mutex;
 
     #[tokio::test]
     async fn test_submit_batched_data() -> Result<()> {
@@ -66,7 +58,6 @@ mod tests {
         let mut system = System::new();
         let mut logs = EventRecorder::new();
         let mut metrics_collector = SystemMetricsCollector::new();
-        let submitted_data = Arc::new(Mutex::new(Vec::new()));
         let mut last_sent = Instant::now() - Duration::from_secs(3600); // Set to a past time
         let interval = Duration::from_secs(60);
 
@@ -80,18 +71,10 @@ mod tests {
             &mut system,
             &mut logs,
             &mut metrics_collector,
-            submitted_data.clone(),
             &mut last_sent,
             interval,
         )
         .await?;
-
-        // Retrieve the submitted data for verification
-        let submitted_data = submitted_data.lock().await;
-
-        // Assert that one batch of data was submitted and contains the test event
-        assert_eq!(submitted_data.len(), 1);
-        assert!(submitted_data[0].contains("Test event"));
 
         Ok(())
     }

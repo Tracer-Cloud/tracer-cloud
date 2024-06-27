@@ -2,7 +2,7 @@ use anyhow::{Context, Ok, Result};
 use chrono::Utc;
 use log::{error, info};
 use reqwest::Client;
-use serde_json::{json, Value};
+use serde_json::Value;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
@@ -29,16 +29,8 @@ async fn record_all_outgoing_http_calls(
 }
 
 pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> Result<()> {
-    // Ensure logs is always an array
-    let logs_array = match logs {
-        Value::Array(_) => logs.clone(),
-        _ => json!([logs]),
-    };
-    let logs_wrapper = json!({ "logs": logs_array });
-
     // Log request body
-    let request_body = logs_wrapper.to_string();
-    info!("Request body: {}", request_body);
+    let request_body = logs.to_string();
 
     record_all_outgoing_http_calls(&service_url, &api_key, &request_body).await?;
     // Send request
@@ -47,7 +39,7 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
         .post(service_url)
         .header("x-api-key", api_key)
         .header("Content-Type", "application/json")
-        .json(&logs_wrapper)
+        .json(&logs)
         .send()
         .await
         .context("Failed to send event data")?;

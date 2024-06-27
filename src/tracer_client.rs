@@ -55,7 +55,6 @@ impl TracerClient {
             &mut self.system,
             &mut self.logs,
             &mut self.metrics_collector,
-            self.submitted_data.clone(),
             &mut self.last_sent,
             self.interval,
         )
