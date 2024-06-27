@@ -24,6 +24,9 @@ pub struct TracerClient {
 
 impl TracerClient {
     pub fn from_config(config: ConfigFile) -> Result<TracerClient> {
+        // [1] TODO this service_url is not in the correct place and should be managed by the config manager
+        // [2] Also Can we simplify this by moving the incoming config file, by loading the config file in the config manager?
+        // [3] Is there a more appropiate naming converntion than "from_config" for this method?
         let service_url = "https://app.tracer.bio/api/data-collector-api".to_string();
 
         println!("Initializing TracerClient with API Key: {}", config.api_key);

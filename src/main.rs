@@ -11,7 +11,8 @@ use std::fs::File;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
-use tokio::time::{interval, sleep, Duration};
+use tokio::time::{interval, Duration};
+// use tokio::time::{interval, sleep, Duration};
 
 use crate::config_manager::ConfigManager;
 use crate::tracer_client::TracerClient;
@@ -20,7 +21,7 @@ const PID_FILE: &str = "/tmp/tracerd.pid";
 const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
-const DEFAULT_POLLING_INTERVAL: Duration = Duration::from_micros(100); // 0.1 ms in microseconds
+// const DEFAULT_POLLING_INTERVAL: Duration = Duration::from_micros(100); // 0.1 ms in microseconds
 const BATCH_SUBMISSION_INTERVAL: Duration = Duration::from_secs(5); // every 5 seconds
 
 #[tokio::main]
@@ -42,6 +43,7 @@ fn start_daemon() -> Result<()> {
 }
 
 async fn run() -> Result<()> {
+    // Can we simplify this by moving the config loading to the TracerClient::from_config method?
     let config = ConfigManager::load_config().context("Failed to load config")?;
     let tracer_client = Arc::new(Mutex::new(
         TracerClient::from_config(config).context("Failed to create TracerClient")?,
@@ -66,7 +68,7 @@ async fn run() -> Result<()> {
 
     loop {
         process_tracer_client(&tracer_client, &tx).await?;
-        sleep(DEFAULT_POLLING_INTERVAL).await;
+        // sleep(DEFAULT_POLLING_INTERVAL).await;
     }
 }
 

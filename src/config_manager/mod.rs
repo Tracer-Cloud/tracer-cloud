@@ -1,3 +1,4 @@
+/// config_manager/mod.rs
 use anyhow::Result;
 use serde::Deserialize;
 use std::path::PathBuf;
