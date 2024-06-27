@@ -10,11 +10,11 @@ pub enum EventStatus {
     NewRun,
 }
 
-impl ToString for EventStatus {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for EventStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
             EventStatus::NewRun => "new_run".to_string(),
-        }
+        })
     }
 }
 

@@ -48,8 +48,6 @@ impl TracerClient {
     pub async fn submit_batched_data(&mut self) -> Result<()> {
         submit_batched_data(
             &self.http_client,
-            &self.api_key,
-            &self.service_url,
             &mut self.system,
             &mut self.logs,
             &mut self.metrics_collector,

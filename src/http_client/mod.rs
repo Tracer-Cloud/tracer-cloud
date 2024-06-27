@@ -74,6 +74,15 @@ impl HttpClient {
             ))
         }
     }
+
+    pub fn get_service_url(&self) -> &String {
+        &self.service_url
+    }
+
+    pub fn get_api_key(&self) -> &String {
+        &self.api_key
+    }
+
 }
 
 #[cfg(test)]

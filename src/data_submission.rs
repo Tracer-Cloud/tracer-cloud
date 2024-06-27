@@ -13,8 +13,6 @@ use tracing::info;
 
 pub async fn submit_batched_data(
     http_client: &HttpClient,
-    api_key: &str,
-    service_url: &str,
     system: &mut System,
     logs: &mut EventRecorder,
     metrics_collector: &mut SystemMetricsCollector,
@@ -26,7 +24,7 @@ pub async fn submit_batched_data(
         metrics_collector
             .collect_metrics(system, logs)
             .context("Failed to collect metrics")?;
-        info!("Sending event to {} with API Key: {}", service_url, api_key);
+        info!("Sending event to {} with API Key: {}", http_client.get_service_url(), http_client.get_api_key());
 
         let data = json!({ "logs": logs.get_events() });
 
@@ -80,8 +78,6 @@ mod tests {
         // Call the method to submit batched data
         submit_batched_data(
             &http_client,
-            &api_key,
-            &service_url,
             &mut system,
             &mut logs,
             &mut metrics_collector,
