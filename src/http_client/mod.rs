@@ -1,4 +1,3 @@
-// src/http_client/mod.rs
 use anyhow::{Context, Result};
 use log::{error, info};
 use reqwest::Client;
@@ -80,17 +79,19 @@ impl HttpClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config_manager::ConfigManager;
+    use anyhow::Error;
     use serde_json::json;
 
     #[tokio::test]
-    async fn test_send_http_event() {
+    async fn test_send_http_event() -> Result<(), Error> {
         let _ = env_logger::builder().is_test(true).try_init();
 
-        // This should return 200 OK as the server is expected to be running
-        // let service_url = "http://localhost:3000/api/data-collector-api".to_string();
-        let service_url = "https://app.tracer.bio/api/data-collector-api".to_string();
-        let api_key = "QlXYPyzgjHTipUKUqgr__".to_string();
-        let http_client = HttpClient::new(service_url.clone(), api_key.clone());
+        // Load configuration
+        let config = ConfigManager::load_config().context("Failed to load config")?;
+        let api_key = config.api_key.clone(); // Cloning here to avoid moving
+        let service_url = config.service_url.clone(); // Cloning here to avoid moving
+        let http_client = HttpClient::new(service_url, api_key);
 
         // Define the log data to send
         let logs = json!([
@@ -106,7 +107,11 @@ mod tests {
         let result = http_client.send_http_event(&logs).await;
 
         // Ensure the request succeeded
-        assert!(result.is_ok(), "Expected success, but got an error");
+        assert!(
+            result.is_ok(),
+            "Expected success, but got an error: {:?}",
+            result
+        );
 
         if let Err(e) = result {
             assert!(
@@ -115,5 +120,7 @@ mod tests {
                 e
             );
         }
+
+        Ok(())
     }
 }

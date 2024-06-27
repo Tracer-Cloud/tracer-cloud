@@ -69,8 +69,8 @@ mod tests {
     async fn test_log_event() -> Result<(), Error> {
         let _ = env_logger::builder().is_test(true).try_init();
 
-        let service_url: String = "https://app.tracer.bio/api/data-collector-api".to_string();
         let config = ConfigManager::load_config().context("Failed to load config")?;
+        let service_url: String = config.service_url.clone(); // Cloning here to avoid moving
         let api_key = config.api_key.clone(); // Cloning here to avoid moving
         let http_client = HttpClient::new(service_url, api_key.clone()); // Cloning again to avoid move
 

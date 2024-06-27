@@ -52,3 +52,7 @@ Error while sending send_http_event: 500 Internal Server Error - {"error":"Faile
 Error while sending send_http_event: 500 Internal Server Error - {"error":"Failed to store logs","message":"API key not found or not active"}
 Error while sending send_http_event: 500 Internal Server Error - {"error":"Failed to store logs","message":"API key not found or not active"}
 Error while sending send_http_event: 500 Internal Server Error - {"error":"Failed to store logs","message":"API key not found or not active"}
+Error while sending send_http_event: 500 Internal Server Error - {"error":"Failed to store logs","message":"API key not found or not active"}
+Error while sending send_http_event: 500 Internal Server Error - {"error":"Failed to store logs","message":"API key not found or not active"}
+Error while sending send_http_event: 500 Internal Server Error - {"error":"Failed to store logs","message":"API key not found or not active"}
+Error while sending send_http_event: 500 Internal Server Error - {"error":"Failed to store logs","message":"API key not found or not active"}
