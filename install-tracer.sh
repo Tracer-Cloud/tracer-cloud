@@ -301,50 +301,6 @@ function download_tracer() {
 }
 
 #-------------------------------------------------------------------------------
-#          NAME:  configure_tracer
-#   DESCRIPTION:  Configures the Tracer installation
-#-------------------------------------------------------------------------------
-function configure_tracer() {
-    # check whether a .tracerbio directory exists in the user's home directory and create it if it doesn't
-    if [ ! -d "$TRACER_HOME" ]; then
-        mkdir -p "$TRACER_HOME"
-        # if this failed to create the directory, print an error message and exit
-        if [ $? -ne 0 ]; then
-            printerror "Failed to create $HOME/.tracerbio directory. Please check your permissions and try again."
-            exit 1
-        fi
-        printsucc "Tracer config directory ${Blu}$TRACER_HOME${RCol} created."
-    else
-        printinfo "Tracer config directory ${Blu}$TRACER_HOME${RCol} exists."
-    fi
-    printinfo "Installation log will be written to ${Blu}$LOGFILE${RCol}."
-
-    # check whether an API key file exists in the user's .tracerbio directory and create it if it doesn't
-    if [ ! -f "$CONFIGFILE" ]; then
-        echo "$API_KEY" >"$CONFIGFILE"
-        # if this failed to create the file, print an error message and exit
-        if [ $? -ne 0 ]; then
-            # TODO: allow for this to be overriden by an existing TRACER_CONFDIR variable or something
-            printerror "Failed to create ${Blu}${CONFIGFILE}${RCol}. Please check your permissions and try again."
-            exit 1
-        fi
-    else
-        printinfo "File ${Blu}$HOME/.tracerbio/$CONFIGFILE_NAME${RCol} exists."
-        # compare API key with existing API key
-        existing_api_key=$(cat "$CONFIGFILE")
-        if [ "$existing_api_key" != "$API_KEY" ]; then
-            printerror "API key does not match existing API key. Current: ${Blu}$existing_api_key${RCol}, new: ${Blu}$API_KEY${RCol}."
-            printindmsg "Either run ${Red}rm $CONFIGFILE${RCol} to delete the existing API key,"
-            printindmsg "or run this command again with the current API key."
-            exit 1
-        else
-            printinfo "API key ${Blu}$API_KEY${RCol} matches existing."
-        fi
-    fi
-
-}
-
-#-------------------------------------------------------------------------------
 #          NAME:  update_rc
 #   DESCRIPTION:  Ensures paths are configured for active shell
 #-------------------------------------------------------------------------------

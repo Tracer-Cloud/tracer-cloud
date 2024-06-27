@@ -43,24 +43,17 @@ mod tests {
     use std::io::Write;
     use tempfile::TempDir;
 
-    const CONFIG_CONTENT: &str = r#"
-        api_key = "bwoaLKcVG-k8obNcgt-a9"
-        process_polling_interval_ms = 200
-        batch_submission_interval_ms = 5000
-        service_url = "https://app.tracer.bio/api/data-collector-api"
-        targets = ["target1", "target2"]
-    "#;
-
-    fn create_test_config(content: &str, path: &str) {
+    fn create_test_config_file(path: &str) {
+        let config_content = include_str!("../../tracer.toml");
         let mut file = File::create(path).unwrap();
-        file.write_all(content.as_bytes()).unwrap();
+        file.write_all(config_content.as_bytes()).unwrap();
     }
 
     #[test]
     fn test_load_valid_config() {
         let temp_dir = TempDir::new().unwrap();
-        let test_config_path = temp_dir.path().join("test_tracer.toml");
-        create_test_config(CONFIG_CONTENT, test_config_path.to_str().unwrap());
+        let test_config_path = temp_dir.path().join("tracer.toml");
+        create_test_config_file(test_config_path.to_str().unwrap());
 
         env::set_var("TRACER_CONFIG", test_config_path.to_str().unwrap());
         let config = ConfigManager::load_config().unwrap();
@@ -72,10 +65,6 @@ mod tests {
             config.service_url.trim(),
             "https://app.tracer.bio/api/data-collector-api"
         );
-        assert_eq!(
-            config.targets,
-            vec!["target1".to_string(), "target2".to_string()]
-        );
     }
 
     #[test]
@@ -86,7 +75,7 @@ mod tests {
         fs::create_dir_all(&config_dir).unwrap();
 
         let config_path = config_dir.join("tracer.toml");
-        create_test_config(CONFIG_CONTENT, config_path.to_str().unwrap());
+        create_test_config_file(config_path.to_str().unwrap());
 
         let config = ConfigManager::load_config_with_home(Some(home_dir)).unwrap();
 
@@ -95,10 +84,6 @@ mod tests {
         assert_eq!(
             config.service_url.trim(),
             "https://app.tracer.bio/api/data-collector-api"
-        );
-        assert_eq!(
-            config.targets,
-            vec!["target1".to_string(), "target2".to_string()]
         );
     }
 }

@@ -23,6 +23,7 @@ const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
 
+// please provide me the std out file of tracer:
 #[tokio::main]
 async fn main() -> Result<()> {
     start_daemon().await?;
