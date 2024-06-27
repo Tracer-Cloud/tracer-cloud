@@ -1,6 +1,6 @@
 [package]
 name = "tracer-daemon"
-version = "0.0.25"
+version = "0.0.27"
 edition = "2021"
 
 [dependencies]
