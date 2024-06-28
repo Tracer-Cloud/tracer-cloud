@@ -54,17 +54,14 @@ pub fn process_alert_command<'a>(
     Some(Box::pin(send_alert_event(service_url, api_key, message)))
 }
 
-pub fn process_start_run_command<'a>(
-    service_url: &'a str,
-    api_key: &'a str,
-) -> ProcessOutput<'a> {
+pub fn process_start_run_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
     Some(Box::pin(send_start_run_event(service_url, api_key)))
 }
 
 pub async fn run_server(
     tracer_client: Arc<Mutex<TracerClient>>,
     socket_path: &str,
-    cancellation_token: CancellationToken
+    cancellation_token: CancellationToken,
 ) -> Result<(), anyhow::Error> {
     if std::fs::metadata(socket_path).is_ok() {
         std::fs::remove_file(socket_path).expect("Failed to remove existing socket file");
@@ -119,7 +116,7 @@ pub async fn run_server(
             "start" => process_start_run_command(&service_url, &api_key),
             "stop" => {
                 cancellation_token.cancel();
-                return Ok(())
+                return Ok(());
             }
             _ => {
                 eprintln!("Invalid command: {}", command);

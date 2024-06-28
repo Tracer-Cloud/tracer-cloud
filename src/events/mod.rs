@@ -62,7 +62,6 @@ pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<()
 
     info!("Started pipeline run successfully...");
     result
-
 }
 
 #[cfg(test)]
@@ -74,7 +73,8 @@ mod tests {
     #[tokio::test]
     async fn test_event_pipeline_run_start_new() -> Result<(), Error> {
         let config = ConfigManager::load_config().context("Failed to load config")?;
-        let result = send_start_run_event(&config.service_url.clone(), &config.api_key.clone()).await;
+        let result =
+            send_start_run_event(&config.service_url.clone(), &config.api_key.clone()).await;
 
         //     //     assert!(result.is_ok(), "Expected success, but got an error");
 
