@@ -2,7 +2,7 @@ use anyhow::{Context, Ok, Result};
 use chrono::Utc;
 use log::{error, info};
 use reqwest::Client;
-use serde_json::{json, Value};
+use serde_json::Value;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
@@ -32,7 +32,7 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
     // Log request body
     let request_body = logs.to_string();
 
-    record_all_outgoing_http_calls(&service_url, &api_key, &request_body).await?;
+    record_all_outgoing_http_calls(service_url, api_key, &request_body).await?;
     // Send request
     let client = Client::new();
     let response = client
@@ -79,46 +79,13 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
         );
         file.write_all(log_message.as_bytes()).await?;
 
-            Err(anyhow::anyhow!(
-                "Error while sending send_http_event: {} - {}",
-                status,
-                response_text
-            ))
-        }
+        Err(anyhow::anyhow!(
+            "Error while sending send_http_event: {} - {}",
+            status,
+            response_text
+        ))
     }
-
-    pub async fn send_log_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
-        let log_entry = json!({
-            "message": message,
-            "process_type": "pipeline",
-            "process_status": "new_run",
-            "event_type": "process_status"
-        });
-
-        send_http_event(service_url, api_key, &log_entry).await
-    }
-
-    pub async fn send_alert_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
-        let alert_entry = json!({
-            "message": message,
-            "process_type": "pipeline",
-            "process_status": "alert",
-            "event_type": "process_status"
-        });
-
-         send_http_event(service_url, api_key, &alert_entry).await
-    }
-
-    pub async fn send_init_event(service_url: &str, api_key: &str) -> Result<()> {
-        let init_entry = json!({
-            "message": "Finishing old pipeline run and starting new one",
-            "process_type": "pipeline",
-            "process_status": "end",
-            "event_type": "process_status"
-        });
-
-        send_http_event(service_url, api_key, &init_entry).await
-    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -69,7 +69,12 @@ pub async fn run() -> Result<()> {
             sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
         }
 
-        tracer_client.lock().await.borrow_mut().submit_batched_data().await?;
+        tracer_client
+            .lock()
+            .await
+            .borrow_mut()
+            .submit_batched_data()
+            .await?;
     }
 }
 

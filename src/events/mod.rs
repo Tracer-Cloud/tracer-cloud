@@ -22,23 +22,7 @@ impl std::fmt::Display for EventStatus {
     }
 }
 
-pub async fn event_pipeline_run_start_new(service_url: &str, api_key: &str) -> Result<()> {
-    info!("Starting new pipeline...");
-
-    log_event(
-        service_url,
-        api_key,
-        EventStatus::NewRun,
-        "[CLI] Starting pipeline run",
-    )
-    .await
-    .context("Failed to log event")?;
-
-    info!("Started pipeline run successfully...");
-    Ok(())
-}
-
-async fn log_event(
+pub async fn send_log_event(
     service_url: &str,
     api_key: &str,
     status: EventStatus,
@@ -56,6 +40,48 @@ async fn log_event(
         .context("Failed to send HTTP event")
 }
 
+pub async fn send_message_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
+    let log_entry = json!({
+        "message": message,
+        "process_type": "pipeline",
+        "process_status": "new_run",
+        "event_type": "process_status"
+    });
+
+    send_http_event(service_url, api_key, &log_entry)
+        .await
+        .context("Failed to send HTTP event")
+}
+
+pub async fn send_alert_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
+    let alert_entry = json!({
+        "message": message,
+        "process_type": "pipeline",
+        "process_status": "alert",
+        "event_type": "process_status"
+    });
+
+    send_http_event(service_url, api_key, &alert_entry)
+        .await
+        .context("Failed to send HTTP event")
+}
+
+pub async fn send_init_event(service_url: &str, api_key: &str) -> Result<()> {
+    info!("Starting new pipeline...");
+
+    let result = send_log_event(
+        service_url,
+        api_key,
+        EventStatus::NewRun,
+        "[CLI] Starting pipeline run",
+    )
+    .await
+    .context("Failed to send HTTP event");
+
+    info!("Started pipeline run successfully...");
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -65,9 +91,7 @@ mod tests {
     #[tokio::test]
     async fn test_event_pipeline_run_start_new() -> Result<(), Error> {
         let config = ConfigManager::load_config().context("Failed to load config")?;
-        let result =
-            event_pipeline_run_start_new(&config.service_url.clone(), &config.api_key.clone())
-                .await;
+        let result = send_init_event(&config.service_url.clone(), &config.api_key.clone()).await;
 
         assert!(result.is_ok(), "Expected success, but got an error");
 
@@ -79,7 +103,7 @@ mod tests {
         let config = ConfigManager::load_config().context("Failed to load config")?;
         let message = "[shipping] Test log message from the test suite";
 
-        let result = log_event(
+        let result = send_log_event(
             &config.service_url.clone(),
             &config.api_key.clone(),
             EventStatus::NewRun,

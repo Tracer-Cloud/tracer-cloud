@@ -2,10 +2,9 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use serde_json::Value;
 use tokio::{io::AsyncReadExt, net::UnixListener, sync::Mutex};
-use toml::ser;
 
 use crate::{
-    http_client::{send_alert_event, send_log_event},
+    events::{send_alert_event, send_init_event, send_message_event},
     tracer_client::TracerClient,
 };
 
@@ -37,7 +36,7 @@ pub fn process_log_command<'a>(
     };
 
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
-    Some(Box::pin(send_log_event(service_url, api_key, message)))
+    Some(Box::pin(send_message_event(service_url, api_key, message)))
 }
 
 pub fn process_alert_command<'a>(
@@ -51,6 +50,10 @@ pub fn process_alert_command<'a>(
 
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
     Some(Box::pin(send_alert_event(service_url, api_key, message)))
+}
+
+pub fn process_init_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
+    Some(Box::pin(send_init_event(service_url, api_key)))
 }
 
 pub async fn run_server(
@@ -106,6 +109,7 @@ pub async fn run_server(
         let result = match command {
             "log" => process_log_command(&service_url, &api_key, object),
             "alert" => process_alert_command(&service_url, &api_key, object),
+            "init" => process_init_command(&service_url, &api_key),
             _ => {
                 eprintln!("Invalid command: {}", command);
                 None
