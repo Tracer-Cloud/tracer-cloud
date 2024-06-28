@@ -25,3 +25,7 @@ tracer.tar.gz
 
 responses/*
 responses
+
+error_outgoing_http_calls.txt
+
+log_outgoing_http_calls.txt
