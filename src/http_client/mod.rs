@@ -75,6 +75,39 @@ impl HttpClient {
         }
     }
 
+    pub async fn send_log_event (&self, message: String) -> Result<()> {
+        let log_entry = json!({
+            "message": message,
+            "process_type": "pipeline",
+            "process_status": "new_run",
+            "event_type": "process_status"
+        });
+
+        self.send_http_event(&log_entry).await
+    }
+
+    pub async fn send_alert_event (&self, message: String) -> Result<()> {
+        let alert_entry = json!({
+            "message": message,
+            "process_type": "pipeline",
+            "process_status": "alert",
+            "event_type": "process_status"
+        });
+
+        self.send_http_event(&alert_entry).await
+    }
+
+    pub async fn send_init_event (&self) -> Result<()> {
+        let init_entry = json!({
+            "message": "Finishing old pipeline run and starting new one",
+            "process_type": "pipeline",
+            "process_status": "end",
+            "event_type": "process_status"
+        });
+
+        self.send_http_event(&init_entry).await
+    }
+
     pub fn get_service_url(&self) -> &String {
         &self.service_url
     }

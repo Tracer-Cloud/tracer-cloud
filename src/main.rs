@@ -6,10 +6,16 @@ mod http_client;
 mod metrics;
 mod process_watcher;
 mod tracer_client;
+mod daemon_communication;
 
 use anyhow::{Context, Result};
+use daemon_communication::client::parse_input;
+use daemon_communication::server::run_server;
 use daemonize::Daemonize;
+use tokio::sync::{Mutex, MutexGuard};
+use std::borrow::BorrowMut;
 use std::fs::File;
+use std::sync::Arc;
 use tokio::time::{sleep, Duration, Instant};
 
 use crate::config_manager::ConfigManager;
@@ -19,10 +25,15 @@ const PID_FILE: &str = "/tmp/tracerd.pid";
 const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
+const SOCKET_PATH: &str = "/tmp/tracerd.sock";
 
 fn main() -> Result<()> {
-    start_daemon()?;
-    run()
+    let deamon_status = start_daemon();
+    if deamon_status.is_ok() {
+        run()
+    } else {
+        run_cli()
+    }
 }
 
 pub fn start_daemon() -> Result<()> {
@@ -37,19 +48,28 @@ pub fn start_daemon() -> Result<()> {
     Ok(())
 }
 
+#[tokio::main] 
+pub async fn run_cli() -> Result<()> {
+    parse_input(SOCKET_PATH).await;
+    Ok(())
+}
+
+
 #[tokio::main]
 pub async fn run() -> Result<()> {
     let config = ConfigManager::load_config().context("Failed to load config")?;
-    let mut tracer_client =
-        TracerClient::new(config.clone()).context("Failed to create TracerClient")?;
+    let client = TracerClient::new(config.clone()).context("Failed to create TracerClient")?;
+    let tracer_client = Arc::new(Mutex::new(client));
 
+    tokio::spawn(run_server(tracer_client.clone(), SOCKET_PATH));
+    
     loop {
         let start_time = Instant::now();
         while start_time.elapsed() < Duration::from_secs(20) {
-            monitor_processes_with_tracer_client(&mut tracer_client).await?;
+            monitor_processes_with_tracer_client(&mut tracer_client.lock().await.borrow_mut()).await?;
             sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
         }
-        submit_metrics(&mut tracer_client).await?;
+        submit_metrics(&mut tracer_client.lock().await.borrow_mut()).await?;
     }
 }
 

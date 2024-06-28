@@ -70,6 +70,7 @@ impl TracerClient {
         self.system.refresh_all();
     }
 
+
     // New methods for testing
     #[allow(dead_code)]
     pub async fn get_submitted_data(&self) -> Vec<String> {
