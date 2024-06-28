@@ -1,11 +1,11 @@
 mod config_manager;
 mod daemon_communication;
-mod data_submission;
 mod event_recorder;
 mod events;
 mod http_client;
 mod metrics;
 mod process_watcher;
+mod submit_batched_data;
 mod tracer_client;
 
 use anyhow::{Context, Result};
@@ -68,21 +68,15 @@ pub async fn run() -> Result<()> {
             monitor_processes_with_tracer_client(tracer_client.lock().await.borrow_mut()).await?;
             sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
         }
-        submit_metrics(tracer_client.lock().await.borrow_mut()).await?;
+
+        tracer_client.lock().await.borrow_mut().submit_batched_data().await?;
     }
 }
 
 pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
     tracer_client.remove_completed_processes().await?;
     tracer_client.poll_processes().await?;
-    tracer_client.refresh();
-    Ok(())
-}
-
-pub async fn submit_metrics(tracer_client: &mut TracerClient) -> Result<()> {
-    if let Err(e) = tracer_client.submit_batched_data().await {
-        eprintln!("Failed to submit batched data: {}", e);
-    }
+    tracer_client.refresh_sysinfo();
     Ok(())
 }
 
@@ -104,14 +98,6 @@ mod tests {
         let config = load_test_config();
         let mut tracer_client = TracerClient::new(config).unwrap();
         let result = monitor_processes_with_tracer_client(&mut tracer_client).await;
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn test_submit_metrics() {
-        let config = load_test_config();
-        let mut tracer_client = TracerClient::new(config).unwrap();
-        let result = submit_metrics(&mut tracer_client).await;
         assert!(result.is_ok());
     }
 }

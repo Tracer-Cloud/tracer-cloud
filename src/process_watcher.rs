@@ -83,6 +83,7 @@ impl ProcessWatcher {
             "tool_name": proc.name(),
             "tool_pid": pid.to_string(),
             "tool_binary_path": p.exe(),
+            "tool_cmd": p.cmd().join(" "),
             "start_timestamp": start_time.to_string(),
         });
 
@@ -108,15 +109,5 @@ impl ProcessWatcher {
         );
 
         Ok(())
-    }
-
-    #[allow(dead_code)]
-    pub fn get_monitored_processes_count(&self) -> usize {
-        self.seen.len()
-    }
-
-    #[allow(dead_code)]
-    pub fn get_seen(&self) -> &HashMap<Pid, Proc> {
-        &self.seen
     }
 }

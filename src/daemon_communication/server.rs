@@ -2,11 +2,18 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use serde_json::Value;
 use tokio::{io::AsyncReadExt, net::UnixListener, sync::Mutex};
+use toml::ser;
 
-use crate::tracer_client::TracerClient;
+use crate::{
+    http_client::{send_alert_event, send_log_event},
+    tracer_client::TracerClient,
+};
 
 type ProcessOutput<'a> =
     Option<Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + 'a + Send>>>;
+
+/*
+Example of timelined code, depedant on TracerClient:
 
 pub fn process_log_command<'a>(
     tracer_client: &'a TracerClient,
@@ -17,11 +24,12 @@ pub fn process_log_command<'a>(
     };
 
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
-    Some(Box::pin(tracer_client.http_client.send_log_event(message)))
-}
+    Some(Box::pin(send_log_event(&tracer_client)))
+}*/
 
-pub fn process_alert_command<'a>(
-    tracer_client: &'a TracerClient,
+pub fn process_log_command<'a>(
+    service_url: &'a str,
+    api_key: &'a str,
     object: &serde_json::Map<String, serde_json::Value>,
 ) -> ProcessOutput<'a> {
     if !object.contains_key("message") {
@@ -29,9 +37,20 @@ pub fn process_alert_command<'a>(
     };
 
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
-    Some(Box::pin(
-        tracer_client.http_client.send_alert_event(message),
-    ))
+    Some(Box::pin(send_log_event(service_url, api_key, message)))
+}
+
+pub fn process_alert_command<'a>(
+    service_url: &'a str,
+    api_key: &'a str,
+    object: &serde_json::Map<String, serde_json::Value>,
+) -> ProcessOutput<'a> {
+    if !object.contains_key("message") {
+        return None;
+    };
+
+    let message = object.get("message").unwrap().as_str().unwrap().to_string();
+    Some(Box::pin(send_alert_event(service_url, api_key, message)))
 }
 
 pub async fn run_server(
@@ -77,20 +96,24 @@ pub async fn run_server(
 
         let command = object.get("command").unwrap().as_str().unwrap();
 
-        {
+        let (service_url, api_key) = {
             let tracer_client = tracer_client.lock().await;
-            let result = match command {
-                "log" => process_log_command(&tracer_client, object),
-                "alert" => process_alert_command(&tracer_client, object),
-                _ => {
-                    eprintln!("Invalid command: {}", command);
-                    None
-                }
-            };
+            let service_url = tracer_client.get_service_url().to_owned();
+            let api_key = tracer_client.get_api_key().to_owned();
+            (service_url, api_key)
+        };
 
-            if let Some(future) = result {
-                future.await?;
+        let result = match command {
+            "log" => process_log_command(&service_url, &api_key, object),
+            "alert" => process_alert_command(&service_url, &api_key, object),
+            _ => {
+                eprintln!("Invalid command: {}", command);
+                None
             }
+        };
+
+        if let Some(future) = result {
+            future.await?;
         }
     }
 }

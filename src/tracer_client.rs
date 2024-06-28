@@ -1,25 +1,22 @@
 // src/tracer_client.rs
 use crate::config_manager::ConfigFile;
-use crate::data_submission::submit_batched_data;
 use crate::event_recorder::EventRecorder;
-use crate::http_client::HttpClient;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
+use crate::submit_batched_data::submit_batched_data;
 use anyhow::Result;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 use sysinfo::System;
-use tokio::sync::Mutex;
 
 pub struct TracerClient {
-    pub http_client: HttpClient,
     system: System,
     last_sent: Option<Instant>,
     interval: Duration,
     pub logs: EventRecorder,
     process_watcher: ProcessWatcher,
     metrics_collector: SystemMetricsCollector,
-    submitted_data: Arc<Mutex<Vec<String>>>,
+    api_key: String,
+    service_url: String,
 }
 
 impl TracerClient {
@@ -30,30 +27,35 @@ impl TracerClient {
         println!("Service URL: {}", service_url);
 
         Ok(TracerClient {
-            http_client: HttpClient::new(service_url.clone(), config.api_key.clone()),
+            // fixed values
+            api_key: config.api_key,
+            service_url,
+
+            // updated values
             system: System::new_all(),
             last_sent: None,
             interval: Duration::from_millis(config.process_polling_interval_ms),
+            // Sub mannagers
             logs: EventRecorder::new(),
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
-            submitted_data: Arc::new(Mutex::new(Vec::new())),
         })
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
         submit_batched_data(
-            &self.http_client,
+            &self.api_key,
+            &self.service_url,
             &mut self.system,
             &mut self.logs,
             &mut self.metrics_collector,
-            self.submitted_data.clone(),
             &mut self.last_sent,
             self.interval,
         )
         .await
     }
 
+    /// These functions require logs and the system
     pub async fn poll_processes(&mut self) -> Result<()> {
         self.process_watcher
             .poll_processes(&mut self.system, &mut self.logs)?;
@@ -66,18 +68,15 @@ impl TracerClient {
         Ok(())
     }
 
-    pub fn refresh(&mut self) {
+    pub fn refresh_sysinfo(&mut self) {
         self.system.refresh_all();
     }
 
-    // New methods for testing
-    #[allow(dead_code)]
-    pub async fn get_submitted_data(&self) -> Vec<String> {
-        self.submitted_data.lock().await.clone()
+    pub fn get_service_url(&self) -> &str {
+        &self.service_url
     }
 
-    #[allow(dead_code)]
-    pub fn get_processes_count(&self) -> usize {
-        self.process_watcher.get_monitored_processes_count()
+    pub fn get_api_key(&self) -> &str {
+        &self.api_key
     }
 }

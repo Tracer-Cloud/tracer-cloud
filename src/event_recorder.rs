@@ -10,7 +10,7 @@ pub struct Event {
     message: String,
     pub event_type: String,
     process_type: String,
-    event_status: String,
+    process_status: String,
     pub attributes: Option<Value>,
 }
 
@@ -53,7 +53,7 @@ impl EventRecorder {
             message,
             event_type: "process_status".to_owned(),
             process_type: "pipeline".to_owned(),
-            event_status: event_type.as_str().to_owned(),
+            process_status: event_type.as_str().to_owned(),
             attributes,
         };
         self.events.push(event);
@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn test_record_event() {
         let mut recorder = EventRecorder::new();
-        let message = "Test event".to_string();
+        let message = "[event_recorder.rs]Test event".to_string();
         let attributes = Some(json!({"key": "value"}));
 
         recorder.record_event(
@@ -107,7 +107,7 @@ mod tests {
         assert_eq!(event.message, message);
         assert_eq!(event.event_type, "process_status");
         assert_eq!(event.process_type, "pipeline");
-        assert_eq!(event.event_status, "tool_execution");
+        assert_eq!(event.process_status, "tool_execution");
         assert_eq!(event.attributes, attributes);
     }
 
@@ -143,7 +143,7 @@ mod tests {
         assert_eq!(event.message, message);
         assert_eq!(event.event_type, "process_status");
         assert_eq!(event.process_type, "pipeline");
-        assert_eq!(event.event_status, "test_event");
+        assert_eq!(event.process_status, "test_event");
         assert_eq!(event.attributes, attributes);
     }
 }
