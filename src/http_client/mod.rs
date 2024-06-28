@@ -2,18 +2,18 @@ use anyhow::{Context, Ok, Result};
 use chrono::Utc;
 use log::{error, info};
 use reqwest::Client;
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
-/// Todo: standardized values in the logs of the test "pipeline"
+/// Logs all outgoing HTTP calls to a file.
 async fn record_all_outgoing_http_calls(
     service_url: &str,
     api_key: &str,
-    request_body: &str,
+    request_body: &Value,
 ) -> Result<()> {
     // Log the request body to a log file so that we can test WHAT and IF there are any outgoing messages
-    let timestamp = Utc::now().to_utc();
+    let timestamp = Utc::now().to_rfc3339();
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
@@ -22,7 +22,10 @@ async fn record_all_outgoing_http_calls(
 
     let incoming_logs_string = format!(
         "[{}] send_http_event: {} - {}\nRequest body: {}\n----------\n",
-        timestamp, api_key, service_url, request_body,
+        timestamp,
+        api_key,
+        service_url,
+        request_body.to_string(), // Convert request_body to string
     );
     file.write_all(incoming_logs_string.as_bytes()).await?;
     Ok(())
@@ -30,16 +33,20 @@ async fn record_all_outgoing_http_calls(
 
 pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> Result<()> {
     // Log request body
-    let request_body = logs.to_string();
-
+    let logs_array = match logs {
+        Value::Array(_) => logs.clone(),
+        _ => json!([logs]),
+    };
+    let request_body = json!({ "logs": logs_array });
     record_all_outgoing_http_calls(&service_url, &api_key, &request_body).await?;
+
     // Send request
     let client = Client::new();
     let response = client
         .post(service_url)
         .header("x-api-key", api_key)
         .header("Content-Type", "application/json")
-        .json(&logs)
+        .json(&request_body)
         .send()
         .await
         .context("Failed to send event data")?;
