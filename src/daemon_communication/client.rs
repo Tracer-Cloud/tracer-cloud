@@ -21,6 +21,7 @@ pub enum Commands {
     Alert { message: String },
     Init,
     Cleanup,
+    Info,
     Stop,
     Update,
     Start,

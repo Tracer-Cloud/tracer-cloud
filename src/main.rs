@@ -73,6 +73,14 @@ fn clean_up_after_daemon() -> Result<()> {
     Ok(())
 }
 
+fn print_config_info () -> Result<()> {
+    let config = ConfigManager::load_config().context("Failed to load config")?;
+    println!("Service URL: {}", config.service_url);
+    println!("API Key: {}", config.api_key);
+    println!("Daemon version: {}", env!("CARGO_PKG_VERSION"));
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -87,6 +95,7 @@ fn main() -> Result<()> {
             clean_up_after_daemon()
         }
         Commands::Cleanup => clean_up_after_daemon(),
+        Commands::Info => print_config_info(),
         _ => run_cli(cli.command),
     }
 }
