@@ -110,14 +110,4 @@ impl ProcessWatcher {
 
         Ok(())
     }
-
-    #[allow(dead_code)]
-    pub fn get_monitored_processes_count(&self) -> usize {
-        self.seen.len()
-    }
-
-    #[allow(dead_code)]
-    pub fn get_seen(&self) -> &HashMap<Pid, Proc> {
-        &self.seen
-    }
 }

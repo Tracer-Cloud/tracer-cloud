@@ -1,86 +1,89 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result};
+use chrono::Utc;
 use log::{error, info};
 use reqwest::Client;
-use serde_json::{json, Value};
+use serde_json::Value;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
-pub struct HttpClient {
-    client: Client,
-    service_url: String,
-    api_key: String,
+/// Todo: standardized values in the logs of the test "pipeline"
+async fn record_all_outgoing_http_calls(
+    service_url: &str,
+    api_key: &str,
+    request_body: &str,
+) -> Result<()> {
+    // Log the request body to a log file so that we can test WHAT and IF there are any outgoing messages
+    let timestamp = Utc::now().to_utc();
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("log_outgoing_http_calls.txt")
+        .await?;
+
+    let incoming_logs_string = format!(
+        "[{}] send_http_event: {} - {}\nRequest body: {}\n----------\n",
+        timestamp, api_key, service_url, request_body,
+    );
+    file.write_all(incoming_logs_string.as_bytes()).await?;
+    Ok(())
 }
 
-impl HttpClient {
-    pub fn new(service_url: String, api_key: String) -> Self {
-        Self {
-            client: Client::new(),
-            service_url,
-            api_key,
-        }
-    }
+pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> Result<()> {
+    // Log request body
+    let request_body = logs.to_string();
 
-    pub async fn send_http_event(&self, logs: &Value) -> Result<()> {
-        // Ensure logs is always an array
-        let logs_array = match logs {
-            Value::Array(_) => logs.clone(),
-            _ => json!([logs]),
-        };
-        let logs_wrapper = json!({ "logs": logs_array });
+    record_all_outgoing_http_calls(&service_url, &api_key, &request_body).await?;
+    // Send request
+    let client = Client::new();
+    let response = client
+        .post(service_url)
+        .header("x-api-key", api_key)
+        .header("Content-Type", "application/json")
+        .json(&logs)
+        .send()
+        .await
+        .context("Failed to send event data")?;
 
-        let response = self
-            .client
-            .post(&self.service_url)
-            .header("x-api-key", &self.api_key)
-            .header("Content-Type", "application/json")
-            .json(&logs_wrapper)
-            .send()
-            .await
-            .context("Failed to send event data")?;
+    let status = response.status();
+    let response_text = response
+        .text()
+        .await
+        .unwrap_or_else(|_| "Unknown error".to_string());
 
-        let status = response.status();
-        let response_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
+    // Log response body
+    info!(
+        "Response status: {}, Response body: {}",
+        status, response_text
+    );
 
-        if status.is_success() {
-            info!(
-                "Successfully sent HTTP event: {} - {}",
-                status, response_text
-            );
-            Ok(())
-        } else {
-            error!(
-                "Error while sending send_http_event: {} - {}",
-                status, response_text
-            );
+    if status.is_success() {
+        info!(
+            "Successfully sent HTTP event: {} - {}",
+            status, response_text
+        );
+        Ok(())
+    } else {
+        error!(
+            "Error while sending send_http_event: {} - {}",
+            status, response_text
+        );
 
-            let mut file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open("error_log.txt")
-                .await?;
-            let log_message = format!(
-                "Error while sending send_http_event: {} - {}\n",
-                status, response_text
-            );
-            file.write_all(log_message.as_bytes()).await?;
+        let mut file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("error_outgoing_http_calls.txt")
+            .await?;
+        let log_message = format!(
+            "Error while sending send_http_event: {} - {}\nRequest body: {}\nResponse body: {}\n",
+            status, response_text, request_body, response_text
+        );
+        file.write_all(log_message.as_bytes()).await?;
 
-            Err(anyhow::anyhow!(
-                "Error while sending send_http_event: {} - {}",
-                status,
-                response_text
-            ))
-        }
-    }
-
-    pub fn get_service_url(&self) -> &String {
-        &self.service_url
-    }
-
-    pub fn get_api_key(&self) -> &String {
-        &self.api_key
+        Err(anyhow::anyhow!(
+            "Error while sending send_http_event: {} - {}",
+            status,
+            response_text
+        ))
     }
 }
 
@@ -99,12 +102,11 @@ mod tests {
         let config = ConfigManager::load_config().context("Failed to load config")?;
         let api_key = config.api_key.clone(); // Cloning here to avoid moving
         let service_url = config.service_url.clone(); // Cloning here to avoid moving
-        let http_client = HttpClient::new(service_url, api_key);
 
         // Define the log data to send
         let logs = json!([
             {
-                "message": "starting RNA-seq pipeline RID 255050",
+                "message": "[test_send_http_event] starting RNA-seq pipeline RID 255050",
                 "process_type": "pipeline",
                 "process_status": "new_run",
                 "event_type": "process_status"
@@ -112,7 +114,7 @@ mod tests {
         ]);
 
         // Send the HTTP event
-        let result = http_client.send_http_event(&logs).await;
+        let result = send_http_event(&service_url, &api_key, &logs).await;
 
         // Ensure the request succeeded
         assert!(
