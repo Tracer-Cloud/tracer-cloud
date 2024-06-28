@@ -30,7 +30,7 @@ pub async fn submit_batched_data(
         *last_sent = Some(Instant::now());
         logs.clear();
 
-        send_http_event(&service_url, &api_key, &data)
+        send_http_event(service_url, api_key, &data)
             .await
             .context("Failed to send HTTP event")
     } else {

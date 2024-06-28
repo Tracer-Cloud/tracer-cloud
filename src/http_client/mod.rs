@@ -25,7 +25,7 @@ async fn record_all_outgoing_http_calls(
         timestamp,
         api_key,
         service_url,
-        request_body.to_string(), // Convert request_body to string
+        request_body, // Convert request_body to string
     );
     file.write_all(incoming_logs_string.as_bytes()).await?;
     Ok(())
@@ -38,7 +38,7 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
         _ => json!([logs]),
     };
     let request_body = json!({ "logs": logs_array });
-    record_all_outgoing_http_calls(&service_url, &api_key, &request_body).await?;
+    record_all_outgoing_http_calls(service_url, api_key, &request_body).await?;
 
     // Send request
     let client = Client::new();
