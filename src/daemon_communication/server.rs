@@ -67,8 +67,6 @@ pub async fn run_server(
 
         let mut message = String::new();
 
-        println!("{:?}", message);
-
         let result = stream.read_to_string(&mut message).await;
 
         if result.is_err() {
