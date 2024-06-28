@@ -83,6 +83,7 @@ impl ProcessWatcher {
             "tool_name": proc.name(),
             "tool_pid": pid.to_string(),
             "tool_binary_path": p.exe(),
+            "tool_cmd": p.cmd().join(" "),
             "start_timestamp": start_time.to_string(),
         });
 
