@@ -9,8 +9,8 @@ mod tracer_client;
 
 use anyhow::{Context, Result};
 use daemonize::Daemonize;
-use std::fs::File;
 use tokio::time::{sleep, Duration, Instant};
+use std::fs::File;
 
 use crate::config_manager::ConfigManager;
 use crate::tracer_client::TracerClient;
@@ -20,10 +20,10 @@ const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
 
-#[tokio::main]
-async fn main() -> Result<()> {
+
+fn main() -> Result<()> {
     start_daemon()?;
-    run().await
+    run()
 }
 
 pub fn start_daemon() -> Result<()> {
@@ -38,6 +38,7 @@ pub fn start_daemon() -> Result<()> {
     Ok(())
 }
 
+#[tokio::main]
 pub async fn run() -> Result<()> {
     let config = ConfigManager::load_config().context("Failed to load config")?;
     let mut tracer_client =
