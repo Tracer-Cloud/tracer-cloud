@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde::Deserialize;
 mod targets;
 
-const DEFAULT_API_KEY: &str = "ZZLKWZBTggarV3PZ5dCSQ";
+const DEFAULT_API_KEY: &str = "U-G_tv4EocmSq7R3ChbGu";
 const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
 const PROCESS_POLLING_INTERVAL_MS: u64 = 200;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 5000;
