@@ -1,24 +1,36 @@
-[2024-06-27 23:11:48.876321 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
-Request body: {"event_type":"process_status","message":"[CLI] Starting pipeline run","process_status":"new_run","process_type":"pipeline"}
-----------
-[2024-06-27 23:11:48.876767 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
-Request body: [{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]
-----------
-[2024-06-27 23:11:48.876303 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+[2024-06-27 23:43:26.049543 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
 Request body: {"event_type":"process_status","message":"[shipping] Test log message from the test suite","process_status":"new_run","process_type":"pipeline"}
 ----------
-[2024-06-27 23:11:49.046470 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"attributes":null,"event_status":"test_event","event_type":"process_status","message":"Test event","process_type":"pipeline","timestamp":1719529908},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":19440004342,"disk_total_space":245107195904,"disk_used_space":225667191562,"disk_utilization":92.06877453340294}},{"Macintosh HD":{"disk_available_space":19440004342,"disk_total_space":245107195904,"disk_used_space":225667191562,"disk_utilization":92.06877453340294}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_status":"metric_event","event_type":"process_status","message":"[2024-06-27 23:11:49.046409 UTC] System's resources metric","process_type":"pipeline","timestamp":1719529909}]}
-----------
-[2024-06-27 23:38:20.322571 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+[2024-06-27 23:43:26.049563 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
 Request body: {"event_type":"process_status","message":"[CLI] Starting pipeline run","process_status":"new_run","process_type":"pipeline"}
 ----------
-[2024-06-27 23:38:20.322519 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
-Request body: {"event_type":"process_status","message":"[shipping] Test log message from the test suite","process_status":"new_run","process_type":"pipeline"}
-----------
-[2024-06-27 23:38:20.323232 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+[2024-06-27 23:43:26.050384 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
 Request body: [{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]
 ----------
-[2024-06-27 23:38:20.465616 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"attributes":null,"event_status":"test_event","event_type":"process_status","message":"Test event","process_type":"pipeline","timestamp":1719531500},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":19753688718,"disk_total_space":245107195904,"disk_used_space":225353507186,"disk_utilization":91.94079608917853}},{"Macintosh HD":{"disk_available_space":19753688718,"disk_total_space":245107195904,"disk_used_space":225353507186,"disk_utilization":91.94079608917853}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_status":"metric_event","event_type":"process_status","message":"[2024-06-27 23:38:20.465560 UTC] System's resources metric","process_type":"pipeline","timestamp":1719531500}]}
+[2024-06-27 23:43:26.152320 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_status":"test_event","event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_type":"pipeline","timestamp":1719531806},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":19742899854,"disk_total_space":245107195904,"disk_used_space":225364296050,"disk_utilization":91.94519778124645}},{"Macintosh HD":{"disk_available_space":19742899854,"disk_total_space":245107195904,"disk_used_space":225364296050,"disk_utilization":91.94519778124645}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_status":"metric_event","event_type":"process_status","message":"[2024-06-27 23:43:26.152262 UTC] System's resources metric","process_type":"pipeline","timestamp":1719531806}]}
+----------
+[2024-06-27 23:43:54.522645 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"event_type":"process_status","message":"[shipping] Test log message from the test suite","process_status":"new_run","process_type":"pipeline"}
+----------
+[2024-06-27 23:43:54.522888 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"event_type":"process_status","message":"[CLI] Starting pipeline run","process_status":"new_run","process_type":"pipeline"}
+----------
+[2024-06-27 23:43:54.529020 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: [{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]
+----------
+[2024-06-27 23:43:54.602548 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_status":"test_event","event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_type":"pipeline","timestamp":1719531834},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":19746008718,"disk_total_space":245107195904,"disk_used_space":225361187186,"disk_utilization":91.94392941211981}},{"Macintosh HD":{"disk_available_space":19746033294,"disk_total_space":245107195904,"disk_used_space":225361162610,"disk_utilization":91.94391938548641}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_status":"metric_event","event_type":"process_status","message":"[2024-06-27 23:43:54.602484 UTC] System's resources metric","process_type":"pipeline","timestamp":1719531834}]}
+----------
+[2024-06-28 02:33:13.395925 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"event_type":"process_status","message":"[CLI] Starting pipeline run","process_status":"new_run","process_type":"pipeline"}
+----------
+[2024-06-28 02:33:13.395926 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"event_type":"process_status","message":"[shipping] Test log message from the test suite","process_status":"new_run","process_type":"pipeline"}
+----------
+[2024-06-28 02:33:13.399935 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: [{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]
+----------
+[2024-06-28 02:33:13.490035 UTC] send_http_event: ZZLKWZBTggarV3PZ5dCSQ - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_status":"test_event","event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_type":"pipeline","timestamp":1719541993},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":27346206350,"disk_total_space":245107195904,"disk_used_space":217760989554,"disk_utilization":88.84316462062968}},{"Macintosh HD":{"disk_available_space":27346206350,"disk_total_space":245107195904,"disk_used_space":217760989554,"disk_utilization":88.84316462062968}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_status":"metric_event","event_type":"process_status","message":"[2024-06-28 02:33:13.489965 UTC] System's resources metric","process_type":"pipeline","timestamp":1719541993}]}
 ----------

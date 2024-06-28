@@ -1,4 +1,4 @@
-// src/data_submission.rs
+// src/submit_batched_data.rs
 use crate::event_recorder::EventRecorder;
 use crate::http_client::send_http_event;
 use crate::metrics::SystemMetricsCollector;
@@ -61,7 +61,11 @@ mod tests {
         let interval = Duration::from_secs(60);
 
         // Record a test event
-        logs.record_event(EventType::TestEvent, "Test event".to_string(), None);
+        logs.record_event(
+            EventType::TestEvent,
+            "[submit_batched_data.rs] Test event".to_string(),
+            None,
+        );
 
         // Call the method to submit batched data
         submit_batched_data(

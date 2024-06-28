@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn test_record_event() {
         let mut recorder = EventRecorder::new();
-        let message = "Test event".to_string();
+        let message = "[event_recorder.rs]Test event".to_string();
         let attributes = Some(json!({"key": "value"}));
 
         recorder.record_event(
