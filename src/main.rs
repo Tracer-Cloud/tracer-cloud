@@ -1,4 +1,5 @@
 mod config_manager;
+mod daemon_communication;
 mod data_submission;
 mod event_recorder;
 mod events;
@@ -6,16 +7,15 @@ mod http_client;
 mod metrics;
 mod process_watcher;
 mod tracer_client;
-mod daemon_communication;
 
 use anyhow::{Context, Result};
 use daemon_communication::client::parse_input;
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
-use tokio::sync::{Mutex, MutexGuard};
 use std::borrow::BorrowMut;
 use std::fs::File;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration, Instant};
 
 use crate::config_manager::ConfigManager;
@@ -48,12 +48,11 @@ pub fn start_daemon() -> Result<()> {
     Ok(())
 }
 
-#[tokio::main] 
+#[tokio::main]
 pub async fn run_cli() -> Result<()> {
     parse_input(SOCKET_PATH).await;
     Ok(())
 }
-
 
 #[tokio::main]
 pub async fn run() -> Result<()> {
@@ -62,14 +61,14 @@ pub async fn run() -> Result<()> {
     let tracer_client = Arc::new(Mutex::new(client));
 
     tokio::spawn(run_server(tracer_client.clone(), SOCKET_PATH));
-    
+
     loop {
         let start_time = Instant::now();
         while start_time.elapsed() < Duration::from_secs(20) {
-            monitor_processes_with_tracer_client(&mut tracer_client.lock().await.borrow_mut()).await?;
+            monitor_processes_with_tracer_client(tracer_client.lock().await.borrow_mut()).await?;
             sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
         }
-        submit_metrics(&mut tracer_client.lock().await.borrow_mut()).await?;
+        submit_metrics(tracer_client.lock().await.borrow_mut()).await?;
     }
 }
 

@@ -75,7 +75,7 @@ impl HttpClient {
         }
     }
 
-    pub async fn send_log_event (&self, message: String) -> Result<()> {
+    pub async fn send_log_event(&self, message: String) -> Result<()> {
         let log_entry = json!({
             "message": message,
             "process_type": "pipeline",
@@ -86,7 +86,7 @@ impl HttpClient {
         self.send_http_event(&log_entry).await
     }
 
-    pub async fn send_alert_event (&self, message: String) -> Result<()> {
+    pub async fn send_alert_event(&self, message: String) -> Result<()> {
         let alert_entry = json!({
             "message": message,
             "process_type": "pipeline",
@@ -97,7 +97,7 @@ impl HttpClient {
         self.send_http_event(&alert_entry).await
     }
 
-    pub async fn send_init_event (&self) -> Result<()> {
+    pub async fn send_init_event(&self) -> Result<()> {
         let init_entry = json!({
             "message": "Finishing old pipeline run and starting new one",
             "process_type": "pipeline",

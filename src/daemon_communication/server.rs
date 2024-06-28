@@ -1,40 +1,52 @@
-use std::{any::Any, borrow::BorrowMut, future::Future, pin::Pin, sync::Arc};
+use std::{future::Future, pin::Pin, sync::Arc};
 
 use serde_json::Value;
 use tokio::{io::AsyncReadExt, net::UnixListener, sync::Mutex};
 
-use crate::tracer_client::{self, TracerClient};
+use crate::tracer_client::TracerClient;
 
-type ProcessOutput<'a> = Option<Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + 'a + Send>>>;
+type ProcessOutput<'a> =
+    Option<Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + 'a + Send>>>;
 
-pub fn process_log_command<'a>(tracer_client: &'a TracerClient, object: &serde_json::Map<String, serde_json::Value>) -> ProcessOutput<'a> {
+pub fn process_log_command<'a>(
+    tracer_client: &'a TracerClient,
+    object: &serde_json::Map<String, serde_json::Value>,
+) -> ProcessOutput<'a> {
     if !object.contains_key("message") {
-      return None;
+        return None;
     };
 
-  let message = object.get("message").unwrap().as_str().unwrap().to_string();
-  Some(Box::pin(tracer_client.http_client.send_log_event(message)))
+    let message = object.get("message").unwrap().as_str().unwrap().to_string();
+    Some(Box::pin(tracer_client.http_client.send_log_event(message)))
 }
 
-pub fn process_alert_command<'a>(tracer_client: &'a TracerClient, object: &serde_json::Map<String, serde_json::Value>) -> ProcessOutput<'a> {
+pub fn process_alert_command<'a>(
+    tracer_client: &'a TracerClient,
+    object: &serde_json::Map<String, serde_json::Value>,
+) -> ProcessOutput<'a> {
     if !object.contains_key("message") {
-      return None;
+        return None;
     };
 
-  let message = object.get("message").unwrap().as_str().unwrap().to_string();
-  Some(Box::pin(tracer_client.http_client.send_alert_event(message)))
+    let message = object.get("message").unwrap().as_str().unwrap().to_string();
+    Some(Box::pin(
+        tracer_client.http_client.send_alert_event(message),
+    ))
 }
 
-pub async fn run_server(tracer_client: Arc<Mutex<TracerClient>>, socket_path: &str) {
+pub async fn run_server(
+    tracer_client: Arc<Mutex<TracerClient>>,
+    socket_path: &str,
+) -> Result<(), anyhow::Error> {
     let listener = UnixListener::bind(socket_path).expect("Failed to bind to unix socket");
-    
+
     loop {
         let (mut stream, _) = listener.accept().await.unwrap();
 
         let mut message = String::new();
 
         println!("{:?}", message);
-        
+
         let result = stream.read_to_string(&mut message).await;
 
         if result.is_err() {
@@ -66,23 +78,19 @@ pub async fn run_server(tracer_client: Arc<Mutex<TracerClient>>, socket_path: &s
         let command = object.get("command").unwrap().as_str().unwrap();
 
         {
-          let tracer_client = tracer_client.lock().await;
-          let result = match command {
-            "log" => {
-              process_log_command(&tracer_client, object)
-            },
-            "alert" => {
-              process_alert_command(&tracer_client, object)
-            },
-            _ => {
-              eprintln!("Invalid command: {}", command);
-              None
-            }
-          };
+            let tracer_client = tracer_client.lock().await;
+            let result = match command {
+                "log" => process_log_command(&tracer_client, object),
+                "alert" => process_alert_command(&tracer_client, object),
+                _ => {
+                    eprintln!("Invalid command: {}", command);
+                    None
+                }
+            };
 
-          if let Some(future) = result {
-            future.await;
-          }
+            if let Some(future) = result {
+                future.await?;
+            }
         }
     }
 }
