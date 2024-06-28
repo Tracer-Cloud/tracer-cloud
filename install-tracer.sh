@@ -424,11 +424,13 @@ main() {
     check_prereqs
     get_package_name
     configure_bindir
-
     send_event "start_installation" "Start Tracer installation for key: ${API_KEY}"
     make_temp_dir
     download_tracer
     # setup_tracer_configuration_file
+
+    # set environment variable to the tracer API key
+    export TRACER_API_KEY=$API_KEY
 
     printsucc "Tracer CLI has been successfully installed."
     send_event "finished_installation" "Successfully installed Tracer for key: ${API_KEY}"
