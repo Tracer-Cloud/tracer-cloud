@@ -106,3 +106,18 @@ pub async fn send_start_run_request(socket_path: &str) {
         .await
         .expect("Failed to connect to the daemon");
 }
+
+pub async fn send_end_run_request(socket_path: &str) {
+    let mut socket = UnixStream::connect(socket_path)
+        .await
+        .expect("Failed to connect to unix socket");
+    let start_request = json!({
+            "command": "end"
+    });
+    let start_request_json =
+        serde_json::to_string(&start_request).expect("Failed to serialize start request");
+    socket
+        .write_all(start_request_json.as_bytes())
+        .await
+        .expect("Failed to connect to the daemon");
+}

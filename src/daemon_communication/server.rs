@@ -6,7 +6,7 @@ use tokio::{io::AsyncReadExt, net::UnixListener, sync::Mutex};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    events::{send_alert_event, send_log_event, send_start_run_event},
+    events::{send_alert_event, send_end_run_event, send_log_event, send_start_run_event},
     tracer_client::TracerClient,
 };
 
@@ -56,6 +56,10 @@ pub fn process_alert_command<'a>(
 
 pub fn process_start_run_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
     Some(Box::pin(send_start_run_event(service_url, api_key)))
+}
+
+pub fn process_end_run_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
+    Some(Box::pin(send_end_run_event(service_url, api_key)))
 }
 
 pub async fn run_server(
@@ -111,13 +115,14 @@ pub async fn run_server(
         };
 
         let result = match command {
-            "log" => process_log_command(&service_url, &api_key, object),
-            "alert" => process_alert_command(&service_url, &api_key, object),
-            "start" => process_start_run_command(&service_url, &api_key),
             "stop" => {
                 cancellation_token.cancel();
                 return Ok(());
             }
+            "log" => process_log_command(&service_url, &api_key, object),
+            "alert" => process_alert_command(&service_url, &api_key, object),
+            "start" => process_start_run_command(&service_url, &api_key),
+            "end" => process_end_run_command(&service_url, &api_key),
             _ => {
                 eprintln!("Invalid command: {}", command);
                 None

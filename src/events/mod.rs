@@ -64,6 +64,22 @@ pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<()
     result
 }
 
+pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<()> {
+    info!("Finishing pipeline run...");
+
+    let end_entry = json!({
+        "message": "[CLI] Finishing pipeline run",
+        "process_type": "pipeline",
+        "process_status": "finished_run",
+        "event_type": "process_status"
+    });
+
+    let result = send_http_event(service_url, api_key, &end_entry).await;
+
+    info!("Ended pipeline run successfully...");
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

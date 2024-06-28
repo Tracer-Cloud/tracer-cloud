@@ -11,8 +11,8 @@ mod tracer_client;
 use anyhow::{Context, Result};
 use clap::Parser;
 use daemon_communication::client::{
-    send_alert_request, send_log_request, send_setup_request, send_start_run_request,
-    send_stop_request, Cli, Commands,
+    send_alert_request, send_end_run_request, send_log_request, send_setup_request,
+    send_start_run_request, send_stop_request, Cli, Commands,
 };
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
@@ -59,6 +59,7 @@ pub async fn run_cli(commands: Commands) -> Result<()> {
         Commands::Alert { message } => send_alert_request(SOCKET_PATH, message).await,
         Commands::Stop => send_stop_request(SOCKET_PATH).await,
         Commands::Start => send_start_run_request(SOCKET_PATH).await,
+        Commands::End => send_end_run_request(SOCKET_PATH).await,
         _ => {
             println!("Command not implemented yet");
         }
@@ -73,7 +74,7 @@ fn clean_up_after_daemon() -> Result<()> {
     Ok(())
 }
 
-fn print_config_info () -> Result<()> {
+fn print_config_info() -> Result<()> {
     let config = ConfigManager::load_config().context("Failed to load config")?;
     println!("Service URL: {}", config.service_url);
     println!("API Key: {}", config.api_key);
