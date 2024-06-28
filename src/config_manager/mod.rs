@@ -28,7 +28,8 @@ impl ConfigManager {
             api_key,
             process_polling_interval_ms: PROCESS_POLLING_INTERVAL_MS,
             batch_submission_interval_ms: BATCH_SUBMISSION_INTERVAL_MS,
-            service_url: std::env::var("TRACER_SERVICE_URL").unwrap_or_else(|_| DEFAULT_SERVICE_URL.to_string()),
+            service_url: std::env::var("TRACER_SERVICE_URL")
+                .unwrap_or_else(|_| DEFAULT_SERVICE_URL.to_string()),
             targets: targets::TARGETS.iter().map(|&s| s.to_string()).collect(),
         };
 
