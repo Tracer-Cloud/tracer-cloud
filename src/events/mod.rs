@@ -22,31 +22,13 @@ impl std::fmt::Display for EventStatus {
     }
 }
 
-pub async fn send_log_event(
-    service_url: &str,
-    api_key: &str,
-    status: EventStatus,
-    message: &str,
-) -> Result<()> {
-    let log_entry = json!({"logs": [{
-        "message": message,
-        "process_type": "pipeline",
-        "process_status": status.to_string(),
-        "event_type": "process_status"
-    }]});
-
-    send_http_event(service_url, api_key, &log_entry)
-        .await
-        .context("Failed to send HTTP event")
-}
-
 pub async fn send_message_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
-    let log_entry = json!({"logs": [{
+    let log_entry = json!({
         "message": message,
         "process_type": "pipeline",
         "process_status": "new_run",
         "event_type": "process_status"
-    }]});
+    });
 
     send_http_event(service_url, api_key, &log_entry)
         .await
@@ -54,12 +36,12 @@ pub async fn send_message_event(service_url: &str, api_key: &str, message: Strin
 }
 
 pub async fn send_alert_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
-    let alert_entry = json!({"logs": [{
+    let alert_entry = json!({
         "message": message,
         "process_type": "pipeline",
         "process_status": "alert",
         "event_type": "process_status"
-    }]});
+    });
 
     send_http_event(service_url, api_key, &alert_entry)
         .await
@@ -69,12 +51,12 @@ pub async fn send_alert_event(service_url: &str, api_key: &str, message: String)
 pub async fn send_init_event(service_url: &str, api_key: &str) -> Result<()> {
     info!("Starting new pipeline...");
 
-    let init_entry = json!({"logs": [{
+    let init_entry = json!({
         "message": "[CLI] Starting new pipeline run",
         "process_type": "pipeline",
         "process_status": "new_run",
         "event_type": "process_status"
-    }]});
+    });
 
     let result = send_http_event(service_url, api_key, &init_entry).await;
 

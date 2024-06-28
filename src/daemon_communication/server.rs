@@ -60,6 +60,9 @@ pub async fn run_server(
     tracer_client: Arc<Mutex<TracerClient>>,
     socket_path: &str,
 ) -> Result<(), anyhow::Error> {
+    if std::fs::metadata(socket_path).is_ok() {
+        std::fs::remove_file(socket_path).expect("Failed to remove existing socket file");
+    }
     let listener = UnixListener::bind(socket_path).expect("Failed to bind to unix socket");
 
     loop {

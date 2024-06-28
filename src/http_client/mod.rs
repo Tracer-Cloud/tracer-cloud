@@ -32,7 +32,12 @@ async fn record_all_outgoing_http_calls(
 }
 
 pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> Result<()> {
-    let request_body = json!(logs);
+    // Log request body
+    let logs_array = match logs {
+        Value::Array(_) => logs.clone(),
+        _ => json!([logs]),
+    };
+    let request_body = json!({ "logs": logs_array });
     record_all_outgoing_http_calls(service_url, api_key, &request_body).await?;
 
     // Send request
