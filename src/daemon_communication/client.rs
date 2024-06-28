@@ -14,21 +14,21 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     Setup { api_key: String },
     Log { message: String },
     Alert { message: String },
     Init,
+    Cleanup,
+    Stop,
     Update,
-    Metrics,
-    Info,
-    Tool { name: String, version: String },
+    Start,
     End,
     Version,
 }
 
-async fn send_setup_request(socket_path: &str, api_key: String) {
+pub async fn send_setup_request(socket_path: &str, api_key: String) {
     let mut socket = UnixStream::connect(socket_path)
         .await
         .expect("Failed to connect to unix socket");
@@ -44,7 +44,7 @@ async fn send_setup_request(socket_path: &str, api_key: String) {
         .expect("Failed to connect to the daemon");
 }
 
-async fn send_log_request(socket_path: &str, message: String) {
+pub async fn send_log_request(socket_path: &str, message: String) {
     let mut socket = UnixStream::connect(socket_path)
         .await
         .expect("Failed to connect to unix socket");
@@ -60,7 +60,7 @@ async fn send_log_request(socket_path: &str, message: String) {
         .expect("Failed to connect to the daemon");
 }
 
-async fn send_alert_request(socket_path: &str, message: String) {
+pub async fn send_alert_request(socket_path: &str, message: String) {
     let mut socket = UnixStream::connect(socket_path)
         .await
         .expect("Failed to connect to unix socket");
@@ -76,12 +76,27 @@ async fn send_alert_request(socket_path: &str, message: String) {
         .expect("Failed to connect to the daemon");
 }
 
-async fn send_init_request(socket_path: &str) {
+pub async fn send_stop_request(socket_path: &str) {
     let mut socket = UnixStream::connect(socket_path)
         .await
         .expect("Failed to connect to unix socket");
     let start_request = json!({
-            "command": "init"
+            "command": "stop"
+    });
+    let stop_request_json =
+        serde_json::to_string(&start_request).expect("Failed to serialize start request");
+    socket
+        .write_all(stop_request_json.as_bytes())
+        .await
+        .expect("Failed to connect to the daemon");
+}
+
+pub async fn send_start_run_request(socket_path: &str) {
+    let mut socket = UnixStream::connect(socket_path)
+        .await
+        .expect("Failed to connect to unix socket");
+    let start_request = json!({
+            "command": "start"
     });
     let start_request_json =
         serde_json::to_string(&start_request).expect("Failed to serialize start request");
@@ -89,18 +104,4 @@ async fn send_init_request(socket_path: &str) {
         .write_all(start_request_json.as_bytes())
         .await
         .expect("Failed to connect to the daemon");
-}
-
-pub async fn parse_input(socket_path: &str) {
-    let cli = Cli::parse();
-
-    match cli.command {
-        Commands::Setup { api_key } => send_setup_request(socket_path, api_key).await,
-        Commands::Log { message } => send_log_request(socket_path, message).await,
-        Commands::Alert { message } => send_alert_request(socket_path, message).await,
-        Commands::Init => send_init_request(socket_path).await,
-        _ => {
-            println!("Command not implemented yet");
-        }
-    };
 }

@@ -1,10 +1,12 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
+use anyhow::Ok;
 use serde_json::Value;
 use tokio::{io::AsyncReadExt, net::UnixListener, sync::Mutex};
+use tokio_util::sync::CancellationToken;
 
 use crate::{
-    events::{send_alert_event, send_init_event, send_message_event},
+    events::{send_alert_event, send_log_event, send_start_run_event},
     tracer_client::TracerClient,
 };
 
@@ -36,7 +38,7 @@ pub fn process_log_command<'a>(
     };
 
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
-    Some(Box::pin(send_message_event(service_url, api_key, message)))
+    Some(Box::pin(send_log_event(service_url, api_key, message)))
 }
 
 pub fn process_alert_command<'a>(
@@ -52,13 +54,17 @@ pub fn process_alert_command<'a>(
     Some(Box::pin(send_alert_event(service_url, api_key, message)))
 }
 
-pub fn process_init_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
-    Some(Box::pin(send_init_event(service_url, api_key)))
+pub fn process_start_run_command<'a>(
+    service_url: &'a str,
+    api_key: &'a str,
+) -> ProcessOutput<'a> {
+    Some(Box::pin(send_start_run_event(service_url, api_key)))
 }
 
 pub async fn run_server(
     tracer_client: Arc<Mutex<TracerClient>>,
     socket_path: &str,
+    cancellation_token: CancellationToken
 ) -> Result<(), anyhow::Error> {
     if std::fs::metadata(socket_path).is_ok() {
         std::fs::remove_file(socket_path).expect("Failed to remove existing socket file");
@@ -110,7 +116,11 @@ pub async fn run_server(
         let result = match command {
             "log" => process_log_command(&service_url, &api_key, object),
             "alert" => process_alert_command(&service_url, &api_key, object),
-            "init" => process_init_command(&service_url, &api_key),
+            "start" => process_start_run_command(&service_url, &api_key),
+            "stop" => {
+                cancellation_token.cancel();
+                return Ok(())
+            }
             _ => {
                 eprintln!("Invalid command: {}", command);
                 None

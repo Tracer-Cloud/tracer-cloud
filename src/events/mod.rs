@@ -22,11 +22,11 @@ impl std::fmt::Display for EventStatus {
     }
 }
 
-pub async fn send_message_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
+pub async fn send_log_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
     let log_entry = json!({
         "message": message,
         "process_type": "pipeline",
-        "process_status": "new_run",
+        "process_status": "run_status_message",
         "event_type": "process_status"
     });
 
@@ -48,7 +48,7 @@ pub async fn send_alert_event(service_url: &str, api_key: &str, message: String)
         .context("Failed to send HTTP event")
 }
 
-pub async fn send_init_event(service_url: &str, api_key: &str) -> Result<()> {
+pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<()> {
     info!("Starting new pipeline...");
 
     let init_entry = json!({
@@ -62,6 +62,7 @@ pub async fn send_init_event(service_url: &str, api_key: &str) -> Result<()> {
 
     info!("Started pipeline run successfully...");
     result
+
 }
 
 #[cfg(test)]
@@ -73,7 +74,7 @@ mod tests {
     #[tokio::test]
     async fn test_event_pipeline_run_start_new() -> Result<(), Error> {
         let config = ConfigManager::load_config().context("Failed to load config")?;
-        let result = send_init_event(&config.service_url.clone(), &config.api_key.clone()).await;
+        let result = send_start_run_event(&config.service_url.clone(), &config.api_key.clone()).await;
 
         //     //     assert!(result.is_ok(), "Expected success, but got an error");
 
