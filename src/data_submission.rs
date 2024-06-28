@@ -30,7 +30,7 @@ pub async fn submit_batched_data(
             http_client.get_api_key()
         );
 
-        let data = json!({ "logs": logs.get_events() });
+        let data = json!(logs.get_events());
 
         info!("Payload: {:#?}", data);
 
