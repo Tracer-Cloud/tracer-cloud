@@ -20,10 +20,9 @@ const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     start_daemon()?;
-    run().await
+    run()
 }
 
 pub fn start_daemon() -> Result<()> {
@@ -38,6 +37,7 @@ pub fn start_daemon() -> Result<()> {
     Ok(())
 }
 
+#[tokio::main]
 pub async fn run() -> Result<()> {
     let config = ConfigManager::load_config().context("Failed to load config")?;
     let mut tracer_client =

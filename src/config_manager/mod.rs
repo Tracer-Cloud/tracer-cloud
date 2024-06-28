@@ -3,7 +3,7 @@ use serde::Deserialize;
 mod targets;
 
 const DEFAULT_API_KEY: &str = "ZZLKWZBTggarV3PZ5dCSQ";
-const SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
+const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
 const PROCESS_POLLING_INTERVAL_MS: u64 = 200;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 5000;
 
@@ -28,7 +28,8 @@ impl ConfigManager {
             api_key,
             process_polling_interval_ms: PROCESS_POLLING_INTERVAL_MS,
             batch_submission_interval_ms: BATCH_SUBMISSION_INTERVAL_MS,
-            service_url: SERVICE_URL.to_string(),
+            service_url: std::env::var("TRACER_SERVICE_URL")
+                .unwrap_or_else(|_| DEFAULT_SERVICE_URL.to_string()),
             targets: targets::TARGETS.iter().map(|&s| s.to_string()).collect(),
         };
 
@@ -46,7 +47,7 @@ mod tests {
         env::remove_var("TRACER_API_KEY");
         let config = ConfigManager::load_config().unwrap();
         assert_eq!(config.api_key, DEFAULT_API_KEY);
-        assert_eq!(config.service_url, SERVICE_URL);
+        assert_eq!(config.service_url, DEFAULT_SERVICE_URL);
         assert_eq!(
             config.process_polling_interval_ms,
             PROCESS_POLLING_INTERVAL_MS
