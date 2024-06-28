@@ -58,3 +58,15 @@ Request body: [{"event_type":"process_status","message":"[test_send_http_event] 
 [2024-06-28 10:59:45.950916 UTC] send_http_event: U-G_tv4EocmSq7R3ChbGu - https://app.tracer.bio/api/data-collector-api
 Request body: {"logs":[{"attributes":null,"event_status":"test_event","event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_type":"pipeline","timestamp":1719572385},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":26150490214,"disk_total_space":245107195904,"disk_used_space":218956705690,"disk_utilization":89.33099857898817}},{"Macintosh HD":{"disk_available_space":26150490214,"disk_total_space":245107195904,"disk_used_space":218956705690,"disk_utilization":89.33099857898817}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_status":"metric_event","event_type":"process_status","message":"[2024-06-28 10:59:45.950847 UTC] System's resources metric","process_type":"pipeline","timestamp":1719572385}]}
 ----------
+[2024-06-28 11:08:21.004586 UTC] send_http_event: U-G_tv4EocmSq7R3ChbGu - http://localhost:3000/api/data-collector-api
+Request body: {"event_type":"process_status","message":"[shipping] Test log message from the test suite","process_status":"new_run","process_type":"pipeline"}
+----------
+[2024-06-28 11:08:21.004585 UTC] send_http_event: U-G_tv4EocmSq7R3ChbGu - http://localhost:3000/api/data-collector-api
+Request body: {"event_type":"process_status","message":"[CLI] Starting pipeline run","process_status":"new_run","process_type":"pipeline"}
+----------
+[2024-06-28 11:08:21.004847 UTC] send_http_event: U-G_tv4EocmSq7R3ChbGu - http://localhost:3000/api/data-collector-api
+Request body: [{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]
+----------
+[2024-06-28 11:08:21.340352 UTC] send_http_event: U-G_tv4EocmSq7R3ChbGu - http://localhost:3000/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_status":"test_event","event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_type":"pipeline","timestamp":1719572901},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":23600398438,"disk_total_space":245107195904,"disk_used_space":221506797466,"disk_utilization":90.37139715504581}},{"Macintosh HD":{"disk_available_space":23600398438,"disk_total_space":245107195904,"disk_used_space":221506797466,"disk_utilization":90.37139715504581}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_status":"metric_event","event_type":"process_status","message":"[2024-06-28 11:08:21.340143 UTC] System's resources metric","process_type":"pipeline","timestamp":1719572901}]}
+----------
