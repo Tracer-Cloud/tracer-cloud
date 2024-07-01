@@ -6,7 +6,7 @@ const DEFAULT_API_KEY: &str = "dIdd4HI9ixcQtw7xsulnv";
 const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
 // const DEFAULT_SERVICE_URL: &str = "http://localhost:3000/api/data-collector-api";
 
-const PROCESS_POLLING_INTERVAL_MS: u64 = 20;
+const PROCESS_POLLING_INTERVAL_MS: u64 = 10;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 5000;
 
 #[derive(Deserialize, Clone, Debug)]
