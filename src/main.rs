@@ -100,10 +100,10 @@ fn main() -> Result<()> {
         } => {
             let mut current_config = ConfigManager::load_config();
             if let Some(api_key) = api_key {
-                current_config.api_key = api_key.clone();
+                current_config.api_key.clone_from(api_key);
             }
             if let Some(service_url) = service_url {
-                current_config.service_url = service_url.clone();
+                current_config.service_url.clone_from(service_url);
             }
             ConfigManager::save_config(&current_config)?;
             print_config_info()?;
