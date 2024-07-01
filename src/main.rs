@@ -186,7 +186,7 @@ mod tests {
     use config_manager::ConfigFile;
 
     fn load_test_config() -> ConfigFile {
-        ConfigManager::load_config()
+        ConfigManager::load_default_config()
     }
 
     #[tokio::test]

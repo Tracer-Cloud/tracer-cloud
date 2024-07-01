@@ -40,7 +40,7 @@ impl ConfigManager {
         Ok(config)
     }
 
-    fn load_default_config() -> ConfigFile {
+    pub fn load_default_config() -> ConfigFile {
         let config = ConfigFile {
             api_key: DEFAULT_API_KEY.to_string(),
             process_polling_interval_ms: PROCESS_POLLING_INTERVAL_MS,
@@ -89,7 +89,7 @@ mod tests {
     fn test_default_config() {
         env::remove_var("TRACER_API_KEY");
         env::remove_var("TRACER_SERVICE_URL");
-        let config = ConfigManager::load_config();
+        let config = ConfigManager::load_default_config();
         assert_eq!(config.api_key, DEFAULT_API_KEY);
         assert_eq!(config.service_url, DEFAULT_SERVICE_URL);
         assert_eq!(

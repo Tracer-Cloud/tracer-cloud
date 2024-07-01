@@ -106,7 +106,7 @@ mod tests {
         let _ = env_logger::builder().is_test(true).try_init();
 
         // Load configuration
-        let config = ConfigManager::load_config();
+        let config = ConfigManager::load_default_config();
         let api_key = config.api_key.clone(); // Cloning here to avoid moving
         let service_url = config.service_url.clone(); // Cloning here to avoid moving
 
