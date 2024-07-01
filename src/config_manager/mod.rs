@@ -7,15 +7,13 @@ mod targets;
 const DEFAULT_API_KEY: &str = "dIdd4HI9ixcQtw7xsulnv";
 const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
 const DEFAULT_CONFIG_FILE_LOCATION_FROM_HOME: &str = ".config/tracer/tracer.toml";
-// const DEFAULT_SERVICE_URL: &str = "http://localhost:3000/api/data-collector-api";
-
-const PROCESS_POLLING_INTERVAL_MS: u64 = 10;
+const PROCESS_POLLING_INTERVAL_US: u64 = 1000;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 5000;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ConfigFile {
     pub api_key: String,
-    pub process_polling_interval_ms: u64,
+    pub process_polling_interval_us: u64,
     pub batch_submission_interval_ms: u64,
     pub service_url: String,
     pub targets: Vec<String>,
@@ -45,7 +43,7 @@ impl ConfigManager {
     fn load_default_config() -> ConfigFile {
         let config = ConfigFile {
             api_key: DEFAULT_API_KEY.to_string(),
-            process_polling_interval_ms: PROCESS_POLLING_INTERVAL_MS,
+            process_polling_interval_us: PROCESS_POLLING_INTERVAL_US,
             batch_submission_interval_ms: BATCH_SUBMISSION_INTERVAL_MS,
             service_url: DEFAULT_SERVICE_URL.to_string(),
             targets: targets::TARGETS.iter().map(|&s| s.to_string()).collect(),
@@ -96,8 +94,8 @@ mod tests {
         assert_eq!(config.api_key, DEFAULT_API_KEY);
         assert_eq!(config.service_url, DEFAULT_SERVICE_URL);
         assert_eq!(
-            config.process_polling_interval_ms,
-            PROCESS_POLLING_INTERVAL_MS
+            config.process_polling_interval_us,
+            PROCESS_POLLING_INTERVAL_US
         );
         assert_eq!(
             config.batch_submission_interval_ms,

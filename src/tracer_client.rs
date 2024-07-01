@@ -34,7 +34,7 @@ impl TracerClient {
             // updated values
             system: System::new_all(),
             last_sent: None,
-            interval: Duration::from_millis(config.process_polling_interval_ms),
+            interval: Duration::from_micros(config.process_polling_interval_us),
             // Sub mannagers
             logs: EventRecorder::new(),
             process_watcher: ProcessWatcher::new(config.targets),
