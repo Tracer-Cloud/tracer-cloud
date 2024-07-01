@@ -5,7 +5,7 @@ mod targets;
 const DEFAULT_API_KEY: &str = "dIdd4HI9ixcQtw7xsulnv";
 const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
 
-const PROCESS_POLLING_INTERVAL_US: u64 = 100; // 0.1 milliseconds in microseconds
+const PROCESS_POLLING_INTERVAL_US: u64 = 1000;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 5000;
 
 #[derive(Deserialize, Clone, Debug)]
