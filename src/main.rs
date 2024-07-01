@@ -47,7 +47,7 @@ pub async fn run() -> Result<()> {
         let start_time = Instant::now();
         while start_time.elapsed() < Duration::from_secs(20) {
             monitor_processes_with_tracer_client(&mut tracer_client).await?;
-            sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
+            sleep(Duration::from_micros(config.process_polling_interval_us)).await;
         }
         tracer_client.submit_batched_data().await?;
     }
