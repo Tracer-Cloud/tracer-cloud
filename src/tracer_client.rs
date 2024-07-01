@@ -71,4 +71,12 @@ impl TracerClient {
     pub fn refresh_sysinfo(&mut self) {
         self.system.refresh_all();
     }
+
+    pub fn get_service_url(&self) -> &str {
+        &self.service_url
+    }
+
+    pub fn get_api_key(&self) -> &str {
+        &self.api_key
+    }
 }

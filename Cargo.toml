@@ -6,13 +6,16 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.86"
 chrono = { version = "0.4.38", features = ["serde"] }
+clap = { version = "4.5.7", features = ["derive"] }
 daemonize = "0.5"
+homedir = "0.2.1"
 log = "0.4.21"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["std", "derive", "serde_derive"] }
 serde_json = "1.0.117"
 sysinfo = "0.30"
 tokio = { version = "1.38.0", features = ["full"] }
+tokio-util = "0.7.11"
 toml = "0.8.14"
 tracing = "0.1.40"
 
