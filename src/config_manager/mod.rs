@@ -54,23 +54,22 @@ impl ConfigManager {
     pub fn load_config() -> ConfigFile {
         let config_file_location = ConfigManager::get_config_path();
 
-        let config = if let Some(path) = config_file_location {
+        let mut config = if let Some(path) = config_file_location {
             ConfigManager::load_config_from_file(&path)
                 .unwrap_or_else(|_| ConfigManager::load_default_config())
         } else {
             ConfigManager::load_default_config()
         };
 
-        let api_key = std::env::var("TRACER_API_KEY").unwrap_or_else(|_| config.api_key.clone());
-
-        let service_url =
-            std::env::var("TRACER_SERVICE_URL").unwrap_or_else(|_| config.service_url.clone());
-
-        ConfigFile {
-            api_key,
-            service_url,
-            ..config
+        if let Ok(api_key) = std::env::var("TRACER_API_KEY") {
+            config.api_key = api_key;
         }
+
+        if let Ok(service_url) = std::env::var("TRACER_SERVICE_URL") {
+            config.service_url = service_url;
+        }
+
+        config
     }
 
     pub fn save_config(config: &ConfigFile) -> Result<()> {
