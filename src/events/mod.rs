@@ -88,7 +88,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_event_pipeline_run_start_new() -> Result<(), Error> {
-        let config = ConfigManager::load_config().context("Failed to load config")?;
+        let config = ConfigManager::load_config();
         let result =
             send_start_run_event(&config.service_url.clone(), &config.api_key.clone()).await;
 

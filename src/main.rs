@@ -11,8 +11,8 @@ mod tracer_client;
 use anyhow::{Context, Result};
 use clap::Parser;
 use daemon_communication::client::{
-    send_alert_request, send_end_run_request, send_log_request, send_setup_request,
-    send_start_run_request, send_stop_request, Cli, Commands,
+    send_alert_request, send_end_run_request, send_log_request, send_start_run_request,
+    send_stop_request, Cli, Commands,
 };
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
@@ -54,7 +54,6 @@ pub fn start_daemon() -> Result<()> {
 #[tokio::main]
 pub async fn run_cli(commands: Commands) -> Result<()> {
     match commands {
-        Commands::Setup { api_key } => send_setup_request(SOCKET_PATH, api_key).await,
         Commands::Log { message } => send_log_request(SOCKET_PATH, message).await,
         Commands::Alert { message } => send_alert_request(SOCKET_PATH, message).await,
         Commands::Stop => send_stop_request(SOCKET_PATH).await,
@@ -75,7 +74,7 @@ fn clean_up_after_daemon() -> Result<()> {
 }
 
 fn print_config_info() -> Result<()> {
-    let config = ConfigManager::load_config().context("Failed to load config")?;
+    let config = ConfigManager::load_config();
     println!("Service URL: {}", config.service_url);
     println!("API Key: {}", config.api_key);
     println!("Daemon version: {}", env!("CARGO_PKG_VERSION"));
@@ -85,7 +84,7 @@ fn print_config_info() -> Result<()> {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    match cli.command {
+    match &cli.command {
         Commands::Init => {
             let result = start_daemon();
             if result.is_err() {
@@ -95,6 +94,22 @@ fn main() -> Result<()> {
             run()?;
             clean_up_after_daemon()
         }
+        Commands::Setup {
+            api_key,
+            service_url,
+        } => {
+            let mut current_config = ConfigManager::load_config();
+            if let Some(api_key) = api_key {
+                current_config.api_key = api_key.clone();
+            }
+            if let Some(service_url) = service_url {
+                current_config.service_url = service_url.clone();
+            }
+            ConfigManager::save_config(&current_config)?;
+            print_config_info()?;
+            println!("Restart the daemon, if running, to apply the new configuration.");
+            Ok(())
+        }
         Commands::Cleanup => clean_up_after_daemon(),
         Commands::Info => print_config_info(),
         _ => run_cli(cli.command),
@@ -103,7 +118,7 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 pub async fn run() -> Result<()> {
-    let config = ConfigManager::load_config().context("Failed to load config")?;
+    let config = ConfigManager::load_config();
     let client = TracerClient::new(config.clone()).context("Failed to create TracerClient")?;
     let tracer_client = Arc::new(Mutex::new(client));
 
@@ -151,8 +166,6 @@ mod tests {
 
     fn load_test_config() -> ConfigFile {
         ConfigManager::load_config()
-            .context("Failed to load config")
-            .unwrap()
     }
 
     #[tokio::test]

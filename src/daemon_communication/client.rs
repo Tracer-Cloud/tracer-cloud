@@ -16,9 +16,16 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    Setup { api_key: String },
-    Log { message: String },
-    Alert { message: String },
+    Setup {
+        api_key: Option<String>,
+        service_url: Option<String>,
+    },
+    Log {
+        message: String,
+    },
+    Alert {
+        message: String,
+    },
     Init,
     Cleanup,
     Info,
@@ -27,22 +34,6 @@ pub enum Commands {
     Start,
     End,
     Version,
-}
-
-pub async fn send_setup_request(socket_path: &str, api_key: String) {
-    let mut socket = UnixStream::connect(socket_path)
-        .await
-        .expect("Failed to connect to unix socket");
-    let setup_request = json!({
-            "command": "setup",
-            "api_key": api_key
-    });
-    let setup_request_json =
-        serde_json::to_string(&setup_request).expect("Failed to serialize setup request");
-    socket
-        .write_all(setup_request_json.as_bytes())
-        .await
-        .expect("Failed to connect to the daemon");
 }
 
 pub async fn send_log_request(socket_path: &str, message: String) {
