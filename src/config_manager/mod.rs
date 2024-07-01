@@ -5,13 +5,13 @@ mod targets;
 const DEFAULT_API_KEY: &str = "dIdd4HI9ixcQtw7xsulnv";
 const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
 
-const PROCESS_POLLING_INTERVAL_US: u64 = 1000;
+const PROCESS_POLLING_INTERVAL_MS: u64 = 10000; // 10 seconds experiment
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct ConfigFile {
     pub api_key: String,
-    pub process_polling_interval_us: u64,
+    pub process_polling_interval_ms: u64,
     pub batch_submission_interval_ms: u64,
     pub service_url: String,
     pub targets: Vec<String>,
@@ -27,7 +27,7 @@ impl ConfigManager {
 
         let config = ConfigFile {
             api_key,
-            process_polling_interval_us: PROCESS_POLLING_INTERVAL_US,
+            process_polling_interval_ms: PROCESS_POLLING_INTERVAL_MS,
             batch_submission_interval_ms: BATCH_SUBMISSION_INTERVAL_MS,
             service_url: std::env::var("TRACER_SERVICE_URL")
                 .unwrap_or_else(|_| DEFAULT_SERVICE_URL.to_string()),
@@ -50,8 +50,8 @@ mod tests {
         assert_eq!(config.api_key, DEFAULT_API_KEY);
         assert_eq!(config.service_url, DEFAULT_SERVICE_URL);
         assert_eq!(
-            config.process_polling_interval_us,
-            PROCESS_POLLING_INTERVAL_US
+            config.process_polling_interval_ms,
+            PROCESS_POLLING_INTERVAL_MS
         );
         assert_eq!(
             config.batch_submission_interval_ms,
