@@ -13,7 +13,7 @@ const BATCH_SUBMISSION_INTERVAL_MS: u64 = 5000;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ConfigFile {
     pub api_key: String,
-    pub process_polling_interval_ms: u64,
+    pub process_polling_interval_us: u64,
     pub batch_submission_interval_ms: u64,
     pub service_url: String,
     pub targets: Vec<String>,
@@ -94,8 +94,8 @@ mod tests {
         assert_eq!(config.api_key, DEFAULT_API_KEY);
         assert_eq!(config.service_url, DEFAULT_SERVICE_URL);
         assert_eq!(
-            config.process_polling_interval_ms,
-            PROCESS_POLLING_INTERVAL_MS
+            config.process_polling_interval_us,
+            PROCESS_POLLING_INTERVAL_US
         );
         assert_eq!(
             config.batch_submission_interval_ms,
