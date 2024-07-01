@@ -77,6 +77,14 @@ fn print_config_info() -> Result<()> {
     let config = ConfigManager::load_config();
     println!("Service URL: {}", config.service_url);
     println!("API Key: {}", config.api_key);
+    println!(
+        "Process polling interval: {} ms",
+        config.process_polling_interval_ms
+    );
+    println!(
+        "Batch submission interval: {} ms",
+        config.batch_submission_interval_ms
+    );
     println!("Daemon version: {}", env!("CARGO_PKG_VERSION"));
     Ok(())
 }
