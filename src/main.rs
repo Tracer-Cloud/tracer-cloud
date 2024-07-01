@@ -53,7 +53,7 @@ pub fn start_daemon() -> Result<()> {
 
 #[tokio::main]
 pub async fn run_cli(commands: Commands) -> Result<()> {
-    match commands {
+    let value = match commands {
         Commands::Log { message } => send_log_request(SOCKET_PATH, message).await,
         Commands::Alert { message } => send_alert_request(SOCKET_PATH, message).await,
         Commands::Stop => send_stop_request(SOCKET_PATH).await,
@@ -61,8 +61,14 @@ pub async fn run_cli(commands: Commands) -> Result<()> {
         Commands::End => send_end_run_request(SOCKET_PATH).await,
         _ => {
             println!("Command not implemented yet");
+            Ok(())
         }
     };
+
+    if value.is_err() {
+        println!("Failed to send command to the daemon. Maybe the daemon is not running? If it's not, run `tracer init` to start the daemon.");
+    }
+
     Ok(())
 }
 
