@@ -1,6 +1,6 @@
-api_key = "bwoaLKcVG-k8obNcgt-a9"
+api_key = "<YOUR_API_KEY>"
 service_url = "https://app.tracer.bio/api/data-collector-api"
-process_polling_interval_ms = 200
+process_polling_interval_ms = 50
 batch_submission_interval_ms = 5000
 targets = [
     "STAR",
