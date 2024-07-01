@@ -50,7 +50,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_submit_batched_data() -> Result<()> {
-        let config = ConfigManager::load_config().context("Failed to load config")?;
+        let config = ConfigManager::load_config();
         let service_url = config.service_url.clone();
         let api_key = config.api_key.clone();
 
