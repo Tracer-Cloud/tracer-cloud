@@ -79,6 +79,7 @@ impl ProcessWatcher {
         };
 
         let start_time = Utc::now();
+
         let properties = json!({
             "tool_name": proc.name(),
             "tool_pid": pid.to_string(),

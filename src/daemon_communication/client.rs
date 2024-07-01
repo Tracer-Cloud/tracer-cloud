@@ -19,6 +19,8 @@ pub enum Commands {
     Setup {
         api_key: Option<String>,
         service_url: Option<String>,
+        polling_interval_ms: Option<u64>,
+        batch_submission_interval_ms: Option<u64>,
     },
     Log {
         message: String,
