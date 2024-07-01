@@ -6,7 +6,7 @@ const DEFAULT_API_KEY: &str = "dIdd4HI9ixcQtw7xsulnv";
 const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
 
 const PROCESS_POLLING_INTERVAL_MS: u64 = 10000; // 10 seconds experiment
-const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
+const BATCH_SUBMISSION_INTERVAL_MS: u64 = 20000;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct ConfigFile {
