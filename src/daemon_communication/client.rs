@@ -38,79 +38,72 @@ pub enum Commands {
     Version,
 }
 
-pub async fn send_log_request(socket_path: &str, message: String) {
-    let mut socket = UnixStream::connect(socket_path)
-        .await
-        .expect("Failed to connect to unix socket");
-    let start_request = json!({
+pub async fn send_log_request(socket_path: &str, message: String) -> Result<(), anyhow::Error> {
+    let mut socket = UnixStream::connect(socket_path).await?;
+
+    let log_request = json!({
             "command": "log",
             "message": message
     });
-    let start_request_json =
-        serde_json::to_string(&start_request).expect("Failed to serialize start request");
-    socket
-        .write_all(start_request_json.as_bytes())
-        .await
-        .expect("Failed to connect to the daemon");
+    let log_request_json =
+        serde_json::to_string(&log_request).expect("Failed to serialize log request");
+    socket.write_all(log_request_json.as_bytes()).await?;
+
+    Ok(())
 }
 
-pub async fn send_alert_request(socket_path: &str, message: String) {
-    let mut socket = UnixStream::connect(socket_path)
-        .await
-        .expect("Failed to connect to unix socket");
-    let start_request = json!({
+pub async fn send_alert_request(socket_path: &str, message: String) -> Result<(), anyhow::Error> {
+    let mut socket = UnixStream::connect(socket_path).await?;
+    let alert_request = json!({
             "command": "alert",
             "message": message
     });
-    let start_request_json =
-        serde_json::to_string(&start_request).expect("Failed to serialize start request");
-    socket
-        .write_all(start_request_json.as_bytes())
-        .await
-        .expect("Failed to connect to the daemon");
+    let alert_request_json =
+        serde_json::to_string(&alert_request).expect("Failed to serialize alrt request");
+    socket.write_all(alert_request_json.as_bytes()).await?;
+
+    Ok(())
 }
 
-pub async fn send_stop_request(socket_path: &str) {
-    let mut socket = UnixStream::connect(socket_path)
-        .await
-        .expect("Failed to connect to unix socket");
-    let start_request = json!({
+pub async fn send_stop_request(socket_path: &str) -> Result<(), anyhow::Error> {
+    let mut socket = UnixStream::connect(socket_path).await?;
+
+    let stop_request = json!({
             "command": "stop"
     });
+
     let stop_request_json =
-        serde_json::to_string(&start_request).expect("Failed to serialize start request");
-    socket
-        .write_all(stop_request_json.as_bytes())
-        .await
-        .expect("Failed to connect to the daemon");
+        serde_json::to_string(&stop_request).expect("Failed to serialize stop request");
+
+    socket.write_all(stop_request_json.as_bytes()).await?;
+
+    Ok(())
 }
 
-pub async fn send_start_run_request(socket_path: &str) {
-    let mut socket = UnixStream::connect(socket_path)
-        .await
-        .expect("Failed to connect to unix socket");
+pub async fn send_start_run_request(socket_path: &str) -> Result<(), anyhow::Error> {
+    let mut socket = UnixStream::connect(socket_path).await?;
+
     let start_request = json!({
             "command": "start"
     });
     let start_request_json =
         serde_json::to_string(&start_request).expect("Failed to serialize start request");
-    socket
-        .write_all(start_request_json.as_bytes())
-        .await
-        .expect("Failed to connect to the daemon");
+    socket.write_all(start_request_json.as_bytes()).await?;
+
+    Ok(())
 }
 
-pub async fn send_end_run_request(socket_path: &str) {
-    let mut socket = UnixStream::connect(socket_path)
-        .await
-        .expect("Failed to connect to unix socket");
-    let start_request = json!({
+pub async fn send_end_run_request(socket_path: &str) -> Result<(), anyhow::Error> {
+    let mut socket = UnixStream::connect(socket_path).await?;
+
+    let end_request = json!({
             "command": "end"
     });
-    let start_request_json =
-        serde_json::to_string(&start_request).expect("Failed to serialize start request");
-    socket
-        .write_all(start_request_json.as_bytes())
-        .await
-        .expect("Failed to connect to the daemon");
+
+    let end_request_json =
+        serde_json::to_string(&end_request).expect("Failed to serialize start request");
+
+    socket.write_all(end_request_json.as_bytes()).await?;
+
+    Ok(())
 }

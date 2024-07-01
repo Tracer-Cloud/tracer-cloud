@@ -20,7 +20,7 @@ impl SystemMetricsCollector {
 
         let cpu_usage = system.global_cpu_info().cpu_usage();
 
-        let disks = Disks::new_with_refreshed_list();
+        let disks: Disks = Disks::new_with_refreshed_list();
 
         let mut d_stats = vec![];
 
