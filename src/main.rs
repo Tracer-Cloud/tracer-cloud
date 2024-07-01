@@ -97,7 +97,7 @@ fn main() -> Result<()> {
         Commands::Setup {
             api_key,
             service_url,
-            polling_interval_us,
+            polling_interval_ms,
             batch_submission_interval_ms,
         } => {
             let mut current_config = ConfigManager::load_config();
@@ -107,8 +107,8 @@ fn main() -> Result<()> {
             if let Some(service_url) = service_url {
                 current_config.service_url.clone_from(service_url);
             }
-            if let Some(polling_interval_us) = polling_interval_us {
-                current_config.process_polling_interval_us = *polling_interval_us;
+            if let Some(polling_interval_ms) = polling_interval_ms {
+                current_config.process_polling_interval_ms = *polling_interval_ms;
             }
             if let Some(batch_submission_interval_ms) = batch_submission_interval_ms {
                 current_config.batch_submission_interval_ms = *batch_submission_interval_ms;
@@ -141,7 +141,7 @@ pub async fn run() -> Result<()> {
         let start_time = Instant::now();
         while start_time.elapsed() < Duration::from_millis(config.batch_submission_interval_ms) {
             monitor_processes_with_tracer_client(tracer_client.lock().await.borrow_mut()).await?;
-            sleep(Duration::from_micros(config.process_polling_interval_us)).await;
+            sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
             if cancellation_token.is_cancelled() {
                 break;
             }
