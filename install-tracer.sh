@@ -427,7 +427,7 @@ main() {
     send_event "start_installation" "Start Tracer installation for key: ${API_KEY}"
     make_temp_dir
     download_tracer
-    # setup_tracer_configuration_file
+    setup_tracer_configuration_file
 
     # set environment variable to the tracer API key
     export TRACER_API_KEY=$API_KEY

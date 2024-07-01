@@ -97,7 +97,7 @@ fn main() -> Result<()> {
         Commands::Setup {
             api_key,
             service_url,
-            polling_interval_ms,
+            process_polling_interval_ms,
             batch_submission_interval_ms,
         } => {
             let mut current_config = ConfigManager::load_config();
@@ -107,8 +107,8 @@ fn main() -> Result<()> {
             if let Some(service_url) = service_url {
                 current_config.service_url.clone_from(service_url);
             }
-            if let Some(polling_interval_ms) = polling_interval_ms {
-                current_config.process_polling_interval_ms = *polling_interval_ms;
+            if let Some(process_polling_interval_ms) = process_polling_interval_ms {
+                current_config.process_polling_interval_ms = *process_polling_interval_ms;
             }
             if let Some(batch_submission_interval_ms) = batch_submission_interval_ms {
                 current_config.batch_submission_interval_ms = *batch_submission_interval_ms;
