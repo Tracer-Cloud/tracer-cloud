@@ -1,8 +1,10 @@
 use anyhow::{Context, Result};
 
 use crate::{
-    config_manager::ConfigManager, events::send_daemon_start_event, PID_FILE, STDERR_FILE,
-    STDOUT_FILE,
+    config_manager::ConfigManager,
+    daemon_communication::client::{send_ping_request, send_refresh_config_request},
+    events::send_daemon_start_event,
+    PID_FILE, SOCKET_PATH, STDERR_FILE, STDOUT_FILE,
 };
 
 pub fn clean_up_after_daemon() -> Result<()> {
@@ -12,7 +14,7 @@ pub fn clean_up_after_daemon() -> Result<()> {
     Ok(())
 }
 
-pub fn print_config_info() -> Result<()> {
+pub async fn print_config_info() -> Result<()> {
     let config = ConfigManager::load_config();
     println!("Service URL: {}", config.service_url);
     println!("API Key: {}", config.api_key);
@@ -25,10 +27,22 @@ pub fn print_config_info() -> Result<()> {
         config.batch_submission_interval_ms
     );
     println!("Daemon version: {}", env!("CARGO_PKG_VERSION"));
+    let daemon_status = send_ping_request(SOCKET_PATH).await;
+    if daemon_status.is_ok() {
+        println!("Daemon status: Running");
+    } else {
+        println!("Daemon status: Stopped");
+    }
     Ok(())
 }
 
-pub fn setup_config(
+pub fn print_config_info_sync() -> Result<()> {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    runtime.block_on(print_config_info())?;
+    Ok(())
+}
+
+pub async fn setup_config(
     api_key: &Option<String>,
     service_url: &Option<String>,
     process_polling_interval_ms: &Option<u64>,
@@ -48,8 +62,8 @@ pub fn setup_config(
         current_config.batch_submission_interval_ms = *batch_submission_interval_ms;
     }
     ConfigManager::save_config(&current_config)?;
-    print_config_info()?;
-    println!("Restart the daemon, if running, to apply the new configuration.");
+    let _ = send_refresh_config_request(SOCKET_PATH).await;
+    print_config_info().await?;
     Ok(())
 }
 
@@ -60,8 +74,8 @@ pub async fn test_service_config() -> Result<()> {
 
     if result.is_err() {
         println!("Failed to test the service configuration! Please check the configuration and try again.");
-        println!();
-        print_config_info()?;
+        println!("{}", result.as_ref().unwrap_err());
+        print_config_info().await?;
         return result;
     }
 

@@ -42,6 +42,13 @@ impl TracerClient {
         })
     }
 
+    pub fn reload_config_file(&mut self, config: &ConfigFile) {
+        self.api_key = config.api_key.to_owned();
+        self.service_url = config.service_url.to_owned();
+        self.interval = Duration::from_millis(config.process_polling_interval_ms);
+        self.process_watcher.reload_targets(config.targets.clone());
+    }
+
     pub async fn submit_batched_data(&mut self) -> Result<()> {
         submit_batched_data(
             &self.api_key,

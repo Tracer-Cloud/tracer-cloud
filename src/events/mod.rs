@@ -83,8 +83,8 @@ pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<()> 
 pub async fn send_daemon_start_event(service_url: &str, api_key: &str) -> Result<()> {
     let daemon_start_entry: serde_json::Value = json!({
         "message": "[CLI] Starting daemon",
-        "process_type": "daemon_start",
-        "process_status": "start",
+        "process_type": "pipeline",
+        "process_status": "daemon_start",
         "event_type": "process_status"
     });
 
