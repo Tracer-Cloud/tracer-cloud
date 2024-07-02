@@ -80,6 +80,17 @@ pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<()> 
     result
 }
 
+pub async fn send_daemon_start_event(service_url: &str, api_key: &str) -> Result<()> {
+    let daemon_start_entry: serde_json::Value = json!({
+        "message": "[CLI] Starting daemon",
+        "process_type": "daemon_start",
+        "process_status": "start",
+        "event_type": "process_status"
+    });
+
+    send_http_event(service_url, api_key, &daemon_start_entry).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
