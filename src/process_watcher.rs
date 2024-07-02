@@ -86,8 +86,9 @@ impl ProcessWatcher {
             "tool_binary_path": p.exe(),
             "tool_cmd": p.cmd().join(" "),
             "start_timestamp": start_time.to_string(),
-            "tool_cpu_usage": proc.cpu_usage(),
-            "tool_memory_usage": proc.memory()
+            "process_cpu_utilization": proc.cpu_usage(),
+            "process_memory_usage": proc.memory(),
+            "process_memory_virtual": proc.virtual_memory()
         });
 
         event_logger.record_event(
