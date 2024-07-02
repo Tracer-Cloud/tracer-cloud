@@ -40,7 +40,7 @@ pub enum Commands {
     Version,
 }
 
-pub async fn send_log_request(socket_path: &str, message: String) -> Result<(), anyhow::Error> {
+pub async fn send_log_request(socket_path: &str, message: String) -> Result<()> {
     let mut socket = UnixStream::connect(socket_path).await?;
 
     let log_request = json!({
@@ -54,7 +54,7 @@ pub async fn send_log_request(socket_path: &str, message: String) -> Result<(), 
     Ok(())
 }
 
-pub async fn send_alert_request(socket_path: &str, message: String) -> Result<(), anyhow::Error> {
+pub async fn send_alert_request(socket_path: &str, message: String) -> Result<()> {
     let mut socket = UnixStream::connect(socket_path).await?;
     let alert_request = json!({
             "command": "alert",
@@ -67,7 +67,7 @@ pub async fn send_alert_request(socket_path: &str, message: String) -> Result<()
     Ok(())
 }
 
-pub async fn send_stop_request(socket_path: &str) -> Result<(), anyhow::Error> {
+pub async fn send_stop_request(socket_path: &str) -> Result<()> {
     let mut socket = UnixStream::connect(socket_path).await?;
 
     let stop_request = json!({
@@ -82,7 +82,7 @@ pub async fn send_stop_request(socket_path: &str) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-pub async fn send_start_run_request(socket_path: &str) -> Result<(), anyhow::Error> {
+pub async fn send_start_run_request(socket_path: &str) -> Result<()> {
     let mut socket = UnixStream::connect(socket_path).await?;
 
     let start_request = json!({
@@ -95,7 +95,7 @@ pub async fn send_start_run_request(socket_path: &str) -> Result<(), anyhow::Err
     Ok(())
 }
 
-pub async fn send_end_run_request(socket_path: &str) -> Result<(), anyhow::Error> {
+pub async fn send_end_run_request(socket_path: &str) -> Result<()> {
     let mut socket = UnixStream::connect(socket_path).await?;
 
     let end_request = json!({
@@ -106,6 +106,36 @@ pub async fn send_end_run_request(socket_path: &str) -> Result<(), anyhow::Error
         serde_json::to_string(&end_request).expect("Failed to serialize start request");
 
     socket.write_all(end_request_json.as_bytes()).await?;
+
+    Ok(())
+}
+
+pub async fn send_ping_request(socket_path: &str) -> Result<()> {
+    let mut socket = UnixStream::connect(socket_path).await?;
+
+    let ping_request = json!({
+            "command": "ping"
+    });
+
+    let ping_request_json =
+        serde_json::to_string(&ping_request).expect("Failed to serialize ping request");
+
+    socket.write_all(ping_request_json.as_bytes()).await?;
+
+    Ok(())
+}
+
+pub async fn send_refresh_config_request(socket_path: &str) -> Result<()> {
+    let mut socket = UnixStream::connect(socket_path).await?;
+
+    let setup_request = json!({
+            "command": "refresh_config"
+    });
+
+    let setup_request_json =
+        serde_json::to_string(&setup_request).expect("Failed to serialize setup request");
+
+    socket.write_all(setup_request_json.as_bytes()).await?;
 
     Ok(())
 }
@@ -229,6 +259,26 @@ mod tests {
             &listener,
             json!({
                 "command": "end"
+            })
+            .to_string()
+            .as_str(),
+        )
+        .await;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_send_ping_request() -> Result<()> {
+        let listener = setup_test_unix_listener();
+
+        send_ping_request(SOCKET_PATH).await?;
+
+        check_listener_value(
+            &listener,
+            json!({
+                "command": "ping"
             })
             .to_string()
             .as_str(),

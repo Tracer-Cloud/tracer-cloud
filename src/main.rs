@@ -18,12 +18,12 @@ use daemon_communication::client::{
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
 use nondaemon_commands::{
-    clean_up_after_daemon, print_config_info, setup_config, test_service_config_sync,
+    clean_up_after_daemon, print_config_info_sync, setup_config, test_service_config_sync,
 };
 use std::borrow::BorrowMut;
 use std::fs::File;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::{sleep, Duration, Instant};
 use tokio_util::sync::CancellationToken;
 
@@ -65,6 +65,20 @@ pub async fn run_daemon_client_command(commands: Commands) -> Result<()> {
         Commands::Stop => send_stop_request(SOCKET_PATH).await,
         Commands::Start => send_start_run_request(SOCKET_PATH).await,
         Commands::End => send_end_run_request(SOCKET_PATH).await,
+        Commands::Setup {
+            api_key,
+            service_url,
+            process_polling_interval_ms,
+            batch_submission_interval_ms,
+        } => {
+            setup_config(
+                &api_key,
+                &service_url,
+                &process_polling_interval_ms,
+                &batch_submission_interval_ms,
+            )
+            .await
+        }
         _ => {
             println!("Command not implemented yet");
             Ok(())
@@ -95,45 +109,41 @@ fn main() -> Result<()> {
             run()?;
             clean_up_after_daemon()
         }
-        Commands::Setup {
-            api_key,
-            service_url,
-            process_polling_interval_ms,
-            batch_submission_interval_ms,
-        } => setup_config(
-            api_key,
-            service_url,
-            process_polling_interval_ms,
-            batch_submission_interval_ms,
-        ),
         Commands::Test => {
             let _ = test_service_config_sync();
             Ok(())
         }
         Commands::Cleanup => clean_up_after_daemon(),
-        Commands::Info => print_config_info(),
+        Commands::Info => print_config_info_sync(),
         _ => run_daemon_client_command(cli.command),
     }
 }
 
 #[tokio::main]
 pub async fn run() -> Result<()> {
-    let config = ConfigManager::load_config();
-    let client = TracerClient::new(config.clone()).context("Failed to create TracerClient")?;
+    let raw_config = ConfigManager::load_config();
+    let client = TracerClient::new(raw_config.clone()).context("Failed to create TracerClient")?;
     let tracer_client = Arc::new(Mutex::new(client));
+    let config: Arc<RwLock<config_manager::ConfigFile>> = Arc::new(RwLock::new(raw_config));
 
     let cancellation_token = CancellationToken::new();
     tokio::spawn(run_server(
         tracer_client.clone(),
         SOCKET_PATH,
         cancellation_token.clone(),
+        config.clone(),
     ));
 
     while !cancellation_token.is_cancelled() {
         let start_time = Instant::now();
-        while start_time.elapsed() < Duration::from_millis(config.batch_submission_interval_ms) {
+        while start_time.elapsed()
+            < Duration::from_millis(config.read().await.batch_submission_interval_ms)
+        {
             monitor_processes_with_tracer_client(tracer_client.lock().await.borrow_mut()).await?;
-            sleep(Duration::from_millis(config.process_polling_interval_ms)).await;
+            sleep(Duration::from_millis(
+                config.read().await.process_polling_interval_ms,
+            ))
+            .await;
             if cancellation_token.is_cancelled() {
                 break;
             }

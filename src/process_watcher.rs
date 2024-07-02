@@ -114,4 +114,13 @@ impl ProcessWatcher {
 
         Ok(())
     }
+
+    pub fn reload_targets(&mut self, targets: Vec<String>) {
+        if targets == self.targets {
+            return;
+        }
+
+        self.targets = targets;
+        self.seen.clear();
+    }
 }
