@@ -35,6 +35,7 @@ pub enum Commands {
     Update,
     Start,
     End,
+    Test,
     Version,
 }
 

@@ -4,11 +4,12 @@ mod event_recorder;
 mod events;
 mod http_client;
 mod metrics;
+mod nondaemon_commands;
 mod process_watcher;
 mod submit_batched_data;
 mod tracer_client;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use daemon_communication::client::{
     send_alert_request, send_end_run_request, send_log_request, send_start_run_request,
@@ -16,6 +17,9 @@ use daemon_communication::client::{
 };
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
+use nondaemon_commands::{
+    clean_up_after_daemon, print_config_info, setup_config, test_service_config_sync,
+};
 use std::borrow::BorrowMut;
 use std::fs::File;
 use std::sync::Arc;
@@ -33,6 +37,8 @@ const STDERR_FILE: &str = "/tmp/tracerd.err";
 const SOCKET_PATH: &str = "/tmp/tracerd.sock";
 
 pub fn start_daemon() -> Result<()> {
+    test_service_config_sync()?;
+
     let daemon = Daemonize::new();
     daemon
         .pid_file(PID_FILE)
@@ -52,7 +58,7 @@ pub fn start_daemon() -> Result<()> {
 }
 
 #[tokio::main]
-pub async fn run_cli(commands: Commands) -> Result<()> {
+pub async fn run_daemon_client_command(commands: Commands) -> Result<()> {
     let value = match commands {
         Commands::Log { message } => send_log_request(SOCKET_PATH, message).await,
         Commands::Alert { message } => send_alert_request(SOCKET_PATH, message).await,
@@ -72,34 +78,15 @@ pub async fn run_cli(commands: Commands) -> Result<()> {
     Ok(())
 }
 
-fn clean_up_after_daemon() -> Result<()> {
-    std::fs::remove_file(PID_FILE).context("Failed to remove pid file")?;
-    std::fs::remove_file(STDOUT_FILE).context("Failed to remove stdout file")?;
-    std::fs::remove_file(STDERR_FILE).context("Failed to remove stderr file")?;
-    Ok(())
-}
-
-fn print_config_info() -> Result<()> {
-    let config = ConfigManager::load_config();
-    println!("Service URL: {}", config.service_url);
-    println!("API Key: {}", config.api_key);
-    println!(
-        "Process polling interval: {} ms",
-        config.process_polling_interval_ms
-    );
-    println!(
-        "Batch submission interval: {} ms",
-        config.batch_submission_interval_ms
-    );
-    println!("Daemon version: {}", env!("CARGO_PKG_VERSION"));
-    Ok(())
-}
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
         Commands::Init => {
+            let test_result = test_service_config_sync();
+            if test_result.is_err() {
+                return Ok(());
+            }
             let result = start_daemon();
             if result.is_err() {
                 println!("Failed to start daemon. Maybe the daemon is already running? If it's not, run `tracer cleanup` to clean up the previous daemon files.");
@@ -113,28 +100,19 @@ fn main() -> Result<()> {
             service_url,
             process_polling_interval_ms,
             batch_submission_interval_ms,
-        } => {
-            let mut current_config = ConfigManager::load_config();
-            if let Some(api_key) = api_key {
-                current_config.api_key.clone_from(api_key);
-            }
-            if let Some(service_url) = service_url {
-                current_config.service_url.clone_from(service_url);
-            }
-            if let Some(process_polling_interval_ms) = process_polling_interval_ms {
-                current_config.process_polling_interval_ms = *process_polling_interval_ms;
-            }
-            if let Some(batch_submission_interval_ms) = batch_submission_interval_ms {
-                current_config.batch_submission_interval_ms = *batch_submission_interval_ms;
-            }
-            ConfigManager::save_config(&current_config)?;
-            print_config_info()?;
-            println!("Restart the daemon, if running, to apply the new configuration.");
+        } => setup_config(
+            api_key,
+            service_url,
+            process_polling_interval_ms,
+            batch_submission_interval_ms,
+        ),
+        Commands::Test => {
+            let _ = test_service_config_sync();
             Ok(())
         }
         Commands::Cleanup => clean_up_after_daemon(),
         Commands::Info => print_config_info(),
-        _ => run_cli(cli.command),
+        _ => run_daemon_client_command(cli.command),
     }
 }
 
