@@ -92,6 +92,8 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
 
     if value.is_err() {
         println!("Failed to send command to the daemon. Maybe the daemon is not running? If it's not, run `tracer init` to start the daemon.");
+    } else {
+        println!("Command sent successfully.")
     }
 
     Ok(())
@@ -106,6 +108,7 @@ fn main() -> Result<()> {
             if test_result.is_err() {
                 return Ok(());
             }
+            println!("Starting daemon...");
             let result = start_daemon();
             if result.is_err() {
                 println!("Failed to start daemon. Maybe the daemon is already running? If it's not, run `tracer cleanup` to clean up the previous daemon files.");
@@ -115,10 +118,19 @@ fn main() -> Result<()> {
             clean_up_after_daemon()
         }
         Commands::Test => {
-            let _ = test_service_config_sync();
+            let result = test_service_config_sync();
+            if result.is_ok() {
+                println!("Tracer was able to successfully communicate with the API service.");
+            }
             Ok(())
         }
-        Commands::Cleanup => clean_up_after_daemon(),
+        Commands::Cleanup => {
+            let result = clean_up_after_daemon();
+            if result.is_ok() {
+                println!("Daemon files cleaned up successfully.");
+            }
+            result
+        },
         Commands::Info => print_config_info_sync(),
         _ => run_async_command(cli.command),
     }

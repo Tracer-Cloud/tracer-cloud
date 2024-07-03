@@ -37,6 +37,9 @@ pub enum Commands {
     Start,
     End,
     Test,
+    Tag {
+        tags: Vec<String>
+    },
     Version,
 }
 
