@@ -49,6 +49,15 @@ impl TracerClient {
         self.process_watcher.reload_targets(config.targets.clone());
     }
 
+    pub fn fill_logs_with_quick_commands(
+        &mut self,
+        quick_commands: Vec<crate::process_watcher::QuickCommandLog>,
+    ) -> Result<()> {
+        self.process_watcher
+            .fill_logs_with_quick_commands(quick_commands, &mut self.logs)?;
+        Ok(())
+    }
+
     pub async fn submit_batched_data(&mut self) -> Result<()> {
         submit_batched_data(
             &self.api_key,

@@ -40,6 +40,10 @@ pub enum Commands {
     Tag {
         tags: Vec<String>,
     },
+    ApplyBashrc,
+    LogQuickCommand {
+        command: String,
+    },
     Version,
 }
 

@@ -7,6 +7,7 @@ mod metrics;
 mod nondaemon_commands;
 mod process_watcher;
 mod submit_batched_data;
+mod task_wrapper;
 mod tracer_client;
 
 use anyhow::{Context, Ok, Result};
@@ -21,9 +22,12 @@ use nondaemon_commands::{
     clean_up_after_daemon, print_config_info_sync, setup_config, test_service_config_sync,
     update_tracer,
 };
+use process_watcher::QuickCommandLog;
 use std::borrow::BorrowMut;
+use std::env;
 use std::fs::File;
 use std::sync::Arc;
+use task_wrapper::{get_current_quick_commands, log_quick_command, setup_aliases};
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::{sleep, Duration, Instant};
 use tokio_util::sync::CancellationToken;
@@ -36,9 +40,11 @@ const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
 const SOCKET_PATH: &str = "/tmp/tracerd.sock";
+const WRAPPER_QUICK_FILE: &str = "/tmp/tracerbio_quick.log";
 
 const REPO_OWNER: &str = "davincios";
 const REPO_NAME: &str = "tracer-daemon";
+
 
 pub fn start_daemon() -> Result<()> {
     test_service_config_sync()?;
@@ -132,6 +138,11 @@ fn main() -> Result<()> {
             }
             result
         }
+        Commands::ApplyBashrc => setup_aliases(env::current_exe()?, vec![
+            "fastqc".to_string(),
+            "samtools".to_string()
+        ]),
+        Commands::LogQuickCommand { command } => log_quick_command(command),
         Commands::Info => print_config_info_sync(),
         _ => run_async_command(cli.command),
     }
@@ -157,7 +168,12 @@ pub async fn run() -> Result<()> {
         while start_time.elapsed()
             < Duration::from_millis(config.read().await.batch_submission_interval_ms)
         {
-            monitor_processes_with_tracer_client(tracer_client.lock().await.borrow_mut()).await?;
+            let quick_commands = get_current_quick_commands()?;
+            monitor_processes_with_tracer_client(
+                tracer_client.lock().await.borrow_mut(),
+                quick_commands,
+            )
+            .await?;
             sleep(Duration::from_millis(
                 config.read().await.process_polling_interval_ms,
             ))
@@ -178,10 +194,14 @@ pub async fn run() -> Result<()> {
     Ok(())
 }
 
-pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
+pub async fn monitor_processes_with_tracer_client(
+    tracer_client: &mut TracerClient,
+    quick_commands: Vec<QuickCommandLog>,
+) -> Result<()> {
     tracer_client.remove_completed_processes().await?;
     tracer_client.poll_processes().await?;
     tracer_client.refresh_sysinfo();
+    tracer_client.fill_logs_with_quick_commands(quick_commands)?;
     Ok(())
 }
 
@@ -199,7 +219,7 @@ mod tests {
     async fn test_monitor_processes_with_tracer_client() {
         let config = load_test_config();
         let mut tracer_client = TracerClient::new(config).unwrap();
-        let result = monitor_processes_with_tracer_client(&mut tracer_client).await;
+        let result = monitor_processes_with_tracer_client(&mut tracer_client, vec![]).await;
         assert!(result.is_ok());
     }
 }

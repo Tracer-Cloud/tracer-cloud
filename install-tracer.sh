@@ -413,6 +413,15 @@ setup_tracer_configuration_file() {
 }
 
 #-------------------------------------------------------------------------------
+#          NAME:  setup bashrc aliases
+#   DESCRIPTION:  The function to setup bashrc aliases, by running tracer
+#-------------------------------------------------------------------------------
+
+setup_bashrc_aliases() {
+    tracer apply-bashrc
+}
+
+#-------------------------------------------------------------------------------
 #          NAME:  main
 #   DESCRIPTION:  The main function
 #-------------------------------------------------------------------------------
@@ -428,6 +437,7 @@ main() {
     make_temp_dir
     download_tracer
     setup_tracer_configuration_file
+    setup_bashrc_aliases
 
     # set environment variable to the tracer API key
     export TRACER_API_KEY=$API_KEY
