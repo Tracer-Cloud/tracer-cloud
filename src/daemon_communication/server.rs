@@ -11,7 +11,10 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     config_manager::{ConfigFile, ConfigManager},
-    events::{send_alert_event, send_end_run_event, send_log_event, send_start_run_event},
+    events::{
+        send_alert_event, send_end_run_event, send_log_event, send_start_run_event,
+        send_update_tags_event,
+    },
     tracer_client::TracerClient,
 };
 
@@ -86,6 +89,25 @@ pub fn process_refresh_config_command<'a>(
     Some(Box::pin(fun(tracer_client, config, config_file)))
 }
 
+pub fn process_tag_command<'a>(
+    service_url: &'a str,
+    api_key: &'a str,
+    object: &serde_json::Map<String, serde_json::Value>,
+) -> ProcessOutput<'a> {
+    if !object.contains_key("tags") {
+        return None;
+    };
+
+    let tags_json = object.get("tags").unwrap().as_array().unwrap();
+
+    let tags: Vec<String> = tags_json
+        .iter()
+        .map(|tag| tag.as_str().unwrap().to_string())
+        .collect();
+
+    Some(Box::pin(send_update_tags_event(service_url, api_key, tags)))
+}
+
 pub async fn run_server(
     tracer_client: Arc<Mutex<TracerClient>>,
     socket_path: &str,
@@ -149,6 +171,7 @@ pub async fn run_server(
             "start" => process_start_run_command(&service_url, &api_key),
             "end" => process_end_run_command(&service_url, &api_key),
             "refresh_config" => process_refresh_config_command(&tracer_client, &config),
+            "tag" => process_tag_command(&service_url, &api_key, object),
             "ping" => None,
             _ => {
                 eprintln!("Invalid command: {}", command);

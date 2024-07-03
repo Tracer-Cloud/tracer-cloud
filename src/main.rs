@@ -13,7 +13,7 @@ use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use daemon_communication::client::{
     send_alert_request, send_end_run_request, send_log_request, send_start_run_request,
-    send_stop_request, Cli, Commands,
+    send_stop_request, send_update_tags_request, Cli, Commands,
 };
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
@@ -70,6 +70,7 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
         Commands::Start => send_start_run_request(SOCKET_PATH).await,
         Commands::End => send_end_run_request(SOCKET_PATH).await,
         Commands::Update => update_tracer().await,
+        Commands::Tag { tags } => send_update_tags_request(SOCKET_PATH, &tags).await,
         Commands::Setup {
             api_key,
             service_url,
@@ -130,7 +131,7 @@ fn main() -> Result<()> {
                 println!("Daemon files cleaned up successfully.");
             }
             result
-        },
+        }
         Commands::Info => print_config_info_sync(),
         _ => run_async_command(cli.command),
     }
