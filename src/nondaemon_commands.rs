@@ -1,10 +1,12 @@
-use anyhow::{Context, Result};
+use std::process::Command;
+
+use anyhow::{Context, Ok, Result};
 
 use crate::{
     config_manager::ConfigManager,
     daemon_communication::client::{send_ping_request, send_refresh_config_request},
     events::send_daemon_start_event,
-    PID_FILE, SOCKET_PATH, STDERR_FILE, STDOUT_FILE,
+    PID_FILE, REPO_NAME, REPO_OWNER, SOCKET_PATH, STDERR_FILE, STDOUT_FILE,
 };
 
 pub fn clean_up_after_daemon() -> Result<()> {
@@ -64,6 +66,34 @@ pub async fn setup_config(
     ConfigManager::save_config(&current_config)?;
     let _ = send_refresh_config_request(SOCKET_PATH).await;
     print_config_info().await?;
+    Ok(())
+}
+
+pub async fn update_tracer() -> Result<()> {
+    let octocrab = octocrab::instance();
+
+    let release = octocrab
+        .repos(REPO_OWNER, REPO_NAME)
+        .releases()
+        .get_latest()
+        .await?;
+
+    if release.tag_name == env!("CARGO_PKG_VERSION") {
+        println!("You are already using the latest version of Tracer.");
+        return Ok(());
+    }
+
+    let config = ConfigManager::load_config();
+
+    println!("Updating Tracer to version {}", release.tag_name);
+
+    let mut command = Command::new("bash");
+    command.arg("-c").arg(format!("curl -sSL https://raw.githubusercontent.com/davincios/tracer-daemon/main/install-tracer.sh | bash -s -- {} && . ~/.bashrc && tracer", config.api_key));
+
+    command
+        .status()
+        .context("Failed to update Tracer. Please try again.")?;
+
     Ok(())
 }
 
