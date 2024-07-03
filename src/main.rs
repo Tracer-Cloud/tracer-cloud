@@ -19,6 +19,7 @@ use daemon_communication::server::run_server;
 use daemonize::Daemonize;
 use nondaemon_commands::{
     clean_up_after_daemon, print_config_info_sync, setup_config, test_service_config_sync,
+    update_tracer,
 };
 use std::borrow::BorrowMut;
 use std::fs::File;
@@ -35,6 +36,9 @@ const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
 const SOCKET_PATH: &str = "/tmp/tracerd.sock";
+
+const REPO_OWNER: &str = "davincios";
+const REPO_NAME: &str = "tracer-daemon";
 
 pub fn start_daemon() -> Result<()> {
     test_service_config_sync()?;
@@ -58,13 +62,14 @@ pub fn start_daemon() -> Result<()> {
 }
 
 #[tokio::main]
-pub async fn run_daemon_client_command(commands: Commands) -> Result<()> {
+pub async fn run_async_command(commands: Commands) -> Result<()> {
     let value = match commands {
         Commands::Log { message } => send_log_request(SOCKET_PATH, message).await,
         Commands::Alert { message } => send_alert_request(SOCKET_PATH, message).await,
         Commands::Stop => send_stop_request(SOCKET_PATH).await,
         Commands::Start => send_start_run_request(SOCKET_PATH).await,
         Commands::End => send_end_run_request(SOCKET_PATH).await,
+        Commands::Update => update_tracer().await,
         Commands::Setup {
             api_key,
             service_url,
@@ -115,7 +120,7 @@ fn main() -> Result<()> {
         }
         Commands::Cleanup => clean_up_after_daemon(),
         Commands::Info => print_config_info_sync(),
-        _ => run_daemon_client_command(cli.command),
+        _ => run_async_command(cli.command),
     }
 }
 

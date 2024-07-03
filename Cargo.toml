@@ -1,6 +1,6 @@
 [package]
 name = "tracer"
-version = "0.0.48"
+version = "0.0.49"
 edition = "2021"
 
 [dependencies]
@@ -10,6 +10,7 @@ clap = { version = "4.5.7", features = ["derive"] }
 daemonize = "0.5"
 homedir = "0.2.1"
 log = "0.4.21"
+octocrab = "0.38.0"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["std", "derive", "serde_derive"] }
 serde_json = "1.0.117"
