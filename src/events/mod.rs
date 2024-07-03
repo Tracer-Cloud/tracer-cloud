@@ -91,6 +91,21 @@ pub async fn send_daemon_start_event(service_url: &str, api_key: &str) -> Result
     send_http_event(service_url, api_key, &daemon_start_entry).await
 }
 
+pub async fn send_update_tags_event(
+    service_url: &str,
+    api_key: &str,
+    tags: Vec<String>,
+) -> Result<()> {
+    let tags_entry = json!({
+        "tags": tags,
+        "process_type": "pipeline",
+        "process_status": "tag_update",
+        "event_type": "process_status"
+    });
+
+    send_http_event(service_url, api_key, &tags_entry).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

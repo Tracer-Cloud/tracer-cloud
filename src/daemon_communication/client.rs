@@ -37,6 +37,9 @@ pub enum Commands {
     Start,
     End,
     Test,
+    Tag {
+        tags: Vec<String>,
+    },
     Version,
 }
 
@@ -136,6 +139,22 @@ pub async fn send_refresh_config_request(socket_path: &str) -> Result<()> {
         serde_json::to_string(&setup_request).expect("Failed to serialize setup request");
 
     socket.write_all(setup_request_json.as_bytes()).await?;
+
+    Ok(())
+}
+
+pub async fn send_update_tags_request(socket_path: &str, tags: &Vec<String>) -> Result<()> {
+    let mut socket = UnixStream::connect(socket_path).await?;
+
+    let tag_request = json!({
+            "command": "tag",
+            "tags": tags
+    });
+
+    let tag_request_json =
+        serde_json::to_string(&tag_request).expect("Failed to serialize tag request");
+
+    socket.write_all(tag_request_json.as_bytes()).await?;
 
     Ok(())
 }
@@ -279,6 +298,48 @@ mod tests {
             &listener,
             json!({
                 "command": "ping"
+            })
+            .to_string()
+            .as_str(),
+        )
+        .await;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_send_refresh_config_request() -> Result<()> {
+        let listener = setup_test_unix_listener();
+
+        send_refresh_config_request(SOCKET_PATH).await?;
+
+        check_listener_value(
+            &listener,
+            json!({
+                "command": "refresh_config"
+            })
+            .to_string()
+            .as_str(),
+        )
+        .await;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_send_update_tags_request() -> Result<()> {
+        let listener = setup_test_unix_listener();
+        let tags = vec!["tag1".to_string(), "tag2".to_string(), "tag3".to_string()];
+
+        send_update_tags_request(SOCKET_PATH, &tags).await?;
+
+        check_listener_value(
+            &listener,
+            json!({
+                "command": "tag",
+                "tags": tags
             })
             .to_string()
             .as_str(),
