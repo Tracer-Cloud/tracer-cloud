@@ -115,6 +115,16 @@ impl ProcessWatcher {
                 ),
                 Some(properties),
             );
+
+            if !self.seen.contains_key(&quick_command.properties.tool_pid.parse().unwrap()) {
+                self.seen.insert(
+                    quick_command.properties.tool_pid.parse().unwrap(),
+                    Proc {
+                        name: quick_command.command,
+                        start_time: Utc::now(),
+                    },
+                );
+            }
         }
 
         Ok(())
