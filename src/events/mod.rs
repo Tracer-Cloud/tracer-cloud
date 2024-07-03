@@ -98,6 +98,7 @@ pub async fn send_update_tags_event(
 ) -> Result<()> {
     let tags_entry = json!({
         "tags": tags,
+        "message": "[CLI] Updating tags",
         "process_type": "pipeline",
         "process_status": "tag_update",
         "event_type": "process_status"
