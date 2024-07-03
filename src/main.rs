@@ -45,7 +45,6 @@ const WRAPPER_QUICK_FILE: &str = "/tmp/tracerbio_quick.log";
 const REPO_OWNER: &str = "davincios";
 const REPO_NAME: &str = "tracer-daemon";
 
-
 pub fn start_daemon() -> Result<()> {
     test_service_config_sync()?;
 
@@ -138,10 +137,10 @@ fn main() -> Result<()> {
             }
             result
         }
-        Commands::ApplyBashrc => setup_aliases(env::current_exe()?, vec![
-            "fastqc".to_string(),
-            "samtools".to_string()
-        ]),
+        Commands::ApplyBashrc => setup_aliases(
+            env::current_exe()?,
+            vec!["fastqc".to_string(), "samtools".to_string()],
+        ),
         Commands::LogQuickCommand { command } => log_quick_command(command),
         Commands::Info => print_config_info_sync(),
         _ => run_async_command(cli.command),

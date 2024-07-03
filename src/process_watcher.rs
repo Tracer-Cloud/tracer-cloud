@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
+use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 use sysinfo::{Pid, Process, System};
 
@@ -116,14 +117,14 @@ impl ProcessWatcher {
                 Some(properties),
             );
 
-            if !self.seen.contains_key(&quick_command.properties.tool_pid.parse().unwrap()) {
-                self.seen.insert(
-                    quick_command.properties.tool_pid.parse().unwrap(),
-                    Proc {
-                        name: quick_command.command,
-                        start_time: Utc::now(),
-                    },
-                );
+            if let Vacant(v) = self
+                .seen
+                .entry(quick_command.properties.tool_pid.parse().unwrap())
+            {
+                v.insert(Proc {
+                    name: quick_command.command,
+                    start_time: Utc::now(),
+                });
             }
         }
 

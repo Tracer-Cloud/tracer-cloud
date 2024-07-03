@@ -25,15 +25,24 @@ pub fn get_task_wrapper(current_tracer_exe_path: PathBuf, command_name: &str) ->
     )
 }
 
-pub fn rewrite_wrapper_bashrc_file(current_tracer_exe_path: PathBuf, commands: Vec<String>) -> Result<()> {
+pub fn rewrite_wrapper_bashrc_file(
+    current_tracer_exe_path: PathBuf,
+    commands: Vec<String>,
+) -> Result<()> {
     let path = homedir::get_my_home()?.unwrap();
 
     let mut bashrc_file = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(path.join(TRACER_BASH_RC_PATH))?;
 
-    for command in commands.into_iter().map(|command| format!("{}\n", get_task_wrapper(current_tracer_exe_path.clone(), &command))) {
+    for command in commands.into_iter().map(|command| {
+        format!(
+            "{}\n",
+            get_task_wrapper(current_tracer_exe_path.clone(), &command)
+        )
+    }) {
         bashrc_file.write_all(command.as_bytes()).unwrap();
     }
 
@@ -90,7 +99,7 @@ pub fn log_quick_command(command: &str) -> Result<()> {
                 tool_pid: "".to_string(),
                 tool_binary_path: "".to_string(),
                 tool_cmd: command.to_string(),
-                start_timestamp: chrono::Utc::now().to_rfc3339(), 
+                start_timestamp: chrono::Utc::now().to_rfc3339(),
                 process_cpu_utilization: 0.0,
                 process_memory_usage: 0,
                 process_memory_virtual: 0,
@@ -101,7 +110,10 @@ pub fn log_quick_command(command: &str) -> Result<()> {
     let log = json!(data).to_string();
 
     // log or append to a file
-    let mut file = OpenOptions::new().append(true).create(true).open(WRAPPER_QUICK_FILE)?;
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(WRAPPER_QUICK_FILE)?;
 
     file.write_all(format!("{}\n", log).as_bytes())?;
 
