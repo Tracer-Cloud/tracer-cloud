@@ -1,9 +1,10 @@
 api_key = "<YOUR_API_KEY>"
 service_url = "https://app.tracer.bio/api/data-collector-api"
-process_polling_interval_ms = 50
+process_polling_interval_ms = 20
 batch_submission_interval_ms = 5000
 targets = [
     "uptime",
+    "java -Xmx250m -Dfastqc.output_dir=. -XX:ParallelGCThreads=1 -Djava.awt.headless",
     "STAR",
     "bowtie2",
     "bwa",
