@@ -34,6 +34,10 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Update version in Cargo.toml
+        run: |
+          sed -i "s/^version = .*/version = \"${GITHUB_REF#refs\/tags\/}\"/" Cargo.toml
+          sed -i "s/^version = \"v/version = \"/" Cargo.toml
       - name: Set Perl environment variables
         if: runner.os == 'Windows'
         run: |
