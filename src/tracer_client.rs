@@ -49,12 +49,12 @@ impl TracerClient {
         self.process_watcher.reload_targets(config.targets.clone());
     }
 
-    pub fn fill_logs_with_quick_commands(
+    pub fn fill_logs_with_short_lived_processes(
         &mut self,
-        quick_commands: Vec<crate::process_watcher::QuickCommandLog>,
+        short_lived_processes: Vec<crate::process_watcher::ShortLivedProcessLog>,
     ) -> Result<()> {
         self.process_watcher
-            .fill_logs_with_quick_commands(quick_commands, &mut self.logs)?;
+            .fill_logs_with_short_lived_processes(short_lived_processes, &mut self.logs)?;
         Ok(())
     }
 

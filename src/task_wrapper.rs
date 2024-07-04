@@ -8,7 +8,7 @@ use std::{
 use sysinfo::System;
 
 use crate::{
-    process_watcher::{ProcessProperties, ProcessWatcher, QuickCommandLog},
+    process_watcher::{ProcessProperties, ProcessWatcher, ShortLivedProcessLog},
     WRAPPER_QUICK_FILE,
 };
 
@@ -17,7 +17,7 @@ const WRAPPER_SOURCE_COMMAND: &str = "source ~/.config/tracer/.bashrc";
 
 pub fn get_task_wrapper(current_tracer_exe_path: PathBuf, command_name: &str) -> String {
     format!(
-        "alias {}=\"{} & {} log-quick-command \\\"{}\\\"; wait\"\n",
+        "alias {}=\"{} & {} log-short-lived-processes \\\"{}\\\"; wait\"\n",
         command_name,
         command_name,
         current_tracer_exe_path.as_os_str().to_str().unwrap(),
@@ -79,19 +79,19 @@ pub fn setup_aliases(current_tracer_exe_path: PathBuf, commands: Vec<String>) ->
     Ok(())
 }
 
-pub fn log_quick_command(command: &str) -> Result<()> {
+pub fn log_short_lived_process(command: &str) -> Result<()> {
     let system = System::new();
 
     // find process with the same command
     let process = system.processes_by_name(command).last();
-    let data: QuickCommandLog = if let Some(process) = process {
-        QuickCommandLog {
+    let data: ShortLivedProcessLog = if let Some(process) = process {
+        ShortLivedProcessLog {
             command: command.to_string(),
             timestamp: chrono::Utc::now().to_rfc3339(),
             properties: ProcessWatcher::gather_process_data(&process.pid(), process),
         }
     } else {
-        QuickCommandLog {
+        ShortLivedProcessLog {
             command: command.to_string(),
             timestamp: chrono::Utc::now().to_rfc3339(),
             properties: ProcessProperties {
@@ -120,7 +120,7 @@ pub fn log_quick_command(command: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn get_current_quick_commands() -> Result<Vec<QuickCommandLog>> {
+pub fn get_current_short_lived_processes() -> Result<Vec<ShortLivedProcessLog>> {
     let file_result = OpenOptions::new()
         .read(true)
         .write(true)

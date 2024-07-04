@@ -41,7 +41,7 @@ pub enum Commands {
         tags: Vec<String>,
     },
     ApplyBashrc,
-    LogQuickCommand {
+    LogShortLivedProcess {
         command: String,
     },
     Version,

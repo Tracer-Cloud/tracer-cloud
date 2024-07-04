@@ -22,12 +22,12 @@ use nondaemon_commands::{
     clean_up_after_daemon, print_config_info_sync, setup_config, test_service_config_sync,
     update_tracer,
 };
-use process_watcher::QuickCommandLog;
+use process_watcher::ShortLivedProcessLog;
 use std::borrow::BorrowMut;
 use std::env;
 use std::fs::File;
 use std::sync::Arc;
-use task_wrapper::{get_current_quick_commands, log_quick_command, setup_aliases};
+use task_wrapper::{get_current_short_lived_processes, log_short_lived_process, setup_aliases};
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::{sleep, Duration, Instant};
 use tokio_util::sync::CancellationToken;
@@ -141,7 +141,7 @@ fn main() -> Result<()> {
             env::current_exe()?,
             vec!["fastqc".to_string(), "samtools".to_string()],
         ),
-        Commands::LogQuickCommand { command } => log_quick_command(command),
+        Commands::LogShortLivedProcess { command } => log_short_lived_process(command),
         Commands::Info => print_config_info_sync(),
         _ => run_async_command(cli.command),
     }
@@ -167,10 +167,10 @@ pub async fn run() -> Result<()> {
         while start_time.elapsed()
             < Duration::from_millis(config.read().await.batch_submission_interval_ms)
         {
-            let quick_commands = get_current_quick_commands()?;
+            let short_lived_processes = get_current_short_lived_processes()?;
             monitor_processes_with_tracer_client(
                 tracer_client.lock().await.borrow_mut(),
-                quick_commands,
+                short_lived_processes,
             )
             .await?;
             sleep(Duration::from_millis(
@@ -195,12 +195,12 @@ pub async fn run() -> Result<()> {
 
 pub async fn monitor_processes_with_tracer_client(
     tracer_client: &mut TracerClient,
-    quick_commands: Vec<QuickCommandLog>,
+    short_lived_processes: Vec<ShortLivedProcessLog>,
 ) -> Result<()> {
     tracer_client.remove_completed_processes().await?;
     tracer_client.poll_processes().await?;
     tracer_client.refresh_sysinfo();
-    tracer_client.fill_logs_with_quick_commands(quick_commands)?;
+    tracer_client.fill_logs_with_short_lived_processes(short_lived_processes)?;
     Ok(())
 }
 

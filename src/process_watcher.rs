@@ -33,7 +33,7 @@ pub struct ProcessProperties {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct QuickCommandLog {
+pub struct ShortLivedProcessLog {
     pub command: String,
     pub timestamp: String,
     pub properties: ProcessProperties,
@@ -101,28 +101,28 @@ impl ProcessWatcher {
         }
     }
 
-    pub fn fill_logs_with_quick_commands(
+    pub fn fill_logs_with_short_lived_processes(
         &mut self,
-        quick_commands: Vec<QuickCommandLog>,
+        short_lived_processes: Vec<ShortLivedProcessLog>,
         event_logger: &mut EventRecorder,
     ) -> Result<()> {
-        for quick_command in quick_commands {
-            let properties = json!(quick_command.properties);
+        for short_lived_process in short_lived_processes {
+            let properties = json!(short_lived_process.properties);
             event_logger.record_event(
                 EventType::ToolExecution,
                 format!(
-                    "[{}] Quick command: {}",
-                    quick_command.timestamp, quick_command.command
+                    "[{}] Short lived process: {}",
+                    short_lived_process.timestamp, short_lived_process.command
                 ),
                 Some(properties),
             );
 
             if let Vacant(v) = self
                 .seen
-                .entry(quick_command.properties.tool_pid.parse().unwrap())
+                .entry(short_lived_process.properties.tool_pid.parse().unwrap())
             {
                 v.insert(Proc {
-                    name: quick_command.command,
+                    name: short_lived_process.command,
                     start_time: Utc::now(),
                 });
             }
