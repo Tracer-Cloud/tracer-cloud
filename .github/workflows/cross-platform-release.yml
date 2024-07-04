@@ -16,8 +16,6 @@ jobs:
           sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
           sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
           sed -i.bak "s/^TRACER_VERSION=\"/TRACER_VERSION=\"${{github.ref_name}}\"/" install-tracer.sh
-      - name: Switching from HTTPS to SSH
-        run: git remote set-url origin ${{ secrets.ssh }}
       - name: Add files to commit
         run: git add Cargo.toml install-tracer.sh
       - name: Commit changes
