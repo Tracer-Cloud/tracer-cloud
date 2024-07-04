@@ -54,6 +54,11 @@ jobs:
           echo "PERL=$((where.exe perl)[0])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           echo "OPENSSL_SRC_PERL=$((where.exe perl)[0])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - uses: actions/checkout@v4
+      - name: Update version in Cargo.toml # The tagged commit is still an old one
+        run: |
+          sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
+          sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
+          sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{github.ref_name}}\"/" install-tracer.sh
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:
