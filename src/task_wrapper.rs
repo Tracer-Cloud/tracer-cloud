@@ -75,6 +75,7 @@ pub fn setup_aliases(current_tracer_exe_path: PathBuf, commands: Vec<String>) ->
     rewrite_wrapper_bashrc_file(current_tracer_exe_path, commands)?;
     modify_bashrc_file(".bashrc")?;
 
+    println!("Aliases setup successfully.");
     Ok(())
 }
 
@@ -108,5 +109,6 @@ pub async fn log_short_lived_process(socket_path: &str, command: &str) -> Result
 
     send_log_short_lived_process_request(socket_path, data).await?;
 
+    println!("Logged short lived process: {}", command);
     Ok(())
 }
