@@ -3,7 +3,10 @@ use crate::event_recorder::EventRecorder;
 use crate::event_recorder::EventType;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use serde::Deserialize;
+use serde::Serialize;
 use serde_json::json;
+use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 use sysinfo::{Pid, Process, System};
 
@@ -15,6 +18,25 @@ pub struct ProcessWatcher {
 pub struct Proc {
     name: String,
     start_time: DateTime<Utc>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ProcessProperties {
+    pub tool_name: String,
+    pub tool_pid: String,
+    pub tool_binary_path: String,
+    pub tool_cmd: String,
+    pub start_timestamp: String,
+    pub process_cpu_utilization: f32,
+    pub process_memory_usage: u64,
+    pub process_memory_virtual: u64,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ShortLivedProcessLog {
+    pub command: String,
+    pub timestamp: String,
+    pub properties: ProcessProperties,
 }
 
 impl ProcessWatcher {
@@ -58,6 +80,55 @@ impl ProcessWatcher {
         Ok(())
     }
 
+    pub fn gather_process_data(pid: &Pid, proc: &Process) -> ProcessProperties {
+        let start_time = Utc::now();
+
+        ProcessProperties {
+            tool_name: proc.name().to_owned(),
+            tool_pid: pid.to_string(),
+            tool_binary_path: proc
+                .exe()
+                .unwrap()
+                .as_os_str()
+                .to_str()
+                .unwrap()
+                .to_string(),
+            tool_cmd: proc.cmd().join(" "),
+            start_timestamp: start_time.to_string(),
+            process_cpu_utilization: proc.cpu_usage(),
+            process_memory_usage: proc.memory(),
+            process_memory_virtual: proc.virtual_memory(),
+        }
+    }
+
+    pub fn fill_logs_with_short_lived_process(
+        &mut self,
+        short_lived_process: ShortLivedProcessLog,
+        event_logger: &mut EventRecorder,
+    ) -> Result<()> {
+        let properties = json!(short_lived_process.properties);
+        event_logger.record_event(
+            EventType::ToolExecution,
+            format!(
+                "[{}] Short lived process: {}",
+                short_lived_process.timestamp, short_lived_process.command
+            ),
+            Some(properties),
+        );
+
+        if let Vacant(v) = self
+            .seen
+            .entry(short_lived_process.properties.tool_pid.parse().unwrap())
+        {
+            v.insert(Proc {
+                name: short_lived_process.command,
+                start_time: Utc::now(),
+            });
+        }
+
+        Ok(())
+    }
+
     fn add_new_process(
         &mut self,
         pid: Pid,
@@ -80,16 +151,7 @@ impl ProcessWatcher {
 
         let start_time = Utc::now();
 
-        let properties = json!({
-            "tool_name": proc.name(),
-            "tool_pid": pid.to_string(),
-            "tool_binary_path": p.exe(),
-            "tool_cmd": p.cmd().join(" "),
-            "start_timestamp": start_time.to_string(),
-            "process_cpu_utilization": proc.cpu_usage(),
-            "process_memory_usage": proc.memory(),
-            "process_memory_virtual": proc.virtual_memory()
-        });
+        let properties = json!(Self::gather_process_data(&pid, p));
 
         event_logger.record_event(
             EventType::ToolExecution,

@@ -7,6 +7,7 @@ mod metrics;
 mod nondaemon_commands;
 mod process_watcher;
 mod submit_batched_data;
+mod task_wrapper;
 mod tracer_client;
 
 use anyhow::{Context, Ok, Result};
@@ -22,8 +23,10 @@ use nondaemon_commands::{
     update_tracer,
 };
 use std::borrow::BorrowMut;
+use std::env;
 use std::fs::File;
 use std::sync::Arc;
+use task_wrapper::{log_short_lived_process, setup_aliases};
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::{sleep, Duration, Instant};
 use tokio_util::sync::CancellationToken;
@@ -85,6 +88,9 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
             )
             .await
         }
+        Commands::LogShortLivedProcess { command } => {
+            log_short_lived_process(SOCKET_PATH, &command).await
+        }
         _ => {
             println!("Command not implemented yet");
             Ok(())
@@ -132,6 +138,10 @@ fn main() -> Result<()> {
             }
             result
         }
+        Commands::ApplyBashrc => setup_aliases(
+            env::current_exe()?,
+            vec!["fastqc".to_string(), "samtools".to_string()],
+        ),
         Commands::Info => print_config_info_sync(),
         _ => run_async_command(cli.command),
     }

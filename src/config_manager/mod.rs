@@ -4,7 +4,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 mod targets;
 
-const DEFAULT_API_KEY: &str = "dIdd4HI9ixcQtw7xsulnv";
+const DEFAULT_API_KEY: &str = "EAjg7eHtsGnP3fTURcPz1";
 const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
 const DEFAULT_CONFIG_FILE_LOCATION_FROM_HOME: &str = ".config/tracer/tracer.toml";
 const PROCESS_POLLING_INTERVAL_MS: u64 = 50;

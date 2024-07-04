@@ -1,9 +1,9 @@
 // src/tracer_client.rs
-use crate::config_manager::ConfigFile;
 use crate::event_recorder::EventRecorder;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
 use crate::submit_batched_data::submit_batched_data;
+use crate::{config_manager::ConfigFile, process_watcher::ShortLivedProcessLog};
 use anyhow::Result;
 use std::time::{Duration, Instant};
 use sysinfo::System;
@@ -47,6 +47,15 @@ impl TracerClient {
         self.service_url.clone_from(&config.service_url);
         self.interval = Duration::from_millis(config.process_polling_interval_ms);
         self.process_watcher.reload_targets(config.targets.clone());
+    }
+
+    pub fn fill_logs_with_short_lived_process(
+        &mut self,
+        short_lived_process_log: ShortLivedProcessLog,
+    ) -> Result<()> {
+        self.process_watcher
+            .fill_logs_with_short_lived_process(short_lived_process_log, &mut self.logs)?;
+        Ok(())
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
