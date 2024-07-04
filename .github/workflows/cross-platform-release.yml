@@ -11,6 +11,19 @@ jobs:
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
+      - name: Update version in Cargo.toml
+        run: |
+          sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
+          sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
+          sed -i.bak "s/^TRACER_VERSION=\"/TRACER_VERSION=\"${{github.ref_name}}\"/" install-tracer.sh
+      - name: Switching from HTTPS to SSH
+        run: git remote set-url origin ${{ secrets.ssh }}
+      - name: Add files to commit
+        run: git add Cargo.toml install-tracer.sh
+      - name: Commit changes
+        run: git commit -m "Update version to ${{github.ref_name}}"
+      - name: Push changes
+        run: git push
       - uses: taiki-e/create-gh-release-action@v1.8.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -40,11 +53,6 @@ jobs:
           echo "PERL=$((where.exe perl)[0])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           echo "OPENSSL_SRC_PERL=$((where.exe perl)[0])" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - uses: actions/checkout@v4
-      - name: Update version in Cargo.toml
-        run: |
-          sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
-          sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-          sed -i.bak "s/^TRACER_VERSION=\"/TRACER_VERSION=\"${{github.ref_name}}\"/" install-tracer.sh
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:
