@@ -1,5 +1,6 @@
 pub const TARGETS: &[&str] = &[
     "uptime",
+    "java -Xmx250m -Dfastqc.output_dir=. -XX:ParallelGCThreads=1 -Djava.awt.headless",
     "STAR",
     "bowtie2",
     "bwa",
