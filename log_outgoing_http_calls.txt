@@ -61,3 +61,21 @@ Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http
 [2024-07-01T14:30:46.841693+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
 Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1719844246},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":22023240052,"disk_total_space":245107195904,"disk_used_space":223083955852,"disk_utilization":91.01485373745382}},{"Macintosh HD":{"disk_available_space":22023240052,"disk_total_space":245107195904,"disk_used_space":223083955852,"disk_utilization":91.01485373745382}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-07-01 14:30:46.841629 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1719844246}]}
 ----------
+[2024-07-04T12:27:19.226325+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"[CLI] Starting new pipeline run","process_status":"new_run","process_type":"pipeline"}]}
+----------
+[2024-07-04T12:27:19.226416+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
+----------
+[2024-07-04T12:27:19.575360+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1720096039},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":22103506104,"disk_total_space":245107195904,"disk_used_space":223003689800,"disk_utilization":90.98210641165461}},{"Macintosh HD":{"disk_available_space":22103506104,"disk_total_space":245107195904,"disk_used_space":223003689800,"disk_utilization":90.98210641165461}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-07-04 12:27:19.575288 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1720096039}]}
+----------
+[2024-07-04T15:15:18.998183+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"[CLI] Starting new pipeline run","process_status":"new_run","process_type":"pipeline"}]}
+----------
+[2024-07-04T15:15:18.998221+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
+----------
+[2024-07-04T15:15:19.428312+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1720106118},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":21170937912,"disk_total_space":245107195904,"disk_used_space":223936257992,"disk_utilization":91.36258001976738}},{"Macintosh HD":{"disk_available_space":21170937912,"disk_total_space":245107195904,"disk_used_space":223936257992,"disk_utilization":91.36258001976738}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-07-04 15:15:19.428240 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1720106119}]}
+----------
