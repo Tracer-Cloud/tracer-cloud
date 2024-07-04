@@ -24,7 +24,7 @@ jobs:
       - name: Commit changes
         run: git commit -m "Update version to ${{github.ref_name}}"
       - name: Push changes
-        run: git push
+        run: git push origin HEAD:main
       - uses: taiki-e/create-gh-release-action@v1.8.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
