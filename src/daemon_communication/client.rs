@@ -4,6 +4,8 @@ use clap::{Parser, Subcommand};
 use serde_json::json;
 use tokio::{io::AsyncWriteExt, net::UnixStream};
 
+use crate::process_watcher::ShortLivedProcessLog;
+
 #[derive(Parser)]
 #[clap(
     name = "tracer",
@@ -159,6 +161,25 @@ pub async fn send_update_tags_request(socket_path: &str, tags: &Vec<String>) -> 
         serde_json::to_string(&tag_request).expect("Failed to serialize tag request");
 
     socket.write_all(tag_request_json.as_bytes()).await?;
+
+    Ok(())
+}
+
+pub async fn send_log_short_lived_process_request(
+    socket_path: &str,
+    log: ShortLivedProcessLog,
+) -> Result<()> {
+    let mut socket = UnixStream::connect(socket_path).await?;
+
+    let log_request = json!({
+            "command": "log_short_lived_process",
+            "log": log
+    });
+
+    let log_request_json =
+        serde_json::to_string(&log_request).expect("Failed to serialize log request");
+
+    socket.write_all(log_request_json.as_bytes()).await?;
 
     Ok(())
 }

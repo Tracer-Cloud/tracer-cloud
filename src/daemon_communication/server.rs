@@ -15,26 +15,12 @@ use crate::{
         send_alert_event, send_end_run_event, send_log_event, send_start_run_event,
         send_update_tags_event,
     },
+    process_watcher::ShortLivedProcessLog,
     tracer_client::TracerClient,
 };
 
 type ProcessOutput<'a> =
     Option<Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + 'a + Send>>>;
-
-/*
-Example of timelined code, depedant on TracerClient:
-
-pub fn process_log_command<'a>(
-    tracer_client: &'a TracerClient,
-    object: &serde_json::Map<String, serde_json::Value>,
-) -> ProcessOutput<'a> {
-    if !object.contains_key("message") {
-        return None;
-    };
-
-    let message = object.get("message").unwrap().as_str().unwrap().to_string();
-    Some(Box::pin(send_log_event(&tracer_client)))
-}*/
 
 pub fn process_log_command<'a>(
     service_url: &'a str,
@@ -108,6 +94,24 @@ pub fn process_tag_command<'a>(
     Some(Box::pin(send_update_tags_event(service_url, api_key, tags)))
 }
 
+pub fn process_log_short_lived_process_command<'a>(
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
+    object: &serde_json::Map<String, serde_json::Value>,
+) -> ProcessOutput<'a> {
+    if !object.contains_key("log") {
+        return None;
+    };
+
+    let log: ShortLivedProcessLog =
+        serde_json::from_value(object.get("log").unwrap().clone()).unwrap();
+
+    Some(Box::pin(async move {
+        let mut tracer_client = tracer_client.lock().await;
+        tracer_client.fill_logs_with_short_lived_process(log)?;
+        Ok(())
+    }))
+}
+
 pub async fn run_server(
     tracer_client: Arc<Mutex<TracerClient>>,
     socket_path: &str,
@@ -172,6 +176,9 @@ pub async fn run_server(
             "end" => process_end_run_command(&service_url, &api_key),
             "refresh_config" => process_refresh_config_command(&tracer_client, &config),
             "tag" => process_tag_command(&service_url, &api_key, object),
+            "log_short_lived_process" => {
+                process_log_short_lived_process_command(&tracer_client, object)
+            }
             "ping" => None,
             _ => {
                 eprintln!("Invalid command: {}", command);

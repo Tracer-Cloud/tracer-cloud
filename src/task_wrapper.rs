@@ -1,5 +1,4 @@
 use anyhow::Result;
-use serde_json::json;
 use std::{
     fs::OpenOptions,
     io::{BufRead, BufReader, Write},
@@ -8,8 +7,8 @@ use std::{
 use sysinfo::System;
 
 use crate::{
+    daemon_communication::client::send_log_short_lived_process_request,
     process_watcher::{ProcessProperties, ProcessWatcher, ShortLivedProcessLog},
-    WRAPPER_QUICK_FILE,
 };
 
 const TRACER_BASH_RC_PATH: &str = ".config/tracer/.bashrc";
@@ -17,7 +16,7 @@ const WRAPPER_SOURCE_COMMAND: &str = "source ~/.config/tracer/.bashrc";
 
 pub fn get_task_wrapper(current_tracer_exe_path: PathBuf, command_name: &str) -> String {
     format!(
-        "alias {}=\"{} & {} log-short-lived-processes \\\"{}\\\"; wait\"\n",
+        "alias {}=\"{} & {} log-short-lived-process \\\"{}\\\"; wait\"\n",
         command_name,
         command_name,
         current_tracer_exe_path.as_os_str().to_str().unwrap(),
@@ -79,10 +78,10 @@ pub fn setup_aliases(current_tracer_exe_path: PathBuf, commands: Vec<String>) ->
     Ok(())
 }
 
-pub fn log_short_lived_process(command: &str) -> Result<()> {
+pub async fn log_short_lived_process(socket_path: &str, command: &str) -> Result<()> {
     let system = System::new();
 
-    // find process with the same command
+    // Doing logging here so we have a larger time window for the process to be alive
     let process = system.processes_by_name(command).last();
     let data: ShortLivedProcessLog = if let Some(process) = process {
         ShortLivedProcessLog {
@@ -107,38 +106,7 @@ pub fn log_short_lived_process(command: &str) -> Result<()> {
         }
     };
 
-    let log = json!(data).to_string();
-
-    // log or append to a file
-    let mut file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(WRAPPER_QUICK_FILE)?;
-
-    file.write_all(format!("{}\n", log).as_bytes())?;
+    send_log_short_lived_process_request(socket_path, data).await?;
 
     Ok(())
-}
-
-pub fn get_current_short_lived_processes() -> Result<Vec<ShortLivedProcessLog>> {
-    let file_result = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(WRAPPER_QUICK_FILE);
-
-    if file_result.is_err() {
-        return Ok(vec![]);
-    }
-
-    let file = file_result.unwrap();
-
-    let reader = BufReader::new(&file);
-    let mut commands = vec![];
-    for line in reader.lines() {
-        commands.push(serde_json::from_str(&line.unwrap()).unwrap());
-    }
-
-    file.set_len(0)?;
-
-    Ok(commands)
 }

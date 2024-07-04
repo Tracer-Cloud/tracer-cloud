@@ -22,12 +22,11 @@ use nondaemon_commands::{
     clean_up_after_daemon, print_config_info_sync, setup_config, test_service_config_sync,
     update_tracer,
 };
-use process_watcher::ShortLivedProcessLog;
 use std::borrow::BorrowMut;
 use std::env;
 use std::fs::File;
 use std::sync::Arc;
-use task_wrapper::{get_current_short_lived_processes, log_short_lived_process, setup_aliases};
+use task_wrapper::{log_short_lived_process, setup_aliases};
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::{sleep, Duration, Instant};
 use tokio_util::sync::CancellationToken;
@@ -40,7 +39,6 @@ const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
 const SOCKET_PATH: &str = "/tmp/tracerd.sock";
-const WRAPPER_QUICK_FILE: &str = "/tmp/tracerbio_quick.log";
 
 const REPO_OWNER: &str = "davincios";
 const REPO_NAME: &str = "tracer-daemon";
@@ -89,6 +87,9 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
                 &batch_submission_interval_ms,
             )
             .await
+        }
+        Commands::LogShortLivedProcess { command } => {
+            log_short_lived_process(SOCKET_PATH, &command).await
         }
         _ => {
             println!("Command not implemented yet");
@@ -141,7 +142,6 @@ fn main() -> Result<()> {
             env::current_exe()?,
             vec!["fastqc".to_string(), "samtools".to_string()],
         ),
-        Commands::LogShortLivedProcess { command } => log_short_lived_process(command),
         Commands::Info => print_config_info_sync(),
         _ => run_async_command(cli.command),
     }
@@ -167,12 +167,7 @@ pub async fn run() -> Result<()> {
         while start_time.elapsed()
             < Duration::from_millis(config.read().await.batch_submission_interval_ms)
         {
-            let short_lived_processes = get_current_short_lived_processes()?;
-            monitor_processes_with_tracer_client(
-                tracer_client.lock().await.borrow_mut(),
-                short_lived_processes,
-            )
-            .await?;
+            monitor_processes_with_tracer_client(tracer_client.lock().await.borrow_mut()).await?;
             sleep(Duration::from_millis(
                 config.read().await.process_polling_interval_ms,
             ))
@@ -193,14 +188,10 @@ pub async fn run() -> Result<()> {
     Ok(())
 }
 
-pub async fn monitor_processes_with_tracer_client(
-    tracer_client: &mut TracerClient,
-    short_lived_processes: Vec<ShortLivedProcessLog>,
-) -> Result<()> {
+pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
     tracer_client.remove_completed_processes().await?;
     tracer_client.poll_processes().await?;
     tracer_client.refresh_sysinfo();
-    tracer_client.fill_logs_with_short_lived_processes(short_lived_processes)?;
     Ok(())
 }
 
@@ -218,7 +209,7 @@ mod tests {
     async fn test_monitor_processes_with_tracer_client() {
         let config = load_test_config();
         let mut tracer_client = TracerClient::new(config).unwrap();
-        let result = monitor_processes_with_tracer_client(&mut tracer_client, vec![]).await;
+        let result = monitor_processes_with_tracer_client(&mut tracer_client).await;
         assert!(result.is_ok());
     }
 }

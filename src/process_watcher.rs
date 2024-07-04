@@ -101,31 +101,29 @@ impl ProcessWatcher {
         }
     }
 
-    pub fn fill_logs_with_short_lived_processes(
+    pub fn fill_logs_with_short_lived_process(
         &mut self,
-        short_lived_processes: Vec<ShortLivedProcessLog>,
+        short_lived_process: ShortLivedProcessLog,
         event_logger: &mut EventRecorder,
     ) -> Result<()> {
-        for short_lived_process in short_lived_processes {
-            let properties = json!(short_lived_process.properties);
-            event_logger.record_event(
-                EventType::ToolExecution,
-                format!(
-                    "[{}] Short lived process: {}",
-                    short_lived_process.timestamp, short_lived_process.command
-                ),
-                Some(properties),
-            );
+        let properties = json!(short_lived_process.properties);
+        event_logger.record_event(
+            EventType::ToolExecution,
+            format!(
+                "[{}] Short lived process: {}",
+                short_lived_process.timestamp, short_lived_process.command
+            ),
+            Some(properties),
+        );
 
-            if let Vacant(v) = self
-                .seen
-                .entry(short_lived_process.properties.tool_pid.parse().unwrap())
-            {
-                v.insert(Proc {
-                    name: short_lived_process.command,
-                    start_time: Utc::now(),
-                });
-            }
+        if let Vacant(v) = self
+            .seen
+            .entry(short_lived_process.properties.tool_pid.parse().unwrap())
+        {
+            v.insert(Proc {
+                name: short_lived_process.command,
+                start_time: Utc::now(),
+            });
         }
 
         Ok(())
