@@ -57,10 +57,12 @@ impl ConfigManager {
         let mut config = if let Some(path) = config_file_location {
             let loaded_config = ConfigManager::load_config_from_file(&path);
             if loaded_config.is_err() {
-                println!("\nFailed to load config from {:?}, using default config.\n", path)
+                println!(
+                    "\nFailed to load config from {:?}, using default config.\n",
+                    path
+                )
             }
-            loaded_config
-                .unwrap_or_else(|_| ConfigManager::load_default_config())
+            loaded_config.unwrap_or_else(|_| ConfigManager::load_default_config())
         } else {
             ConfigManager::load_default_config()
         };
