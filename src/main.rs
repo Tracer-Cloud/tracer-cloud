@@ -3,6 +3,7 @@ mod daemon_communication;
 mod event_recorder;
 mod events;
 mod http_client;
+mod cli;
 mod metrics;
 mod nondaemon_commands;
 mod process_watcher;
@@ -12,9 +13,10 @@ mod tracer_client;
 
 use anyhow::{Context, Ok, Result};
 use clap::Parser;
+use cli::{Cli, Commands};
 use daemon_communication::client::{
     send_alert_request, send_end_run_request, send_log_request, send_start_run_request,
-    send_stop_request, send_update_tags_request, Cli, Commands,
+    send_stop_request, send_update_tags_request
 };
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;

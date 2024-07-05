@@ -1,53 +1,9 @@
 // src/cli.rs
 use anyhow::Result;
-use clap::{Parser, Subcommand};
 use serde_json::json;
 use tokio::{io::AsyncWriteExt, net::UnixStream};
 
 use crate::process_watcher::ShortLivedProcessLog;
-
-#[derive(Parser)]
-#[clap(
-    name = "tracer",
-    about = "A tool for monitoring bioinformatics applications",
-    version = env!("CARGO_PKG_VERSION")
-)]
-pub struct Cli {
-    #[clap(subcommand)]
-    pub command: Commands,
-}
-
-#[derive(Subcommand, Debug)]
-pub enum Commands {
-    Setup {
-        api_key: Option<String>,
-        service_url: Option<String>,
-        process_polling_interval_ms: Option<u64>,
-        batch_submission_interval_ms: Option<u64>,
-    },
-    Log {
-        message: String,
-    },
-    Alert {
-        message: String,
-    },
-    Init,
-    Cleanup,
-    Info,
-    Stop,
-    Update,
-    Start,
-    End,
-    Test,
-    Tag {
-        tags: Vec<String>,
-    },
-    ApplyBashrc,
-    LogShortLivedProcess {
-        command: String,
-    },
-    Version,
-}
 
 pub async fn send_log_request(socket_path: &str, message: String) -> Result<()> {
     let mut socket = UnixStream::connect(socket_path).await?;
