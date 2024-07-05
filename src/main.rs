@@ -12,23 +12,14 @@ mod task_wrapper;
 mod tracer_client;
 
 use anyhow::{Context, Ok, Result};
-use clap::Parser;
-use cli::{Cli, Commands};
-use daemon_communication::client::{
-    send_alert_request, send_end_run_request, send_log_request, send_start_run_request,
-    send_stop_request, send_update_tags_request,
-};
+use cli::process_cli;
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
-use nondaemon_commands::{
-    clean_up_after_daemon, print_config_info_sync, setup_config, test_service_config_sync,
-    update_tracer,
-};
+use nondaemon_commands::test_service_config_sync;
 use std::borrow::BorrowMut;
-use std::env;
+
 use std::fs::File;
 use std::sync::Arc;
-use task_wrapper::{log_short_lived_process, setup_aliases};
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::{sleep, Duration, Instant};
 use tokio_util::sync::CancellationToken;
@@ -66,87 +57,8 @@ pub fn start_daemon() -> Result<()> {
         .context("Failed to start daemon.")
 }
 
-#[tokio::main]
-pub async fn run_async_command(commands: Commands) -> Result<()> {
-    let value = match commands {
-        Commands::Log { message } => send_log_request(SOCKET_PATH, message).await,
-        Commands::Alert { message } => send_alert_request(SOCKET_PATH, message).await,
-        Commands::Stop => send_stop_request(SOCKET_PATH).await,
-        Commands::Start => send_start_run_request(SOCKET_PATH).await,
-        Commands::End => send_end_run_request(SOCKET_PATH).await,
-        Commands::Update => update_tracer().await,
-        Commands::Tag { tags } => send_update_tags_request(SOCKET_PATH, &tags).await,
-        Commands::Setup {
-            api_key,
-            service_url,
-            process_polling_interval_ms,
-            batch_submission_interval_ms,
-        } => {
-            setup_config(
-                &api_key,
-                &service_url,
-                &process_polling_interval_ms,
-                &batch_submission_interval_ms,
-            )
-            .await
-        }
-        Commands::LogShortLivedProcess { command } => {
-            log_short_lived_process(SOCKET_PATH, &command).await
-        }
-        _ => {
-            println!("Command not implemented yet");
-            Ok(())
-        }
-    };
-
-    if value.is_err() {
-        println!("Failed to send command to the daemon. Maybe the daemon is not running? If it's not, run `tracer init` to start the daemon.");
-    } else {
-        println!("Command sent successfully.")
-    }
-
-    Ok(())
-}
-
-fn main() -> Result<()> {
-    let cli = Cli::parse();
-
-    match &cli.command {
-        Commands::Init => {
-            let test_result = test_service_config_sync();
-            if test_result.is_err() {
-                return Ok(());
-            }
-            println!("Starting daemon...");
-            let result = start_daemon();
-            if result.is_err() {
-                println!("Failed to start daemon. Maybe the daemon is already running? If it's not, run `tracer cleanup` to clean up the previous daemon files.");
-                return Ok(());
-            }
-            run()?;
-            clean_up_after_daemon()
-        }
-        Commands::Test => {
-            let result = test_service_config_sync();
-            if result.is_ok() {
-                println!("Tracer was able to successfully communicate with the API service.");
-            }
-            Ok(())
-        }
-        Commands::Cleanup => {
-            let result = clean_up_after_daemon();
-            if result.is_ok() {
-                println!("Daemon files cleaned up successfully.");
-            }
-            result
-        }
-        Commands::ApplyBashrc => setup_aliases(
-            env::current_exe()?,
-            vec!["fastqc".to_string(), "samtools".to_string()],
-        ),
-        Commands::Info => print_config_info_sync(),
-        _ => run_async_command(cli.command),
-    }
+pub fn main() -> Result<()> {
+    process_cli()
 }
 
 #[tokio::main]
