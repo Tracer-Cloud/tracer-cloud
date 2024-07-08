@@ -10,7 +10,7 @@ use tokio::{
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    config_manager::{ConfigFile, ConfigManager},
+    config_manager::{Config, ConfigManager},
     events::{
         send_alert_event, send_end_run_event, send_log_event, send_start_run_event,
         send_update_tags_event,
@@ -58,14 +58,14 @@ pub fn process_end_run_command<'a>(service_url: &'a str, api_key: &'a str) -> Pr
 
 pub fn process_refresh_config_command<'a>(
     tracer_client: &'a Arc<Mutex<TracerClient>>,
-    config: &'a Arc<RwLock<ConfigFile>>,
+    config: &'a Arc<RwLock<Config>>,
 ) -> ProcessOutput<'a> {
     let config_file = ConfigManager::load_config();
 
     async fn fun<'a>(
         tracer_client: &'a Arc<Mutex<TracerClient>>,
-        config: &'a Arc<RwLock<ConfigFile>>,
-        config_file: crate::config_manager::ConfigFile,
+        config: &'a Arc<RwLock<Config>>,
+        config_file: crate::config_manager::Config,
     ) -> Result<(), anyhow::Error> {
         tracer_client.lock().await.reload_config_file(&config_file);
         config.write().await.clone_from(&config_file);
@@ -116,7 +116,7 @@ pub async fn run_server(
     tracer_client: Arc<Mutex<TracerClient>>,
     socket_path: &str,
     cancellation_token: CancellationToken,
-    config: Arc<RwLock<ConfigFile>>,
+    config: Arc<RwLock<Config>>,
 ) -> Result<(), anyhow::Error> {
     if std::fs::metadata(socket_path).is_ok() {
         std::fs::remove_file(socket_path).expect("Failed to remove existing socket file");

@@ -3,7 +3,7 @@ use crate::event_recorder::EventRecorder;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
 use crate::submit_batched_data::submit_batched_data;
-use crate::{config_manager::ConfigFile, process_watcher::ShortLivedProcessLog};
+use crate::{config_manager::Config, process_watcher::ShortLivedProcessLog};
 use anyhow::Result;
 use std::time::{Duration, Instant};
 use sysinfo::System;
@@ -20,7 +20,7 @@ pub struct TracerClient {
 }
 
 impl TracerClient {
-    pub fn new(config: ConfigFile) -> Result<TracerClient> {
+    pub fn new(config: Config) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
         println!("Initializing TracerClient with API Key: {}", config.api_key);
@@ -42,7 +42,7 @@ impl TracerClient {
         })
     }
 
-    pub fn reload_config_file(&mut self, config: &ConfigFile) {
+    pub fn reload_config_file(&mut self, config: &Config) {
         self.api_key.clone_from(&config.api_key);
         self.service_url.clone_from(&config.service_url);
         self.interval = Duration::from_millis(config.process_polling_interval_ms);

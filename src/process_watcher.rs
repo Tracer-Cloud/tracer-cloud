@@ -1,3 +1,4 @@
+use crate::config_manager::Target;
 // src/process_watcher.rs
 use crate::event_recorder::EventRecorder;
 use crate::event_recorder::EventType;
@@ -11,7 +12,7 @@ use std::collections::HashMap;
 use sysinfo::{Pid, Process, System};
 
 pub struct ProcessWatcher {
-    targets: Vec<String>,
+    targets: Vec<Target>,
     seen: HashMap<Pid, Proc>,
 }
 
@@ -40,7 +41,7 @@ pub struct ShortLivedProcessLog {
 }
 
 impl ProcessWatcher {
-    pub fn new(targets: Vec<String>) -> Self {
+    pub fn new(targets: Vec<Target>) -> Self {
         ProcessWatcher {
             targets,
             seen: HashMap::new(),
@@ -53,7 +54,17 @@ impl ProcessWatcher {
         event_logger: &mut EventRecorder,
     ) -> Result<()> {
         for (pid, proc) in system.processes().iter() {
-            if !self.seen.contains_key(pid) && self.targets.contains(&proc.name().to_string()) {
+            if !self.seen.contains_key(pid)
+                && self.targets.iter().any(|target| {
+                    if let Target::ProcessName(name) = target {
+                        return name == proc.name();
+                    }
+                    if let Target::CommandContains(cmd) = target {
+                        return proc.cmd().iter().any(|c| c.contains(cmd));
+                    }
+                    false
+                })
+            {
                 self.add_new_process(*pid, proc, system, event_logger)?;
             }
         }
@@ -177,7 +188,7 @@ impl ProcessWatcher {
         Ok(())
     }
 
-    pub fn reload_targets(&mut self, targets: Vec<String>) {
+    pub fn reload_targets(&mut self, targets: Vec<Target>) {
         if targets == self.targets {
             return;
         }

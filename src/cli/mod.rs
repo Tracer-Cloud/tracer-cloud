@@ -1,4 +1,5 @@
 use crate::{
+    config_manager::{ConfigManager, Target},
     daemon_communication::client::{
         send_alert_request, send_end_run_request, send_log_request, send_start_run_request,
         send_stop_request, send_update_tags_request,
@@ -90,10 +91,23 @@ pub fn process_cli() -> Result<()> {
             }
             result
         }
-        Commands::ApplyBashrc => setup_aliases(
-            env::current_exe()?,
-            vec!["fastqc".to_string(), "samtools".to_string()],
-        ),
+        Commands::ApplyBashrc => {
+            let config = ConfigManager::load_config();
+            setup_aliases(
+                env::current_exe()?,
+                config
+                    .targets
+                    .iter()
+                    .filter_map(|target| {
+                        if let Target::ShortLivedProcessExecutable(name) = target {
+                            Some(name.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
+            )
+        }
         Commands::Info => print_config_info_sync(),
         _ => run_async_command(cli.command),
     }
