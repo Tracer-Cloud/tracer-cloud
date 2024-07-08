@@ -10,13 +10,29 @@ const DEFAULT_CONFIG_FILE_LOCATION_FROM_HOME: &str = ".config/tracer/tracer.toml
 const PROCESS_POLLING_INTERVAL_MS: u64 = 50;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum Target {
+    ProcessName(String),
+    ShortLivedProcessExecutable(String),
+    CommandContains(String),
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ConfigFile {
+    pub api_key: String,
+    pub service_url: Option<String>,
+    pub process_polling_interval_ms: Option<u64>,
+    pub batch_submission_interval_ms: Option<u64>,
+    pub targets: Option<Vec<Target>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Config {
     pub api_key: String,
     pub process_polling_interval_ms: u64,
     pub batch_submission_interval_ms: u64,
     pub service_url: String,
-    pub targets: Vec<String>,
+    pub targets: Vec<Target>,
 }
 
 pub struct ConfigManager;
@@ -34,24 +50,35 @@ impl ConfigManager {
         }
     }
 
-    fn load_config_from_file(path: &PathBuf) -> Result<ConfigFile> {
+    fn load_config_from_file(path: &PathBuf) -> Result<Config> {
         let config = std::fs::read_to_string(path)?;
         let config: ConfigFile = toml::from_str(&config)?;
-        Ok(config)
+        Ok(Config {
+            api_key: config.api_key,
+            process_polling_interval_ms: config
+                .process_polling_interval_ms
+                .unwrap_or(PROCESS_POLLING_INTERVAL_MS),
+            batch_submission_interval_ms: config
+                .batch_submission_interval_ms
+                .unwrap_or(BATCH_SUBMISSION_INTERVAL_MS),
+            service_url: config
+                .service_url
+                .unwrap_or(DEFAULT_SERVICE_URL.to_string()),
+            targets: config.targets.unwrap_or_else(|| targets::TARGETS.to_vec()),
+        })
     }
 
-    pub fn load_default_config() -> ConfigFile {
-        let config = ConfigFile {
+    pub fn load_default_config() -> Config {
+        Config {
             api_key: DEFAULT_API_KEY.to_string(),
             process_polling_interval_ms: PROCESS_POLLING_INTERVAL_MS,
             batch_submission_interval_ms: BATCH_SUBMISSION_INTERVAL_MS,
             service_url: DEFAULT_SERVICE_URL.to_string(),
-            targets: targets::TARGETS.iter().map(|&s| s.to_string()).collect(),
-        };
-        config
+            targets: targets::TARGETS.to_vec(),
+        }
     }
 
-    pub fn load_config() -> ConfigFile {
+    pub fn load_config() -> Config {
         let config_file_location = ConfigManager::get_config_path();
 
         let mut config = if let Some(path) = config_file_location {
@@ -78,9 +105,16 @@ impl ConfigManager {
         config
     }
 
-    pub fn save_config(config: &ConfigFile) -> Result<()> {
+    pub fn save_config(config: &Config) -> Result<()> {
         let config_file_location = ConfigManager::get_config_path().unwrap();
-        let config = toml::to_string(config)?;
+        let config_out = ConfigFile {
+            api_key: config.api_key.clone(),
+            service_url: Some(config.service_url.clone()),
+            process_polling_interval_ms: Some(config.process_polling_interval_ms),
+            batch_submission_interval_ms: Some(config.batch_submission_interval_ms),
+            targets: Some(config.targets.clone()),
+        };
+        let config = toml::to_string(&config_out)?;
         std::fs::write(config_file_location, config)?;
         Ok(())
     }

@@ -66,7 +66,7 @@ pub async fn run() -> Result<()> {
     let raw_config = ConfigManager::load_config();
     let client = TracerClient::new(raw_config.clone()).context("Failed to create TracerClient")?;
     let tracer_client = Arc::new(Mutex::new(client));
-    let config: Arc<RwLock<config_manager::ConfigFile>> = Arc::new(RwLock::new(raw_config));
+    let config: Arc<RwLock<config_manager::Config>> = Arc::new(RwLock::new(raw_config));
 
     let cancellation_token = CancellationToken::new();
     tokio::spawn(run_server(
@@ -113,9 +113,9 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
 mod tests {
     use super::*;
     use crate::config_manager::ConfigManager;
-    use config_manager::ConfigFile;
+    use config_manager::Config;
 
-    fn load_test_config() -> ConfigFile {
+    fn load_test_config() -> Config {
         ConfigManager::load_default_config()
     }
 
