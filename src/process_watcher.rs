@@ -22,7 +22,7 @@ pub struct Proc {
     start_time: DateTime<Utc>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ProcessProperties {
     pub tool_name: String,
     pub tool_pid: String,
@@ -41,7 +41,7 @@ pub struct ShortLivedProcessLog {
     pub properties: ProcessProperties,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProcessTreeNode {
     pub properties: ProcessProperties,
     pub children: Vec<ProcessTreeNode>,
@@ -103,10 +103,13 @@ impl ProcessWatcher {
         Ok(())
     }
 
-    pub fn build_process_trees(&self, system: &System) -> HashMap<Pid, ProcessTreeNode> {
+    pub fn build_process_trees(
+        &self,
+        system_processes: &HashMap<Pid, Process>,
+    ) -> HashMap<Pid, ProcessTreeNode> {
         let mut nodes: HashMap<Pid, ProcessTreeNode> = HashMap::new();
 
-        for (pid, proc) in system.processes() {
+        for (pid, proc) in system_processes {
             let properties = Self::gather_process_data(pid, proc);
             let node = ProcessTreeNode {
                 properties,
@@ -117,7 +120,7 @@ impl ProcessWatcher {
             nodes.insert(*pid, node);
         }
 
-        for (pid, proc) in system.processes() {
+        for (pid, proc) in system_processes {
             let parent = proc.parent();
             if let Some(parent) = parent {
                 let node = nodes.get(pid).unwrap().clone();
@@ -134,6 +137,7 @@ impl ProcessWatcher {
         &self,
         map: &HashMap<Pid, ProcessTreeNode>,
         valid_processes: &Vec<Pid>,
+        force_ancestor_to_match: bool,
     ) -> Vec<Pid> {
         let mut result = vec![];
 
@@ -144,6 +148,10 @@ impl ProcessWatcher {
             while let Some(parent_node) = map.get(&parent) {
                 parent = parent_node.parent_id.unwrap();
                 if !valid_processes.contains(&parent) {
+                    if !force_ancestor_to_match {
+                        last_valid_parent = parent;
+                    }
+                    println!("Parent: {}", last_valid_parent);
                     break;
                 }
                 last_valid_parent = parent;
@@ -158,7 +166,7 @@ impl ProcessWatcher {
     }
 
     pub fn parse_process_tree(&mut self, system: &System, targets: Vec<Target>) -> Result<()> {
-        let nodes: HashMap<Pid, ProcessTreeNode> = self.build_process_trees(system);
+        let nodes: HashMap<Pid, ProcessTreeNode> = self.build_process_trees(system.processes());
 
         let mut processes_to_gather = vec![];
 
@@ -171,7 +179,7 @@ impl ProcessWatcher {
                 }
             }
 
-            let parents = self.get_parent_processes(&nodes, &valid_processes);
+            let parents = self.get_parent_processes(&nodes, &valid_processes, target.should_force_ancestor_to_match());
 
             for parent in parents {
                 if !processes_to_gather.contains(&parent) {
@@ -347,8 +355,27 @@ mod tests {
         let result = watcher.get_parent_processes(
             &nodes,
             &vec![4.into(), 5.into(), 6.into(), 7.into(), 8.into()],
+            true
+        );
+
+        let result2 = watcher.get_parent_processes(
+            &nodes,
+            &vec![4.into(), 5.into(), 6.into(), 7.into(), 8.into()],
+            false
         );
 
         assert_eq!(result, vec![4.into(), 5.into()]);
+        assert_eq!(result2, vec![2.into(), 1.into()]);
+
+    }
+
+    #[test]
+    fn test_create_process_tree() -> Result<()> {
+        let process_watcher = ProcessWatcher::new(vec![]);
+        let system = System::new_all();
+
+        process_watcher.build_process_trees(system.processes());
+
+        Ok(())
     }
 }
