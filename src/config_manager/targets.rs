@@ -7,7 +7,8 @@ lazy_static! {
         Target::ProcessName("python".to_string()),
         Target::CommandContains(CommandContainsStruct {
             command_content: "uk.ac.babraham.FastQC.FastQCApplication".to_string(),
-            merge_with_parents: true
+            merge_with_parents: true,
+            force_ancestor_to_match: false
         }),
         Target::ProcessName("STAR".to_string()),
         Target::ProcessName("bowtie2".to_string()),

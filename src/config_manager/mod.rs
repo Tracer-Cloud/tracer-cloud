@@ -12,8 +12,9 @@ const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CommandContainsStruct {
-    command_content: String,
-    merge_with_parents: bool,
+    pub command_content: String,
+    pub merge_with_parents: bool,
+    pub force_ancestor_to_match: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -37,6 +38,14 @@ impl Target {
             Target::ProcessName(_) => false,
             Target::ShortLivedProcessExecutable(_) => false,
             Target::CommandContains(inner) => inner.merge_with_parents,
+        }
+    }
+
+    pub fn should_force_ancestor_to_match(&self) -> bool {
+        match self {
+            Target::ProcessName(_) => false,
+            Target::ShortLivedProcessExecutable(_) => false,
+            Target::CommandContains(inner) => inner.force_ancestor_to_match,
         }
     }
 }
