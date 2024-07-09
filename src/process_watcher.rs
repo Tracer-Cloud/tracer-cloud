@@ -160,13 +160,13 @@ impl ProcessWatcher {
                 if target.matches(&node.properties.tool_name, &node.properties.tool_cmd) {
                     valid_processes.push(*pid);
                 }
+            }
 
-                let parents = self.get_parent_processes(&nodes, &valid_processes);
+            let parents = self.get_parent_processes(&nodes, &valid_processes);
 
-                for parent in parents {
-                    if !processes_to_gather.contains(&parent) {
-                        processes_to_gather.push(parent);
-                    }
+            for parent in parents {
+                if !processes_to_gather.contains(&parent) {
+                    processes_to_gather.push(parent);
                 }
             }
         }
