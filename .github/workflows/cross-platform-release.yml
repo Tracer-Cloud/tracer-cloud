@@ -11,6 +11,17 @@ jobs:
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
+      - name: Update version in Cargo.toml
+        run: |
+          sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
+          sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
+          sed -i.bak "s/^TRACER_VERSION=\"/TRACER_VERSION=\"${{github.ref_name}}\"/" install-tracer.sh
+      - name: Add files to commit
+        run: git add Cargo.toml install-tracer.sh
+      - name: Commit changes
+        run: git commit -m "Update version to ${{github.ref_name}}"
+      - name: Push changes
+        run: git push
       - uses: taiki-e/create-gh-release-action@v1.8.2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
