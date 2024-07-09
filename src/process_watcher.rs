@@ -138,10 +138,19 @@ impl ProcessWatcher {
         let mut valid_parents = vec![];
 
         for process in valid_processes {
-            let parent = map.get(process).unwrap().parent_id.unwrap();
+            let mut parent = map.get(process).unwrap().parent_id.unwrap();
+            let mut last_parent = *process;
 
-            if !valid_processes.contains(&parent) {
-                valid_parents.push(parent);
+            while let Some(parent_node) = map.get(&parent) {
+                parent = parent_node.parent_id.unwrap();
+                if !valid_processes.contains(&parent) {
+                    break;
+                }
+                last_parent = parent;
+            }
+
+            if !valid_parents.contains(&last_parent) {
+                valid_parents.push(last_parent);
             }
         }
 
