@@ -65,7 +65,7 @@ pub async fn send_log_request(socket_path: &str, message: String) -> Result<()> 
 
 pub async fn send_alert_request(socket_path: &str, message: String) -> Result<()> {
     let mut socket = UnixStream::connect(socket_path).await?;
-    let alert_request = json!({
+    let alert_request: serde_json::Value = json!({
             "command": "alert",
             "message": message
     });
