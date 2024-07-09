@@ -14,7 +14,7 @@ const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 pub struct CommandContainsStruct {
     pub command_content: String,
     pub merge_with_parents: bool,
-    pub force_ancestor_to_match: bool
+    pub force_ancestor_to_match: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

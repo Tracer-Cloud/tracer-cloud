@@ -151,7 +151,6 @@ impl ProcessWatcher {
                     if !force_ancestor_to_match {
                         last_valid_parent = parent;
                     }
-                    println!("Parent: {}", last_valid_parent);
                     break;
                 }
                 last_valid_parent = parent;
@@ -179,7 +178,11 @@ impl ProcessWatcher {
                 }
             }
 
-            let parents = self.get_parent_processes(&nodes, &valid_processes, target.should_force_ancestor_to_match());
+            let parents = self.get_parent_processes(
+                &nodes,
+                &valid_processes,
+                target.should_force_ancestor_to_match(),
+            );
 
             for parent in parents {
                 if !processes_to_gather.contains(&parent) {
@@ -355,18 +358,17 @@ mod tests {
         let result = watcher.get_parent_processes(
             &nodes,
             &vec![4.into(), 5.into(), 6.into(), 7.into(), 8.into()],
-            true
+            true,
         );
 
         let result2 = watcher.get_parent_processes(
             &nodes,
             &vec![4.into(), 5.into(), 6.into(), 7.into(), 8.into()],
-            false
+            false,
         );
 
         assert_eq!(result, vec![4.into(), 5.into()]);
         assert_eq!(result2, vec![2.into(), 1.into()]);
-
     }
 
     #[test]
