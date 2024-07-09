@@ -1,6 +1,7 @@
 // src/events/mod.rs
 use crate::http_client::send_http_event;
 use anyhow::{Context, Result};
+use chrono::Utc;
 use serde_json::json;
 use tracing::info;
 
@@ -28,7 +29,7 @@ pub async fn send_log_event(service_url: &str, api_key: &str, message: String) -
         "process_type": "pipeline",
         "process_status": "run_status_message",
         "event_type": "process_status",
-        "timestamp": chrono::Utc::now().to_rfc3339()
+        "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
     });
 
     send_http_event(service_url, api_key, &log_entry)
@@ -42,7 +43,7 @@ pub async fn send_alert_event(service_url: &str, api_key: &str, message: String)
         "process_type": "pipeline",
         "process_status": "alert",
         "event_type": "process_status",
-        "timestamp": chrono::Utc::now().to_rfc3339()
+        "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
     });
 
     send_http_event(service_url, api_key, &alert_entry)
@@ -58,7 +59,7 @@ pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<()
         "process_type": "pipeline",
         "process_status": "new_run",
         "event_type": "process_status",
-        "timestamp": chrono::Utc::now().to_rfc3339()
+        "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
     });
 
     let result = send_http_event(service_url, api_key, &init_entry).await;
@@ -75,7 +76,7 @@ pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<()> 
         "process_type": "pipeline",
         "process_status": "finished_run",
         "event_type": "process_status",
-        "timestamp": chrono::Utc::now().to_rfc3339()
+        "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
     });
 
     let result = send_http_event(service_url, api_key, &end_entry).await;
@@ -90,7 +91,7 @@ pub async fn send_daemon_start_event(service_url: &str, api_key: &str) -> Result
         "process_type": "pipeline",
         "process_status": "daemon_start",
         "event_type": "process_status",
-        "timestamp": chrono::Utc::now().to_rfc3339()
+        "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
     });
 
     send_http_event(service_url, api_key, &daemon_start_entry).await
@@ -107,7 +108,7 @@ pub async fn send_update_tags_event(
         "process_type": "pipeline",
         "process_status": "tag_update",
         "event_type": "process_status",
-        "timestamp": chrono::Utc::now().to_rfc3339()
+        "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
     });
 
     send_http_event(service_url, api_key, &tags_entry).await
