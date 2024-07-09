@@ -11,10 +11,34 @@ const PROCESS_POLLING_INTERVAL_MS: u64 = 50;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct CommandContainsStruct {
+    command_content: String,
+    merge_with_parents: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Target {
     ProcessName(String),
     ShortLivedProcessExecutable(String),
-    CommandContains(String),
+    CommandContains(CommandContainsStruct),
+}
+
+impl Target {
+    pub fn matches(&self, process_name: &str, command: &str) -> bool {
+        match self {
+            Target::ProcessName(name) => process_name == name,
+            Target::ShortLivedProcessExecutable(_) => false,
+            Target::CommandContains(inner) => command.contains(&inner.command_content),
+        }
+    }
+
+    pub fn should_be_merged_with_parents(&self) -> bool {
+        match self {
+            Target::ProcessName(_) => false,
+            Target::ShortLivedProcessExecutable(_) => false,
+            Target::CommandContains(inner) => inner.merge_with_parents,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

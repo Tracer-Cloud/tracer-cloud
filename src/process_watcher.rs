@@ -9,6 +9,7 @@ use serde::Serialize;
 use serde_json::json;
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
+use std::path::Path;
 use sysinfo::{Pid, Process, System};
 
 pub struct ProcessWatcher {
@@ -21,7 +22,7 @@ pub struct Proc {
     start_time: DateTime<Utc>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ProcessProperties {
     pub tool_name: String,
     pub tool_pid: String,
@@ -40,6 +41,13 @@ pub struct ShortLivedProcessLog {
     pub properties: ProcessProperties,
 }
 
+#[derive(Clone)]
+pub struct ProcessTreeNode {
+    pub properties: ProcessProperties,
+    pub children: Vec<ProcessTreeNode>,
+    pub parent_id: Option<Pid>,
+}
+
 impl ProcessWatcher {
     pub fn new(targets: Vec<Target>) -> Self {
         ProcessWatcher {
@@ -56,18 +64,22 @@ impl ProcessWatcher {
         for (pid, proc) in system.processes().iter() {
             if !self.seen.contains_key(pid)
                 && self.targets.iter().any(|target| {
-                    if let Target::ProcessName(name) = target {
-                        return name == proc.name();
-                    }
-                    if let Target::CommandContains(cmd) = target {
-                        return proc.cmd().iter().any(|c| c.contains(cmd));
-                    }
-                    false
+                    !target.should_be_merged_with_parents()
+                        && target.matches(proc.name(), &proc.cmd().join(" "))
                 })
             {
                 self.add_new_process(*pid, proc, system, event_logger)?;
             }
         }
+
+        self.parse_process_tree(
+            system,
+            self.targets
+                .iter()
+                .filter(|target| target.should_be_merged_with_parents())
+                .cloned()
+                .collect(),
+        )?;
         Ok(())
     }
 
@@ -91,6 +103,88 @@ impl ProcessWatcher {
         Ok(())
     }
 
+    pub fn build_process_trees(&self, system: &System) -> HashMap<Pid, ProcessTreeNode> {
+        let mut nodes: HashMap<Pid, ProcessTreeNode> = HashMap::new();
+
+        for (pid, proc) in system.processes() {
+            let properties = Self::gather_process_data(pid, proc);
+            let node = ProcessTreeNode {
+                properties,
+                children: vec![],
+                parent_id: proc.parent(),
+            };
+
+            nodes.insert(*pid, node);
+        }
+
+        for (pid, proc) in system.processes() {
+            let parent = proc.parent();
+            if let Some(parent) = parent {
+                let node = nodes.get(pid).unwrap().clone();
+                if let Some(parent_node) = nodes.get_mut(&parent) {
+                    parent_node.children.push(node.clone());
+                }
+            }
+        }
+
+        nodes
+    }
+
+    pub fn get_parent_processes(
+        &self,
+        map: &HashMap<Pid, ProcessTreeNode>,
+        valid_processes: &Vec<Pid>,
+    ) -> Vec<Pid> {
+        let mut valid_parents = vec![];
+
+        for process in valid_processes {
+            let parent = map.get(process).unwrap().parent_id.unwrap();
+
+            if !valid_processes.contains(&parent) {
+                valid_parents.push(parent);
+            }
+        }
+
+        valid_parents
+    }
+
+    pub fn parse_process_tree(&mut self, system: &System, targets: Vec<Target>) -> Result<()> {
+        let nodes: HashMap<Pid, ProcessTreeNode> = self.build_process_trees(system);
+
+        let mut processes_to_gather = vec![];
+
+        for target in targets {
+            let mut valid_processes = vec![];
+
+            for (pid, node) in &nodes {
+                if target.matches(&node.properties.tool_name, &node.properties.tool_cmd) {
+                    valid_processes.push(*pid);
+                }
+
+                let parents = self.get_parent_processes(&nodes, &valid_processes);
+
+                for parent in parents {
+                    if !processes_to_gather.contains(&parent) {
+                        processes_to_gather.push(parent);
+                    }
+                }
+            }
+        }
+
+        for pid in processes_to_gather {
+            if !self.seen.contains_key(&pid) {
+                let process = system.process(pid);
+                if process.is_none() {
+                    eprintln!("[{}] Process({}) wasn't found", Utc::now(), pid);
+                    continue;
+                }
+                let proc = process.unwrap();
+                self.add_new_process(pid, proc, system, &mut EventRecorder::new())?;
+            }
+        }
+        Ok(())
+    }
+
     pub fn gather_process_data(pid: &Pid, proc: &Process) -> ProcessProperties {
         let start_time = Utc::now();
 
@@ -99,7 +193,7 @@ impl ProcessWatcher {
             tool_pid: pid.to_string(),
             tool_binary_path: proc
                 .exe()
-                .unwrap()
+                .unwrap_or_else(|| Path::new(""))
                 .as_os_str()
                 .to_str()
                 .unwrap()

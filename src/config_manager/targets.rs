@@ -1,11 +1,14 @@
 use lazy_static::lazy_static;
 
-use crate::config_manager::Target;
+use crate::config_manager::{CommandContainsStruct, Target};
 
 lazy_static! {
     pub static ref TARGETS: Vec<Target> = [
         Target::ProcessName("python".to_string()),
-        Target::CommandContains("-Dfastqc.output_dir=".to_string()),
+        Target::CommandContains(CommandContainsStruct {
+            command_content: "uk.ac.babraham.FastQC.FastQCApplication".to_string(),
+            merge_with_parents: true
+        }),
         Target::ProcessName("STAR".to_string()),
         Target::ProcessName("bowtie2".to_string()),
         Target::ProcessName("bwa".to_string()),
