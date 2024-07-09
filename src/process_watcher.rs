@@ -135,26 +135,26 @@ impl ProcessWatcher {
         map: &HashMap<Pid, ProcessTreeNode>,
         valid_processes: &Vec<Pid>,
     ) -> Vec<Pid> {
-        let mut valid_parents = vec![];
+        let mut result = vec![];
 
         for process in valid_processes {
-            let mut parent = map.get(process).unwrap().parent_id.unwrap();
-            let mut last_parent = *process;
+            let mut parent = *process;
+            let mut last_valid_parent = *process;
 
             while let Some(parent_node) = map.get(&parent) {
                 parent = parent_node.parent_id.unwrap();
                 if !valid_processes.contains(&parent) {
                     break;
                 }
-                last_parent = parent;
+                last_valid_parent = parent;
             }
 
-            if !valid_parents.contains(&last_parent) {
-                valid_parents.push(last_parent);
+            if !result.contains(&last_valid_parent) {
+                result.push(last_valid_parent);
             }
         }
 
-        valid_parents
+        result
     }
 
     pub fn parse_process_tree(&mut self, system: &System, targets: Vec<Target>) -> Result<()> {
@@ -298,5 +298,57 @@ impl ProcessWatcher {
 
         self.targets = targets;
         self.seen.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_parent_processes() {
+        let dataset = vec![
+            (1, 2),
+            (2, 3),
+            (2, 4),
+            (1, 5),
+            (4, 6),
+            (4, 7),
+            (5, 8),
+            (1, 9),
+            (1, 10),
+        ];
+
+        let mut nodes: HashMap<Pid, ProcessTreeNode> = HashMap::new();
+
+        for (parent, child) in dataset {
+            let properties = ProcessProperties {
+                tool_name: "test".to_string(),
+                tool_pid: child.to_string(),
+                tool_binary_path: "test".to_string(),
+                tool_cmd: "test".to_string(),
+                start_timestamp: "test".to_string(),
+                process_cpu_utilization: 0.0,
+                process_memory_usage: 0,
+                process_memory_virtual: 0,
+            };
+
+            let node = ProcessTreeNode {
+                properties,
+                children: vec![],
+                parent_id: Some(parent.into()),
+            };
+
+            nodes.insert(child.into(), node);
+        }
+
+        let watcher = ProcessWatcher::new(vec![]);
+
+        let result = watcher.get_parent_processes(
+            &nodes,
+            &vec![4.into(), 5.into(), 6.into(), 7.into(), 8.into()],
+        );
+
+        assert_eq!(result, vec![4.into(), 5.into()]);
     }
 }
