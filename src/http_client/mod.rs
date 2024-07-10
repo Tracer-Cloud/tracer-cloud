@@ -38,7 +38,6 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
         _ => json!([logs]),
     };
     let request_body = json!({ "logs": logs_array });
-    println!("Request body: {}", request_body);
     record_all_outgoing_http_calls(service_url, api_key, &request_body).await?;
 
     // Send request

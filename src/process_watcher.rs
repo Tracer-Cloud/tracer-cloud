@@ -62,13 +62,15 @@ impl ProcessWatcher {
         event_logger: &mut EventRecorder,
     ) -> Result<()> {
         for (pid, proc) in system.processes().iter() {
-            if !self.seen.contains_key(pid)
-                && self.targets.iter().any(|target| {
-                    !target.should_be_merged_with_parents()
-                        && target.matches(proc.name(), &proc.cmd().join(" "))
-                })
-            {
-                self.add_new_process(*pid, proc, system, event_logger)?;
+            if !self.seen.contains_key(pid) {
+                let target = self
+                    .targets
+                    .iter()
+                    .find(|target| target.matches(proc.name(), &proc.cmd().join(" ")));
+                if target.is_some() {
+                    let target = target.unwrap().clone();
+                    self.add_new_process(*pid, proc, system, event_logger, Some(&target))?;
+                }
             }
         }
 
@@ -79,6 +81,7 @@ impl ProcessWatcher {
                 .filter(|target| target.should_be_merged_with_parents())
                 .cloned()
                 .collect(),
+            event_logger,
         )?;
         Ok(())
     }
@@ -110,7 +113,7 @@ impl ProcessWatcher {
         let mut nodes: HashMap<Pid, ProcessTreeNode> = HashMap::new();
 
         for (pid, proc) in system_processes {
-            let properties = Self::gather_process_data(pid, proc);
+            let properties = Self::gather_process_data(pid, proc, None);
             let node = ProcessTreeNode {
                 properties,
                 children: vec![],
@@ -164,12 +167,17 @@ impl ProcessWatcher {
         result
     }
 
-    pub fn parse_process_tree(&mut self, system: &System, targets: Vec<Target>) -> Result<()> {
+    pub fn parse_process_tree(
+        &mut self,
+        system: &System,
+        targets: Vec<Target>,
+        event_logger: &mut EventRecorder,
+    ) -> Result<()> {
         let nodes: HashMap<Pid, ProcessTreeNode> = self.build_process_trees(system.processes());
 
         let mut processes_to_gather = vec![];
 
-        for target in targets {
+        for target in &targets {
             let mut valid_processes = vec![];
 
             for (pid, node) in &nodes {
@@ -185,13 +193,13 @@ impl ProcessWatcher {
             );
 
             for parent in parents {
-                if !processes_to_gather.contains(&parent) {
-                    processes_to_gather.push(parent);
+                if !processes_to_gather.contains(&(parent, target)) {
+                    processes_to_gather.push((parent, target));
                 }
             }
         }
 
-        for pid in processes_to_gather {
+        for (pid, target) in processes_to_gather {
             if !self.seen.contains_key(&pid) {
                 let process = system.process(pid);
                 if process.is_none() {
@@ -199,17 +207,29 @@ impl ProcessWatcher {
                     continue;
                 }
                 let proc = process.unwrap();
-                self.add_new_process(pid, proc, system, &mut EventRecorder::new())?;
+                self.add_new_process(pid, proc, system, event_logger, Some(target))?;
             }
         }
         Ok(())
     }
 
-    pub fn gather_process_data(pid: &Pid, proc: &Process) -> ProcessProperties {
+    pub fn gather_process_data(
+        pid: &Pid,
+        proc: &Process,
+        target: Option<&Target>,
+    ) -> ProcessProperties {
         let start_time = Utc::now();
 
         ProcessProperties {
-            tool_name: proc.name().to_owned(),
+            tool_name: if let Some(target) = target {
+                if let Some(display_name) = target.get_display_name() {
+                    display_name
+                } else {
+                    proc.name().to_owned()
+                }
+            } else {
+                proc.name().to_owned()
+            },
             tool_pid: pid.to_string(),
             tool_binary_path: proc
                 .exe()
@@ -260,6 +280,7 @@ impl ProcessWatcher {
         proc: &Process,
         system: &System,
         event_logger: &mut EventRecorder,
+        target: Option<&Target>,
     ) -> Result<()> {
         self.seen.insert(
             pid,
@@ -276,7 +297,7 @@ impl ProcessWatcher {
 
         let start_time = Utc::now();
 
-        let properties = json!(Self::gather_process_data(&pid, p));
+        let properties = json!(Self::gather_process_data(&pid, p, target));
 
         event_logger.record_event(
             EventType::ToolExecution,
