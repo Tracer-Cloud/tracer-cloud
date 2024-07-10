@@ -6,6 +6,7 @@ lazy_static! {
     pub static ref TARGETS: Vec<Target> = [
         Target::ProcessName("python".to_string()),
         Target::CommandContains(CommandContainsStruct {
+            process_name: Some("java".to_string()),
             command_content: "uk.ac.babraham.FastQC.FastQCApplication".to_string(),
             merge_with_parents: true,
             force_ancestor_to_match: false

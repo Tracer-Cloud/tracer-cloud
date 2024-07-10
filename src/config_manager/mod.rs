@@ -12,6 +12,7 @@ const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CommandContainsStruct {
+    pub process_name: Option<String>,
     pub command_content: String,
     pub merge_with_parents: bool,
     pub force_ancestor_to_match: bool,
@@ -29,7 +30,11 @@ impl Target {
         match self {
             Target::ProcessName(name) => process_name == name,
             Target::ShortLivedProcessExecutable(_) => false,
-            Target::CommandContains(inner) => command.contains(&inner.command_content),
+            Target::CommandContains(inner) => {
+                (inner.process_name.is_none()
+                    || inner.process_name.as_ref().unwrap() == process_name)
+                    && command.contains(&inner.command_content)
+            }
         }
     }
 
