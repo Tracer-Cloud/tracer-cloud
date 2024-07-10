@@ -5,7 +5,6 @@ use chrono::Utc;
 use serde_json::json;
 use tracing::info;
 
-
 pub async fn send_log_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
     let log_entry = json!({
         "message": message,
@@ -89,8 +88,12 @@ mod tests {
     #[tokio::test]
     async fn test_event_log() -> Result<(), Error> {
         let config = ConfigManager::load_default_config();
-        let result =
-            send_log_event(&config.service_url.clone(), &config.api_key.clone(), "Test".to_string()).await;
+        let result = send_log_event(
+            &config.service_url.clone(),
+            &config.api_key.clone(),
+            "Test".to_string(),
+        )
+        .await;
 
         //     //     assert!(result.is_ok(), "Expected success, but got an error");
 

@@ -65,6 +65,7 @@ mod tests {
             EventType::TestEvent,
             "[submit_batched_data.rs] Test event".to_string(),
             None,
+            None,
         );
 
         // Call the method to submit batched data

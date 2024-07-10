@@ -11,10 +11,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     config_manager::{Config, ConfigManager},
-    events::{
-        send_alert_event, send_end_run_event, send_log_event,
-        send_update_tags_event,
-    },
+    events::{send_alert_event, send_end_run_event, send_log_event, send_update_tags_event},
     process_watcher::ShortLivedProcessLog,
     tracer_client::TracerClient,
 };
@@ -48,10 +45,10 @@ pub fn process_alert_command<'a>(
     Some(Box::pin(send_alert_event(service_url, api_key, message)))
 }
 
-pub fn process_start_run_command<'a>(tracer_client: &'a Arc<Mutex<TracerClient>>,) -> ProcessOutput<'a> {
+pub fn process_start_run_command(tracer_client: &Arc<Mutex<TracerClient>>) -> ProcessOutput<'_> {
     Some(Box::pin(async {
         let mut tracer_client = tracer_client.lock().await;
-        tracer_client.start_new_run().await?;
+        tracer_client.start_new_run(None).await?;
         Ok(())
     }))
 }
