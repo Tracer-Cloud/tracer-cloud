@@ -12,7 +12,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     config_manager::{Config, ConfigManager},
     events::{
-        send_alert_event, send_end_run_event, send_log_event, send_start_run_event,
+        send_alert_event, send_end_run_event, send_log_event,
         send_update_tags_event,
     },
     process_watcher::ShortLivedProcessLog,
@@ -48,8 +48,12 @@ pub fn process_alert_command<'a>(
     Some(Box::pin(send_alert_event(service_url, api_key, message)))
 }
 
-pub fn process_start_run_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
-    Some(Box::pin(send_start_run_event(service_url, api_key)))
+pub fn process_start_run_command<'a>(tracer_client: &'a Arc<Mutex<TracerClient>>,) -> ProcessOutput<'a> {
+    Some(Box::pin(async {
+        let mut tracer_client = tracer_client.lock().await;
+        tracer_client.start_new_run().await?;
+        Ok(())
+    }))
 }
 
 pub fn process_end_run_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
@@ -172,7 +176,7 @@ pub async fn run_server(
             }
             "log" => process_log_command(&service_url, &api_key, object),
             "alert" => process_alert_command(&service_url, &api_key, object),
-            "start" => process_start_run_command(&service_url, &api_key),
+            "start" => process_start_run_command(&tracer_client),
             "end" => process_end_run_command(&service_url, &api_key),
             "refresh_config" => process_refresh_config_command(&tracer_client, &config),
             "tag" => process_tag_command(&service_url, &api_key, object),

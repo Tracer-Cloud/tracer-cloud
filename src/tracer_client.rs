@@ -1,5 +1,5 @@
 // src/tracer_client.rs
-use crate::event_recorder::EventRecorder;
+use crate::event_recorder::{EventRecorder, EventType};
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
 use crate::submit_batched_data::submit_batched_data;
@@ -8,15 +8,21 @@ use anyhow::Result;
 use std::time::{Duration, Instant};
 use sysinfo::System;
 
+pub struct RunMetadata {
+    pub last_interaction: Instant,
+}
+
 pub struct TracerClient {
     system: System,
     last_sent: Option<Instant>,
     interval: Duration,
+    last_interaction_new_run_duration: Duration,
     pub logs: EventRecorder,
     process_watcher: ProcessWatcher,
     metrics_collector: SystemMetricsCollector,
     api_key: String,
     service_url: String,
+    current_run: Option<RunMetadata>
 }
 
 impl TracerClient {
@@ -30,11 +36,12 @@ impl TracerClient {
             // fixed values
             api_key: config.api_key,
             service_url,
-
+            interval: Duration::from_millis(config.process_polling_interval_ms),
+            last_interaction_new_run_duration: Duration::from_millis(config.new_run_pause_ms),
             // updated values
             system: System::new_all(),
             last_sent: None,
-            interval: Duration::from_millis(config.process_polling_interval_ms),
+            current_run: None,
             // Sub mannagers
             logs: EventRecorder::new(),
             process_watcher: ProcessWatcher::new(config.targets),
@@ -69,6 +76,36 @@ impl TracerClient {
             self.interval,
         )
         .await
+    }
+
+    pub async fn run_cleanup(&mut self) -> Result<()> {
+        if let Some(run) = self.current_run.as_mut() {
+            if run.last_interaction.elapsed() > self.last_interaction_new_run_duration {
+                self.logs.record_event(EventType::FinishedRun, "Run ended due to inactivity".to_string(), None);
+                self.current_run = None;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn start_new_run(&mut self) -> Result<()> {
+        if self.current_run.is_some() {
+            self.logs.record_event(EventType::FinishedRun, "Run ended due to new run".to_string(), None);
+        }
+
+        self.logs.record_event(EventType::NewRun, "[CLI] Starting new pipeline run".to_string(), None);
+        self.current_run = Some(RunMetadata {
+            last_interaction: Instant::now(),
+        });
+        Ok(())
+    }
+
+    pub async fn stop_run(&mut self) -> Result<()> {
+        if let Some(_) = self.current_run.as_mut() {
+            self.logs.record_event(EventType::FinishedRun, "Run ended due to user request".to_string(), None);
+            self.current_run = None;
+        }
+        Ok(())
     }
 
     /// These functions require logs and the system

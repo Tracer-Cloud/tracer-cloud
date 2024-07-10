@@ -20,6 +20,7 @@ pub struct EventRecorder {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum EventType {
+    NewRun,
     FinishedRun,
     ToolExecution,
     MetricEvent,
@@ -29,6 +30,7 @@ pub enum EventType {
 impl EventType {
     pub fn as_str(&self) -> &'static str {
         match self {
+            EventType::NewRun => "new_run",
             EventType::FinishedRun => "finished_run",
             EventType::ToolExecution => "tool_execution",
             EventType::MetricEvent => "metric_event",

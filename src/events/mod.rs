@@ -5,23 +5,6 @@ use chrono::Utc;
 use serde_json::json;
 use tracing::info;
 
-#[derive(Debug)]
-pub enum EventStatus {
-    #[allow(dead_code)]
-    NewRun,
-}
-
-impl std::fmt::Display for EventStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                EventStatus::NewRun => "new_run".to_string(),
-            }
-        )
-    }
-}
 
 pub async fn send_log_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
     let log_entry = json!({
@@ -49,23 +32,6 @@ pub async fn send_alert_event(service_url: &str, api_key: &str, message: String)
     send_http_event(service_url, api_key, &alert_entry)
         .await
         .context("Failed to send HTTP event")
-}
-
-pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<()> {
-    info!("Starting new pipeline...");
-
-    let init_entry = json!({
-        "message": "[CLI] Starting new pipeline run",
-        "process_type": "pipeline",
-        "process_status": "new_run",
-        "event_type": "process_status",
-        "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
-    });
-
-    let result = send_http_event(service_url, api_key, &init_entry).await;
-
-    info!("Started pipeline run successfully...");
-    result
 }
 
 pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<()> {
@@ -121,10 +87,10 @@ mod tests {
     use anyhow::Error;
 
     #[tokio::test]
-    async fn test_event_pipeline_run_start_new() -> Result<(), Error> {
+    async fn test_event_log() -> Result<(), Error> {
         let config = ConfigManager::load_default_config();
         let result =
-            send_start_run_event(&config.service_url.clone(), &config.api_key.clone()).await;
+            send_log_event(&config.service_url.clone(), &config.api_key.clone(), "Test".to_string()).await;
 
         //     //     assert!(result.is_ok(), "Expected success, but got an error");
 
