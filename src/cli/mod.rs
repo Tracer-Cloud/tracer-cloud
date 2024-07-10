@@ -1,5 +1,5 @@
 use crate::{
-    config_manager::{ConfigManager, Target},
+    config_manager::{ConfigManager, TargetMatch},
     daemon_communication::client::{
         send_alert_request, send_end_run_request, send_log_request, send_start_run_request,
         send_stop_request, send_update_tags_request,
@@ -99,8 +99,8 @@ pub fn process_cli() -> Result<()> {
                     .targets
                     .iter()
                     .filter_map(|target| {
-                        if let Target::ShortLivedProcessExecutable(name) = target {
-                            Some(name.clone())
+                        if let TargetMatch::ShortLivedProcessExecutable(_) = &target.match_type {
+                            Some(target)
                         } else {
                             None
                         }

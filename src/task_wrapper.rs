@@ -7,6 +7,7 @@ use std::{
 use sysinfo::System;
 
 use crate::{
+    config_manager::{Target, TargetMatch},
     daemon_communication::client::send_log_short_lived_process_request,
     process_watcher::{ProcessProperties, ProcessWatcher, ShortLivedProcessLog},
 };
@@ -14,19 +15,23 @@ use crate::{
 const TRACER_BASH_RC_PATH: &str = ".config/tracer/.bashrc";
 const WRAPPER_SOURCE_COMMAND: &str = "source ~/.config/tracer/.bashrc";
 
-pub fn get_task_wrapper(current_tracer_exe_path: PathBuf, command_name: &str) -> String {
+pub fn get_task_wrapper(
+    current_tracer_exe_path: PathBuf,
+    command_name: &str,
+    display_name: &str,
+) -> String {
     format!(
         "alias {}=\"{} & {} log-short-lived-process \\\"{}\\\"; wait\"\n",
         command_name,
         command_name,
         current_tracer_exe_path.as_os_str().to_str().unwrap(),
-        command_name,
+        display_name,
     )
 }
 
 pub fn rewrite_wrapper_bashrc_file(
     current_tracer_exe_path: PathBuf,
-    commands: Vec<String>,
+    targets: Vec<&Target>,
 ) -> Result<()> {
     let path = homedir::get_my_home()?.unwrap();
 
@@ -36,10 +41,19 @@ pub fn rewrite_wrapper_bashrc_file(
         .truncate(true)
         .open(path.join(TRACER_BASH_RC_PATH))?;
 
-    for command in commands.into_iter().map(|command| {
+    for command in targets.into_iter().map(|target| {
+        let name = target.get_display_name();
+        let command_to_alias = match &target.match_type {
+            TargetMatch::ShortLivedProcessExecutable(alias) => alias.clone(),
+            _ => "unknown_command".to_string(),
+        };
         format!(
             "{}\n",
-            get_task_wrapper(current_tracer_exe_path.clone(), &command)
+            get_task_wrapper(
+                current_tracer_exe_path.clone(),
+                &command_to_alias,
+                &name.unwrap_or(command_to_alias.clone())
+            )
         )
     }) {
         bashrc_file.write_all(command.as_bytes()).unwrap();
@@ -71,7 +85,7 @@ pub fn modify_bashrc_file(bashrc_file_path: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn setup_aliases(current_tracer_exe_path: PathBuf, commands: Vec<String>) -> Result<()> {
+pub fn setup_aliases(current_tracer_exe_path: PathBuf, commands: Vec<&Target>) -> Result<()> {
     rewrite_wrapper_bashrc_file(current_tracer_exe_path, commands)?;
     modify_bashrc_file(".bashrc")?;
 
@@ -88,7 +102,7 @@ pub async fn log_short_lived_process(socket_path: &str, command: &str) -> Result
         ShortLivedProcessLog {
             command: command.to_string(),
             timestamp: chrono::Utc::now().to_rfc3339(),
-            properties: ProcessWatcher::gather_process_data(&process.pid(), process),
+            properties: ProcessWatcher::gather_process_data(&process.pid(), process, None),
         }
     } else {
         ShortLivedProcessLog {

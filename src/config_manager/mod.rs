@@ -14,23 +14,29 @@ const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 pub struct CommandContainsStruct {
     pub process_name: Option<String>,
     pub command_content: String,
-    pub merge_with_parents: bool,
-    pub force_ancestor_to_match: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum Target {
+pub enum TargetMatch {
     ProcessName(String),
     ShortLivedProcessExecutable(String),
     CommandContains(CommandContainsStruct),
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Target {
+    pub match_type: TargetMatch,
+    pub display_name: Option<String>,
+    pub merge_with_parents: bool,
+    pub force_ancestor_to_match: bool,
+}
+
 impl Target {
     pub fn matches(&self, process_name: &str, command: &str) -> bool {
-        match self {
-            Target::ProcessName(name) => process_name == name,
-            Target::ShortLivedProcessExecutable(_) => false,
-            Target::CommandContains(inner) => {
+        match &self.match_type {
+            TargetMatch::ProcessName(name) => process_name == name,
+            TargetMatch::ShortLivedProcessExecutable(_) => false,
+            TargetMatch::CommandContains(inner) => {
                 (inner.process_name.is_none()
                     || inner.process_name.as_ref().unwrap() == process_name)
                     && command.contains(&inner.command_content)
@@ -39,18 +45,44 @@ impl Target {
     }
 
     pub fn should_be_merged_with_parents(&self) -> bool {
-        match self {
-            Target::ProcessName(_) => false,
-            Target::ShortLivedProcessExecutable(_) => false,
-            Target::CommandContains(inner) => inner.merge_with_parents,
-        }
+        self.merge_with_parents
     }
 
     pub fn should_force_ancestor_to_match(&self) -> bool {
-        match self {
-            Target::ProcessName(_) => false,
-            Target::ShortLivedProcessExecutable(_) => false,
-            Target::CommandContains(inner) => inner.force_ancestor_to_match,
+        self.force_ancestor_to_match
+    }
+
+    pub fn get_display_name(&self) -> Option<String> {
+        self.display_name.clone()
+    }
+
+    pub fn new(match_type: TargetMatch) -> Target {
+        Target {
+            match_type,
+            display_name: None,
+            merge_with_parents: false,
+            force_ancestor_to_match: false,
+        }
+    }
+
+    pub fn set_display_name(self, display_name: Option<String>) -> Target {
+        Target {
+            display_name,
+            ..self
+        }
+    }
+
+    pub fn set_merge_with_parents(self, merge_with_parents: bool) -> Target {
+        Target {
+            merge_with_parents,
+            ..self
+        }
+    }
+
+    pub fn set_force_ancestor_to_match(self, force_ancestor_to_match: bool) -> Target {
+        Target {
+            force_ancestor_to_match,
+            ..self
         }
     }
 }
