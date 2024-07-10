@@ -10,6 +10,7 @@ const DEFAULT_CONFIG_FILE_LOCATION_FROM_HOME: &str = ".config/tracer/tracer.toml
 const PROCESS_POLLING_INTERVAL_MS: u64 = 50;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 const NEW_RUN_PAUSE_MS: u64 = 10 * 60 * 1000;
+const PROCESS_METRICS_SEND_INTERVAL_MS: u64 = 10000;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CommandContainsStruct {
@@ -95,6 +96,7 @@ pub struct ConfigFile {
     pub process_polling_interval_ms: Option<u64>,
     pub batch_submission_interval_ms: Option<u64>,
     pub new_run_pause_ms: Option<u64>,
+    pub process_metrics_send_interval_ms: Option<u64>,
     pub targets: Option<Vec<Target>>,
 }
 
@@ -103,6 +105,7 @@ pub struct Config {
     pub api_key: String,
     pub process_polling_interval_ms: u64,
     pub batch_submission_interval_ms: u64,
+    pub process_metrics_send_interval_ms: u64,
     pub service_url: String,
     pub new_run_pause_ms: u64,
     pub targets: Vec<Target>,
@@ -138,6 +141,9 @@ impl ConfigManager {
                 .service_url
                 .unwrap_or(DEFAULT_SERVICE_URL.to_string()),
             new_run_pause_ms: config.new_run_pause_ms.unwrap_or(NEW_RUN_PAUSE_MS),
+            process_metrics_send_interval_ms: config
+                .process_metrics_send_interval_ms
+                .unwrap_or(PROCESS_METRICS_SEND_INTERVAL_MS),
             targets: config.targets.unwrap_or_else(|| targets::TARGETS.to_vec()),
         })
     }
@@ -150,6 +156,7 @@ impl ConfigManager {
             new_run_pause_ms: NEW_RUN_PAUSE_MS,
             service_url: DEFAULT_SERVICE_URL.to_string(),
             targets: targets::TARGETS.to_vec(),
+            process_metrics_send_interval_ms: PROCESS_METRICS_SEND_INTERVAL_MS,
         }
     }
 
@@ -189,6 +196,7 @@ impl ConfigManager {
             process_polling_interval_ms: Some(config.process_polling_interval_ms),
             batch_submission_interval_ms: Some(config.batch_submission_interval_ms),
             targets: Some(config.targets.clone()),
+            process_metrics_send_interval_ms: Some(config.process_metrics_send_interval_ms),
         };
         let config = toml::to_string(&config_out)?;
         std::fs::write(config_file_location, config)?;
@@ -215,6 +223,10 @@ mod tests {
         assert_eq!(
             config.batch_submission_interval_ms,
             BATCH_SUBMISSION_INTERVAL_MS
+        );
+        assert_eq!(
+            config.process_metrics_send_interval_ms,
+            PROCESS_METRICS_SEND_INTERVAL_MS
         );
         assert!(!config.targets.is_empty());
     }

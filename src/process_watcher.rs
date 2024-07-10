@@ -10,6 +10,7 @@ use serde_json::json;
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 use std::path::Path;
+use std::time::Duration;
 use sysinfo::{Pid, Process, System};
 
 pub struct ProcessWatcher {
@@ -20,6 +21,7 @@ pub struct ProcessWatcher {
 pub struct Proc {
     name: String,
     start_time: DateTime<Utc>,
+    last_update: DateTime<Utc>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -32,6 +34,11 @@ pub struct ProcessProperties {
     pub process_cpu_utilization: f32,
     pub process_memory_usage: u64,
     pub process_memory_virtual: u64,
+    pub process_run_time: u64,
+    pub process_disk_usage_read_last_interval: u64,
+    pub process_disk_usage_write_last_interval: u64,
+    pub process_disk_usage_read_total: u64,
+    pub process_disk_usage_write_total: u64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -67,9 +74,8 @@ impl ProcessWatcher {
                     .targets
                     .iter()
                     .find(|target| target.matches(proc.name(), &proc.cmd().join(" ")));
-                if target.is_some() {
-                    let target = target.unwrap().clone();
-                    self.add_new_process(*pid, proc, system, event_logger, Some(&target))?;
+                if let Some(target) = target {
+                    self.add_new_process(*pid, proc, system, event_logger, Some(&target.clone()))?;
                 }
             }
         }
@@ -83,6 +89,25 @@ impl ProcessWatcher {
                 .collect(),
             event_logger,
         )?;
+
+        Ok(())
+    }
+
+    pub fn poll_process_metrics(
+        &mut self,
+        system: &System,
+        event_logger: &mut EventRecorder,
+        process_metrics_send_interval: Duration,
+    ) -> Result<()> {
+        for (pid, proc) in system.processes().iter() {
+            if let Some(p) = self.seen.get(pid) {
+                if Utc::now() - process_metrics_send_interval > p.last_update {
+                    self.add_process_metrics(proc, event_logger, None)?;
+                    self.seen.get_mut(pid).unwrap().last_update = Utc::now();
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -229,6 +254,11 @@ impl ProcessWatcher {
             tool_cmd: proc.cmd().join(" "),
             start_timestamp: start_time.to_string(),
             process_cpu_utilization: proc.cpu_usage(),
+            process_run_time: proc.run_time(),
+            process_disk_usage_read_total: proc.disk_usage().total_read_bytes,
+            process_disk_usage_write_total: proc.disk_usage().total_written_bytes,
+            process_disk_usage_read_last_interval: proc.disk_usage().read_bytes,
+            process_disk_usage_write_last_interval: proc.disk_usage().written_bytes,
             process_memory_usage: proc.memory(),
             process_memory_virtual: proc.virtual_memory(),
         }
@@ -256,6 +286,7 @@ impl ProcessWatcher {
             v.insert(Proc {
                 name: short_lived_process.command,
                 start_time: Utc::now(),
+                last_update: Utc::now(),
             });
         }
 
@@ -275,6 +306,7 @@ impl ProcessWatcher {
             Proc {
                 name: proc.name().to_string(),
                 start_time: Utc::now(),
+                last_update: Utc::now(),
             },
         );
 
@@ -300,6 +332,36 @@ impl ProcessWatcher {
         event_logger.record_event(
             EventType::ToolExecution,
             format!("[{}] Tool process: {}", start_time, &display_name),
+            Some(properties),
+        );
+
+        Ok(())
+    }
+
+    fn add_process_metrics(
+        &mut self,
+        proc: &Process,
+        event_logger: &mut EventRecorder,
+        target: Option<&Target>,
+    ) -> Result<()> {
+        let pid = proc.pid();
+        let start_time = Utc::now();
+
+        let properties = json!(Self::gather_process_data(&pid, proc));
+
+        let display_name = if let Some(target) = target {
+            if let Some(display_name) = target.get_display_name() {
+                display_name
+            } else {
+                proc.name().to_owned()
+            }
+        } else {
+            proc.name().to_owned()
+        };
+
+        event_logger.record_event(
+            EventType::ToolMetricEvent,
+            format!("[{}] Tool metric event: {}", start_time, &display_name),
             Some(properties),
         );
 
@@ -361,6 +423,11 @@ mod tests {
                 process_cpu_utilization: 0.0,
                 process_memory_usage: 0,
                 process_memory_virtual: 0,
+                process_run_time: 0,
+                process_disk_usage_read_last_interval: 0,
+                process_disk_usage_write_last_interval: 0,
+                process_disk_usage_read_total: 0,
+                process_disk_usage_write_total: 0,
             };
 
             let node = ProcessTreeNode {

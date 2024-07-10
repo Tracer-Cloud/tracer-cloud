@@ -117,6 +117,11 @@ pub async fn log_short_lived_process(socket_path: &str, command: &str) -> Result
                 process_cpu_utilization: 0.0,
                 process_memory_usage: 0,
                 process_memory_virtual: 0,
+                process_run_time: 0,
+                process_disk_usage_read_last_interval: 0,
+                process_disk_usage_write_last_interval: 0,
+                process_disk_usage_read_total: 0,
+                process_disk_usage_write_total: 0,
             },
         }
     };
