@@ -22,6 +22,7 @@ pub struct EventRecorder {
 pub enum EventType {
     FinishedRun,
     ToolExecution,
+    ToolMetricEvent,
     MetricEvent,
     TestEvent, // Added TestEvent variant
 }
@@ -32,6 +33,7 @@ impl EventType {
             EventType::FinishedRun => "finished_run",
             EventType::ToolExecution => "tool_execution",
             EventType::MetricEvent => "metric_event",
+            EventType::ToolMetricEvent => "tool_metric_event",
             EventType::TestEvent => "test_event", // Handle TestEvent
         }
     }
