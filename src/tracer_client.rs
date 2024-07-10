@@ -12,6 +12,7 @@ pub struct TracerClient {
     system: System,
     last_sent: Option<Instant>,
     interval: Duration,
+    process_metrics_send_interval: Duration,
     pub logs: EventRecorder,
     process_watcher: ProcessWatcher,
     metrics_collector: SystemMetricsCollector,
@@ -35,6 +36,9 @@ impl TracerClient {
             system: System::new_all(),
             last_sent: None,
             interval: Duration::from_millis(config.process_polling_interval_ms),
+            process_metrics_send_interval: Duration::from_millis(
+                config.process_metrics_send_interval_ms,
+            ),
             // Sub mannagers
             logs: EventRecorder::new(),
             process_watcher: ProcessWatcher::new(config.targets),
@@ -75,6 +79,15 @@ impl TracerClient {
     pub async fn poll_processes(&mut self) -> Result<()> {
         self.process_watcher
             .poll_processes(&mut self.system, &mut self.logs)?;
+        Ok(())
+    }
+
+    pub async fn poll_process_metrics(&mut self) -> Result<()> {
+        self.process_watcher.poll_process_metrics(
+            &self.system,
+            &mut self.logs,
+            self.process_metrics_send_interval,
+        )?;
         Ok(())
     }
 
