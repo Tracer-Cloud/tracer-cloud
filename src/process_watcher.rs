@@ -113,7 +113,7 @@ impl ProcessWatcher {
         let mut nodes: HashMap<Pid, ProcessTreeNode> = HashMap::new();
 
         for (pid, proc) in system_processes {
-            let properties = Self::gather_process_data(pid, proc, None);
+            let properties = Self::gather_process_data(pid, proc);
             let node = ProcessTreeNode {
                 properties,
                 children: vec![],
@@ -213,23 +213,11 @@ impl ProcessWatcher {
         Ok(())
     }
 
-    pub fn gather_process_data(
-        pid: &Pid,
-        proc: &Process,
-        target: Option<&Target>,
-    ) -> ProcessProperties {
+    pub fn gather_process_data(pid: &Pid, proc: &Process) -> ProcessProperties {
         let start_time = Utc::now();
 
         ProcessProperties {
-            tool_name: if let Some(target) = target {
-                if let Some(display_name) = target.get_display_name() {
-                    display_name
-                } else {
-                    proc.name().to_owned()
-                }
-            } else {
-                proc.name().to_owned()
-            },
+            tool_name: proc.name().to_owned(),
             tool_pid: pid.to_string(),
             tool_binary_path: proc
                 .exe()
@@ -297,11 +285,21 @@ impl ProcessWatcher {
 
         let start_time = Utc::now();
 
-        let properties = json!(Self::gather_process_data(&pid, p, target));
+        let properties = json!(Self::gather_process_data(&pid, p));
+
+        let display_name = if let Some(target) = target {
+            if let Some(display_name) = target.get_display_name() {
+                display_name
+            } else {
+                proc.name().to_owned()
+            }
+        } else {
+            proc.name().to_owned()
+        };
 
         event_logger.record_event(
             EventType::ToolExecution,
-            format!("[{}] Tool process: {}", start_time, proc.name()),
+            format!("[{}] Tool process: {}", start_time, &display_name),
             Some(properties),
         );
 

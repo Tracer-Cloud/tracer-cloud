@@ -102,7 +102,7 @@ pub async fn log_short_lived_process(socket_path: &str, command: &str) -> Result
         ShortLivedProcessLog {
             command: command.to_string(),
             timestamp: chrono::Utc::now().to_rfc3339(),
-            properties: ProcessWatcher::gather_process_data(&process.pid(), process, None),
+            properties: ProcessWatcher::gather_process_data(&process.pid(), process),
         }
     } else {
         ShortLivedProcessLog {
