@@ -98,12 +98,11 @@ pub fn process_cli() -> Result<()> {
                 config
                     .targets
                     .iter()
-                    .filter_map(|target| {
-                        if let TargetMatch::ShortLivedProcessExecutable(_) = &target.match_type {
-                            Some(target)
-                        } else {
-                            None
-                        }
+                    .filter(|target| {
+                        matches!(
+                            &target.match_type,
+                            TargetMatch::ShortLivedProcessExecutable(_)
+                        )
                     })
                     .collect(),
             )

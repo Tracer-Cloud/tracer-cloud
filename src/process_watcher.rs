@@ -66,7 +66,7 @@ impl ProcessWatcher {
                 let target = self
                     .targets
                     .iter()
-                    .find(|target| target.matches(&proc.name(), &proc.cmd().join(" ")));
+                    .find(|target| target.matches(proc.name(), &proc.cmd().join(" ")));
                 if target.is_some() {
                     let target = target.unwrap().clone();
                     self.add_new_process(*pid, proc, system, event_logger, Some(&target))?;
@@ -221,8 +221,12 @@ impl ProcessWatcher {
         let start_time = Utc::now();
 
         ProcessProperties {
-            tool_name: if target.is_some() && target.unwrap().get_display_name().is_some() {
-                target.unwrap().get_display_name().unwrap()
+            tool_name: if let Some(target) = target {
+                if let Some(display_name) = target.get_display_name() {
+                    display_name
+                } else {
+                    proc.name().to_owned()
+                }
             } else {
                 proc.name().to_owned()
             },
