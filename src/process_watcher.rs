@@ -293,6 +293,37 @@ impl ProcessWatcher {
         Ok(())
     }
 
+    pub fn gather_short_lived_process_data(system: &System, command: &str) -> ShortLivedProcessLog {
+        let process = system.processes_by_name(command).last();
+        if let Some(process) = process {
+            ShortLivedProcessLog {
+                command: command.to_string(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                properties: ProcessWatcher::gather_process_data(&process.pid(), process),
+            }
+        } else {
+            ShortLivedProcessLog {
+                command: command.to_string(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                properties: ProcessProperties {
+                    tool_name: command.to_string(),
+                    tool_pid: "".to_string(),
+                    tool_binary_path: "".to_string(),
+                    tool_cmd: command.to_string(),
+                    start_timestamp: chrono::Utc::now().to_rfc3339(),
+                    process_cpu_utilization: 0.0,
+                    process_memory_usage: 0,
+                    process_memory_virtual: 0,
+                    process_run_time: 0,
+                    process_disk_usage_read_last_interval: 0,
+                    process_disk_usage_write_last_interval: 0,
+                    process_disk_usage_read_total: 0,
+                    process_disk_usage_write_total: 0,
+                },
+            }
+        }
+    }
+
     fn add_new_process(
         &mut self,
         pid: Pid,

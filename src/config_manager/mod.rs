@@ -1,8 +1,12 @@
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use task_wrapper::{modify_bashrc_file, rewrite_wrapper_bashrc_file};
+
+use crate::events::send_daemon_start_event;
 mod targets;
+mod task_wrapper;
 
 const DEFAULT_API_KEY: &str = "EAjg7eHtsGnP3fTURcPz1";
 const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
@@ -182,6 +186,27 @@ impl ConfigManager {
         config
     }
 
+    pub fn setup_aliases() -> Result<()> {
+        let config = ConfigManager::load_config();
+        rewrite_wrapper_bashrc_file(
+            env::current_exe()?,
+            config
+                .targets
+                .iter()
+                .filter(|target| {
+                    matches!(
+                        &target.match_type,
+                        TargetMatch::ShortLivedProcessExecutable(_)
+                    )
+                })
+                .collect(),
+        )?;
+        modify_bashrc_file(".bashrc")?;
+
+        println!("Aliases setup successfully.");
+        Ok(())
+    }
+
     pub fn save_config(config: &Config) -> Result<()> {
         let config_file_location = ConfigManager::get_config_path().unwrap();
         let config_out = ConfigFile {
@@ -195,6 +220,48 @@ impl ConfigManager {
         let config = toml::to_string(&config_out)?;
         std::fs::write(config_file_location, config)?;
         Ok(())
+    }
+
+    pub fn modify_config(
+        api_key: &Option<String>,
+        service_url: &Option<String>,
+        process_polling_interval_ms: &Option<u64>,
+        batch_submission_interval_ms: &Option<u64>,
+    ) -> Result<()> {
+        let mut current_config = ConfigManager::load_config();
+        if let Some(api_key) = api_key {
+            current_config.api_key.clone_from(api_key);
+        }
+        if let Some(service_url) = service_url {
+            current_config.service_url.clone_from(service_url);
+        }
+        if let Some(process_polling_interval_ms) = process_polling_interval_ms {
+            current_config.process_polling_interval_ms = *process_polling_interval_ms;
+        }
+        if let Some(batch_submission_interval_ms) = batch_submission_interval_ms {
+            current_config.batch_submission_interval_ms = *batch_submission_interval_ms;
+        }
+        ConfigManager::save_config(&current_config)?;
+        Ok(())
+    }
+
+    pub async fn test_service_config() -> Result<()> {
+        let config = ConfigManager::load_config();
+
+        let result = send_daemon_start_event(&config.service_url, &config.api_key).await;
+
+        if result.is_err() {
+            println!("Failed to test the service configuration! Please check the configuration and try again.");
+            println!("{}", result.as_ref().unwrap_err());
+            return result;
+        }
+
+        Ok(())
+    }
+
+    pub fn test_service_config_sync() -> Result<()> {
+        let runtime = tokio::runtime::Runtime::new().unwrap();
+        runtime.block_on(ConfigManager::test_service_config())
     }
 }
 

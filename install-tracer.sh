@@ -6,9 +6,7 @@
 #-------------------------------------------------------------------------------
 SCRIPT_VERSION="v0.0.1"
 TRACER_VERSION="v0.0.68"
-TRACER_LINUX_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-x86_64-unknown-linux-gnu.tar.gz"
-TRACER_MACOS_AARCH_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-aarch64-apple-darwin.tar.gz"
-TRACER_MACOS_UNIVERSAL_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-universal-apple-darwin.tar.gz"
+TRACER_VERSION_DEVELOP="v0.0.68"
 
 TRACER_HOME="$HOME/.tracerbio"
 LOGFILE_NAME="tracer-installer.log"
@@ -21,6 +19,8 @@ BINDIRS=("$HOME/bin" "$HOME/.local/bin" "$TRACER_HOME/bin")
 BINDIR="" # set later
 
 API_KEY="" # set later
+SERVICE_URL="" # set later
+ENVIRONMENT="" # set later
 
 #---  VARIABLES  ---------------------------------------------------------------
 #          NAME:  Red|Gre|Yel|Bla|RCol
@@ -155,6 +155,16 @@ function print_help() {
     printindmsg "To obtain your API key, log in to your console at ${Blu}https://app.tracer.bio${RCol}"
 }
 
+function set_urls() {
+    if [ "$ENVIRONMENT" = "develop" ]; then
+        TRACER_VERSION=$TRACER_VERSION_DEVELOP
+    fi
+
+    TRACER_LINUX_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-x86_64-unknown-linux-gnu.tar.gz"
+    TRACER_MACOS_AARCH_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-aarch64-apple-darwin.tar.gz"
+    TRACER_MACOS_UNIVERSAL_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-universal-apple-darwin.tar.gz"
+}
+
 #-------------------------------------------------------------------------------
 #          NAME:  check_os
 #   DESCRIPTION:  Check the OS and set the appropriate download URL
@@ -196,7 +206,7 @@ check_args() {
         exit 1
     fi
     API_KEY=$1
-
+    ENVIRONMENT=$2
 }
 
 #-------------------------------------------------------------------------------
@@ -356,58 +366,15 @@ send_event() {
 #          NAME:  configuration files including api key
 #   DESCRIPTION:  The confiugration file function
 setup_tracer_configuration_file() {
-    # URL of the tracer.toml file
-    TRACER_TOML_URL="https://raw.githubusercontent.com/davincios/tracer-daemon/main/tracer.toml"
-
-    # Fetch the tracer.toml content and store it in a temporary file
-    TEMP_FILE=$(mktemp)
-    curl -s $TRACER_TOML_URL -o $TEMP_FILE
-
-    # Check if the content was successfully fetched
-    if [ ! -s "$TEMP_FILE" ]; then
-        echo "Failed to fetch tracer.toml content from $TRACER_TOML_URL"
-        rm -f $TEMP_FILE
-        return 1
-    fi
-
-    # Create the destination directory if it doesn't exist
     mkdir -p ~/.config/tracer
-
-    # Remove the first line and store it in a new temporary file
-    TEMP_FILE_NO_FIRST_LINE=$(mktemp)
-    tail -n +2 "$TEMP_FILE" >"$TEMP_FILE_NO_FIRST_LINE"
 
     # Ensure the API_KEY environment variable is set
     if [ -z "$API_KEY" ]; then
         echo "API_KEY environment variable is not set"
-        rm -f $TEMP_FILE
-        rm -f $TEMP_FILE_NO_FIRST_LINE
         return 1
     fi
 
-    # Remove any existing api_key entry and store in another temporary file
-    TEMP_FILE_CLEANED=$(mktemp)
-    grep -v '^api_key' "$TEMP_FILE_NO_FIRST_LINE" >"$TEMP_FILE_CLEANED"
-
-    # Add the api_key line at the beginning and save to the final destination
-    {
-        echo "api_key = \"$API_KEY\""
-        cat "$TEMP_FILE_CLEANED"
-    } >~/.config/tracer/tracer.toml
-
-    # Remove the temporary files
-    rm -f $TEMP_FILE
-    rm -f $TEMP_FILE_NO_FIRST_LINE
-    rm -f $TEMP_FILE_CLEANED
-
-    # Confirm the file has been created with the correct content
-    if [ -s ~/.config/tracer/tracer.toml ]; then
-        echo "tracer.toml has been successfully created and moved to ~/.config/tracer/tracer.toml"
-    else
-        echo "Failed to create and move tracer.toml"
-        return 1
-    fi
-
+    tracer setup --api-key "$API_KEY"
     # Debugging: display the first few lines of the created file
     head -n 5 ~/.config/tracer/tracer.toml
 }
@@ -429,6 +396,7 @@ main() {
 
     print_header
     check_args "$@"
+    set_urls 
     check_os
     check_prereqs
     get_package_name
