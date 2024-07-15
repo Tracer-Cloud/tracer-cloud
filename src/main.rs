@@ -5,17 +5,14 @@ mod event_recorder;
 mod events;
 mod http_client;
 mod metrics;
-mod nondaemon_commands;
 mod process_watcher;
 mod submit_batched_data;
-mod task_wrapper;
 mod tracer_client;
 
 use anyhow::{Context, Ok, Result};
 use cli::process_cli;
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
-use nondaemon_commands::test_service_config_sync;
 use std::borrow::BorrowMut;
 
 use std::fs::File;
@@ -37,7 +34,7 @@ const REPO_OWNER: &str = "davincios";
 const REPO_NAME: &str = "tracer-daemon";
 
 pub fn start_daemon() -> Result<()> {
-    test_service_config_sync()?;
+    ConfigManager::test_service_config_sync()?;
 
     let daemon = Daemonize::new();
     daemon

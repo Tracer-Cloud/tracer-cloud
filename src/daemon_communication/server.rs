@@ -166,7 +166,7 @@ pub async fn run_server(
         };
 
         let result = match command {
-            "stop" => {
+            "terminate" => {
                 cancellation_token.cancel();
                 return Ok(());
             }
