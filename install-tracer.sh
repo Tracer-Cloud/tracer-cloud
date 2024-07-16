@@ -150,7 +150,7 @@ function print_header() {
 function print_help() {
     printindmsg ""
     printindmsg "Example Usage: "
-    printindmsg "  ${Gre}$0 <your_api_key>${RCol}"
+    printindmsg "  ${Gre}$0 <your_api_key>${RCol} "
     printindmsg ""
     printindmsg "To obtain your API key, log in to your console at ${Blu}https://app.tracer.bio${RCol}"
 }
@@ -200,7 +200,7 @@ check_os() {
 #-------------------------------------------------------------------------------
 check_args() {
     # Check if an API key was provided
-    if [ "$#" -ne 1 ]; then
+    if [ "$#" -lt 1 ]; then
         printerror "Incorrect number of arguments. To run this installer, please provide your Tracer API key"
         print_help
         exit 1
