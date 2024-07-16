@@ -158,6 +158,7 @@ function print_help() {
 function set_urls() {
     if [ "$ENVIRONMENT" = "develop" ]; then
         TRACER_VERSION=$TRACER_VERSION_DEVELOP
+        SERVICE_URL="https://develop.app.tracer.bio/api/data-collector-api"
     fi
 
     TRACER_LINUX_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-x86_64-unknown-linux-gnu.tar.gz"
@@ -374,7 +375,13 @@ setup_tracer_configuration_file() {
         return 1
     fi
 
-    tracer setup --api-key "$API_KEY"
+    SETUP_COMMAND = "tracer setup --api-key $API_KEY"
+    if [ -n "$SERVICE_URL" ]; then
+        SETUP_COMMAND="$SETUP_COMMAND --service-url $SERVICE_URL"
+    fi
+
+    $SETUP_COMMAND
+
     # Debugging: display the first few lines of the created file
     head -n 5 ~/.config/tracer/tracer.toml
 }
