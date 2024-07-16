@@ -382,7 +382,7 @@ setup_tracer_configuration_file() {
         SETUP_COMMAND="${SETUP_COMMAND} --service-url \"${SERVICE_URL}\""
     fi
 
-    bash -c $SETUP_COMMAND
+    eval "$SETUP_COMMAND"
 
     # Debugging: display the first few lines of the created file
     head -n 5 ~/.config/tracer/tracer.toml
