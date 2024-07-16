@@ -375,13 +375,14 @@ setup_tracer_configuration_file() {
         return 1
     fi
 
+    touch ~/.config/tracer/tracer.toml
+
     SETUP_COMMAND="tracer setup --api-key \"$API_KEY\""
     if [ -n "$SERVICE_URL" ]; then
         SETUP_COMMAND="${SETUP_COMMAND} --service-url \"${SERVICE_URL}\""
     fi
 
-    echo $SETUP_COMMAND
-    $SETUP_COMMAND
+    bash -c $SETUP_COMMAND
 
     # Debugging: display the first few lines of the created file
     head -n 5 ~/.config/tracer/tracer.toml
