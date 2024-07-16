@@ -121,9 +121,14 @@ mod tests {
     use anyhow::Error;
 
     #[tokio::test]
-    async fn test_event_pipeline_run_start_new() -> Result<(), Error> {
+    async fn test_event_log() -> Result<(), Error> {
         let config = ConfigManager::load_default_config();
-        send_start_run_event(&config.service_url.clone(), &config.api_key.clone()).await?;
+        send_log_event(
+            &config.service_url.clone(),
+            &config.api_key.clone(),
+            "Test".to_string(),
+        )
+        .await?;
 
         //     //     assert!(result.is_ok(), "Expected success, but got an error");
 

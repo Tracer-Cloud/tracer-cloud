@@ -16,6 +16,7 @@ use sysinfo::{Pid, Process, System};
 pub struct ProcessWatcher {
     targets: Vec<Target>,
     seen: HashMap<Pid, Proc>,
+    process_tree: HashMap<Pid, ProcessTreeNode>,
 }
 
 pub struct Proc {
@@ -53,6 +54,7 @@ pub struct ProcessTreeNode {
     pub properties: ProcessProperties,
     pub children: Vec<ProcessTreeNode>,
     pub parent_id: Option<Pid>,
+    pub start_time: DateTime<Utc>,
 }
 
 impl ProcessWatcher {
@@ -60,6 +62,7 @@ impl ProcessWatcher {
         ProcessWatcher {
             targets,
             seen: HashMap::new(),
+            process_tree: HashMap::new(),
         }
     }
 
@@ -131,10 +134,7 @@ impl ProcessWatcher {
         Ok(())
     }
 
-    pub fn build_process_trees(
-        &self,
-        system_processes: &HashMap<Pid, Process>,
-    ) -> HashMap<Pid, ProcessTreeNode> {
+    pub fn build_process_trees(&mut self, system_processes: &HashMap<Pid, Process>) {
         let mut nodes: HashMap<Pid, ProcessTreeNode> = HashMap::new();
 
         for (pid, proc) in system_processes {
@@ -143,6 +143,7 @@ impl ProcessWatcher {
                 properties,
                 children: vec![],
                 parent_id: proc.parent(),
+                start_time: DateTime::from_timestamp(proc.start_time() as i64, 0).unwrap(),
             };
 
             nodes.insert(*pid, node);
@@ -158,7 +159,7 @@ impl ProcessWatcher {
             }
         }
 
-        nodes
+        self.process_tree = nodes
     }
 
     pub fn get_parent_processes(
@@ -198,21 +199,22 @@ impl ProcessWatcher {
         targets: Vec<Target>,
         event_logger: &mut EventRecorder,
     ) -> Result<()> {
-        let nodes: HashMap<Pid, ProcessTreeNode> = self.build_process_trees(system.processes());
+        self.build_process_trees(system.processes());
+        let nodes: &HashMap<Pid, ProcessTreeNode> = &self.process_tree;
 
         let mut processes_to_gather = vec![];
 
         for target in &targets {
             let mut valid_processes = vec![];
 
-            for (pid, node) in &nodes {
+            for (pid, node) in nodes {
                 if target.matches(&node.properties.tool_name, &node.properties.tool_cmd) {
                     valid_processes.push(*pid);
                 }
             }
 
             let parents = self.get_parent_processes(
-                &nodes,
+                nodes,
                 &valid_processes,
                 target.should_force_ancestor_to_match(),
             );
@@ -277,6 +279,7 @@ impl ProcessWatcher {
                 short_lived_process.timestamp, short_lived_process.command
             ),
             Some(properties),
+            None,
         );
 
         if let Vacant(v) = self
@@ -364,6 +367,7 @@ impl ProcessWatcher {
             EventType::ToolExecution,
             format!("[{}] Tool process: {}", start_time, &display_name),
             Some(properties),
+            None,
         );
 
         Ok(())
@@ -394,9 +398,79 @@ impl ProcessWatcher {
             EventType::ToolMetricEvent,
             format!("[{}] Tool metric event: {}", start_time, &display_name),
             Some(properties),
+            None,
         );
 
         Ok(())
+    }
+
+    pub fn get_earliest_process_time(&self) -> DateTime<Utc> {
+        let mut earliest = Utc::now();
+
+        for proc in self.seen.values() {
+            if proc.start_time < earliest {
+                earliest = proc.start_time;
+            }
+        }
+
+        earliest
+    }
+
+    pub fn get_parent_pid(&self, run_start: Option<DateTime<Utc>>) -> Option<Pid> {
+        let mut possible_parents = vec![];
+
+        let parent = self
+            .seen
+            .iter()
+            .find(|(_, proc)| run_start.is_none() || proc.start_time > run_start.unwrap())?;
+
+        let mut pid = parent.0.to_owned();
+        loop {
+            let process = self.process_tree.get(&pid);
+
+            if process.is_none() {
+                break;
+            }
+
+            pid = process.unwrap().parent_id?;
+
+            possible_parents.push(pid);
+        }
+
+        for process in self.seen.iter() {
+            let mut pid = process.0.to_owned();
+            loop {
+                let process = self.process_tree.get(&pid);
+
+                if process.is_none() {
+                    break;
+                }
+
+                pid = process.unwrap().parent_id?;
+
+                if possible_parents.contains(&pid) {
+                    let index = possible_parents.iter().position(|&x| x == pid).unwrap();
+                    if index > 0 {
+                        possible_parents.drain(0..index - 1);
+                    }
+                    break;
+                }
+            }
+        }
+
+        possible_parents.retain(|x| {
+            run_start.is_none() || self.process_tree[x].start_time > run_start.unwrap()
+        });
+
+        if possible_parents.is_empty() {
+            None
+        } else {
+            Some(*possible_parents.last().unwrap())
+        }
+    }
+
+    pub fn is_process_alive(&self, system: &System, pid: Pid) -> bool {
+        system.process(pid).is_some()
     }
 
     fn log_completed_process(&self, proc: &Proc, event_logger: &mut EventRecorder) -> Result<()> {
@@ -409,6 +483,7 @@ impl ProcessWatcher {
             EventType::FinishedRun,
             format!("[{}] {} exited", Utc::now(), &proc.name),
             Some(properties),
+            None,
         );
 
         Ok(())
@@ -421,6 +496,10 @@ impl ProcessWatcher {
 
         self.targets = targets;
         self.seen.clear();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.seen.is_empty()
     }
 }
 
@@ -465,6 +544,7 @@ mod tests {
                 properties,
                 children: vec![],
                 parent_id: Some(parent.into()),
+                start_time: Utc::now(),
             };
 
             nodes.insert(child.into(), node);
@@ -490,7 +570,7 @@ mod tests {
 
     #[test]
     fn test_create_process_tree() -> Result<()> {
-        let process_watcher = ProcessWatcher::new(vec![]);
+        let mut process_watcher = ProcessWatcher::new(vec![]);
         let system = System::new_all();
 
         process_watcher.build_process_trees(system.processes());

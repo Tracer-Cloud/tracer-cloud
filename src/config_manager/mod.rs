@@ -13,6 +13,7 @@ const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api
 const DEFAULT_CONFIG_FILE_LOCATION_FROM_HOME: &str = ".config/tracer/tracer.toml";
 const PROCESS_POLLING_INTERVAL_MS: u64 = 50;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
+const NEW_RUN_PAUSE_MS: u64 = 10 * 60 * 1000;
 const PROCESS_METRICS_SEND_INTERVAL_MS: u64 = 10000;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -98,6 +99,7 @@ pub struct ConfigFile {
     pub service_url: Option<String>,
     pub process_polling_interval_ms: Option<u64>,
     pub batch_submission_interval_ms: Option<u64>,
+    pub new_run_pause_ms: Option<u64>,
     pub process_metrics_send_interval_ms: Option<u64>,
     pub targets: Option<Vec<Target>>,
 }
@@ -109,6 +111,7 @@ pub struct Config {
     pub batch_submission_interval_ms: u64,
     pub process_metrics_send_interval_ms: u64,
     pub service_url: String,
+    pub new_run_pause_ms: u64,
     pub targets: Vec<Target>,
 }
 
@@ -141,6 +144,7 @@ impl ConfigManager {
             service_url: config
                 .service_url
                 .unwrap_or(DEFAULT_SERVICE_URL.to_string()),
+            new_run_pause_ms: config.new_run_pause_ms.unwrap_or(NEW_RUN_PAUSE_MS),
             process_metrics_send_interval_ms: config
                 .process_metrics_send_interval_ms
                 .unwrap_or(PROCESS_METRICS_SEND_INTERVAL_MS),
@@ -153,6 +157,7 @@ impl ConfigManager {
             api_key: DEFAULT_API_KEY.to_string(),
             process_polling_interval_ms: PROCESS_POLLING_INTERVAL_MS,
             batch_submission_interval_ms: BATCH_SUBMISSION_INTERVAL_MS,
+            new_run_pause_ms: NEW_RUN_PAUSE_MS,
             service_url: DEFAULT_SERVICE_URL.to_string(),
             targets: targets::TARGETS.to_vec(),
             process_metrics_send_interval_ms: PROCESS_METRICS_SEND_INTERVAL_MS,
@@ -212,6 +217,7 @@ impl ConfigManager {
         let config_out = ConfigFile {
             api_key: config.api_key.clone(),
             service_url: Some(config.service_url.clone()),
+            new_run_pause_ms: Some(config.new_run_pause_ms),
             process_polling_interval_ms: Some(config.process_polling_interval_ms),
             batch_submission_interval_ms: Some(config.batch_submission_interval_ms),
             targets: Some(config.targets.clone()),

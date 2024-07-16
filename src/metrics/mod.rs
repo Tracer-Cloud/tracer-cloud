@@ -60,6 +60,7 @@ impl SystemMetricsCollector {
             EventType::MetricEvent,
             format!("[{}] System's resources metric", Utc::now()),
             Some(attributes),
+            None,
         );
 
         Ok(())
