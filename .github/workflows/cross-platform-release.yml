@@ -15,7 +15,7 @@ jobs:
         run: |
           if [[ "${{github.ref_name}}" == *"-dev" ]] ; then
             export TRACER_VERSION_DEVELOP="${{github.ref_name}}"
-            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:4:$((${#TRACER_VERSION_DEVELOP} - 4 - 1))}\"/" Cargo.toml
+            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
             sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
             sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{github.ref_name}}\"/" install-tracer.sh
           else
@@ -65,7 +65,7 @@ jobs:
         run: |
           if [[ "${{github.ref_name}}" == *"-dev" ]] ; then
             export TRACER_VERSION_DEVELOP="${{github.ref_name}}"
-            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:4:$((${#TRACER_VERSION_DEVELOP} - 4 - 1))}\"/" Cargo.toml
+            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
             sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
             sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{github.ref_name}}\"/" install-tracer.sh
           else
