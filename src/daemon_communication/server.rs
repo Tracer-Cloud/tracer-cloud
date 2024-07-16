@@ -1,23 +1,27 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use anyhow::{Ok, Result};
-use serde_json::Value;
+use serde::Deserialize;
+use serde_json::{json, Value};
 use tokio::{
-    io::AsyncReadExt,
-    net::UnixListener,
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{UnixListener, UnixStream},
     sync::{Mutex, RwLock},
 };
 use tokio_util::sync::CancellationToken;
 
 use crate::{
     config_manager::{Config, ConfigManager},
-    events::{send_alert_event, send_end_run_event, send_log_event, send_update_tags_event},
+    events::{
+        send_alert_event, send_end_run_event, send_log_event, send_start_run_event,
+        send_update_tags_event,
+    },
     process_watcher::ShortLivedProcessLog,
     tracer_client::TracerClient,
 };
 
 type ProcessOutput<'a> =
-    Option<Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + 'a + Send>>>;
+    Option<Pin<Box<dyn Future<Output = Result<String, anyhow::Error>> + 'a + Send>>>;
 
 pub fn process_log_command<'a>(
     service_url: &'a str,
@@ -45,12 +49,55 @@ pub fn process_alert_command<'a>(
     Some(Box::pin(send_alert_event(service_url, api_key, message)))
 }
 
-pub fn process_start_run_command(tracer_client: &Arc<Mutex<TracerClient>>) -> ProcessOutput<'_> {
-    Some(Box::pin(async {
-        let mut tracer_client = tracer_client.lock().await;
-        tracer_client.start_new_run(None).await?;
-        Ok(())
-    }))
+pub fn process_start_run_command<'a>(
+    service_url: &'a str,
+    api_key: &'a str,
+    stream: &'a mut UnixStream,
+) -> ProcessOutput<'a> {
+    async fn fun<'a>(
+        service_url: &'a str,
+        api_key: &'a str,
+        stream: &'a mut UnixStream,
+    ) -> Result<String, anyhow::Error> {
+        let out = send_start_run_event(service_url, api_key).await?;
+
+        #[derive(Deserialize)]
+        struct RunLogOutProperties {
+            run_name: String,
+        }
+
+        #[derive(Deserialize)]
+        struct RunLogOut {
+            properties: RunLogOutProperties,
+        }
+
+        #[derive(Deserialize)]
+        struct RunLogResult {
+            result: Vec<RunLogOut>,
+        }
+
+        let value: RunLogResult = serde_json::from_str(&out).unwrap();
+
+        if value.result.len() != 1 {
+            return Err(anyhow::anyhow!("Invalid response from server"));
+        }
+
+        let run_name = &value.result[0].properties.run_name;
+
+        let output = json!({
+            "run_name": run_name
+        });
+
+        stream
+            .write_all(serde_json::to_string(&output)?.as_bytes())
+            .await?;
+
+        stream.flush().await?;
+
+        Ok("".to_string())
+    }
+
+    Some(Box::pin(fun(service_url, api_key, stream)))
 }
 
 pub fn process_end_run_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
@@ -67,10 +114,10 @@ pub fn process_refresh_config_command<'a>(
         tracer_client: &'a Arc<Mutex<TracerClient>>,
         config: &'a Arc<RwLock<Config>>,
         config_file: crate::config_manager::Config,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<String, anyhow::Error> {
         tracer_client.lock().await.reload_config_file(&config_file);
         config.write().await.clone_from(&config_file);
-        Ok(())
+        Ok("".to_string())
     }
 
     Some(Box::pin(fun(tracer_client, config, config_file)))
@@ -109,7 +156,7 @@ pub fn process_log_short_lived_process_command<'a>(
     Some(Box::pin(async move {
         let mut tracer_client = tracer_client.lock().await;
         tracer_client.fill_logs_with_short_lived_process(log)?;
-        Ok(())
+        Ok("".to_string())
     }))
 }
 
@@ -123,7 +170,6 @@ pub async fn run_server(
         std::fs::remove_file(socket_path).expect("Failed to remove existing socket file");
     }
     let listener = UnixListener::bind(socket_path).expect("Failed to bind to unix socket");
-
     loop {
         let (mut stream, _) = listener.accept().await.unwrap();
 
@@ -167,13 +213,13 @@ pub async fn run_server(
         };
 
         let result = match command {
-            "stop" => {
+            "terminate" => {
                 cancellation_token.cancel();
                 return Ok(());
             }
             "log" => process_log_command(&service_url, &api_key, object),
             "alert" => process_alert_command(&service_url, &api_key, object),
-            "start" => process_start_run_command(&tracer_client),
+            "start" => process_start_run_command(&service_url, &api_key, &mut stream),
             "end" => process_end_run_command(&service_url, &api_key),
             "refresh_config" => process_refresh_config_command(&tracer_client, &config),
             "tag" => process_tag_command(&service_url, &api_key, object),

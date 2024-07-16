@@ -31,7 +31,7 @@ async fn record_all_outgoing_http_calls(
     Ok(())
 }
 
-pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> Result<()> {
+pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> Result<String> {
     // Log request body
     let logs_array = match logs {
         Value::Array(_) => logs.clone(),
@@ -68,7 +68,8 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
             "Successfully sent HTTP event: {} - {}",
             status, response_text
         );
-        Ok(())
+
+        Ok(response_text)
     } else {
         error!(
             "Error while sending send_http_event: {} - {}",

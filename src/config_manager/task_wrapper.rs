@@ -4,13 +4,8 @@ use std::{
     io::{BufRead, BufReader, Write},
     path::PathBuf,
 };
-use sysinfo::System;
 
-use crate::{
-    config_manager::{Target, TargetMatch},
-    daemon_communication::client::send_log_short_lived_process_request,
-    process_watcher::{ProcessProperties, ProcessWatcher, ShortLivedProcessLog},
-};
+use crate::config_manager::{Target, TargetMatch};
 
 const TRACER_BASH_RC_PATH: &str = ".config/tracer/.bashrc";
 const WRAPPER_SOURCE_COMMAND: &str = "source ~/.config/tracer/.bashrc";
@@ -82,52 +77,5 @@ pub fn modify_bashrc_file(bashrc_file_path: &str) -> Result<()> {
         .write_all(WRAPPER_SOURCE_COMMAND.as_bytes())
         .unwrap();
 
-    Ok(())
-}
-
-pub fn setup_aliases(current_tracer_exe_path: PathBuf, commands: Vec<&Target>) -> Result<()> {
-    rewrite_wrapper_bashrc_file(current_tracer_exe_path, commands)?;
-    modify_bashrc_file(".bashrc")?;
-
-    println!("Aliases setup successfully.");
-    Ok(())
-}
-
-pub async fn log_short_lived_process(socket_path: &str, command: &str) -> Result<()> {
-    let system = System::new();
-
-    // Doing logging here so we have a larger time window for the process to be alive
-    let process = system.processes_by_name(command).last();
-    let data: ShortLivedProcessLog = if let Some(process) = process {
-        ShortLivedProcessLog {
-            command: command.to_string(),
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            properties: ProcessWatcher::gather_process_data(&process.pid(), process),
-        }
-    } else {
-        ShortLivedProcessLog {
-            command: command.to_string(),
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            properties: ProcessProperties {
-                tool_name: command.to_string(),
-                tool_pid: "".to_string(),
-                tool_binary_path: "".to_string(),
-                tool_cmd: command.to_string(),
-                start_timestamp: chrono::Utc::now().to_rfc3339(),
-                process_cpu_utilization: 0.0,
-                process_memory_usage: 0,
-                process_memory_virtual: 0,
-                process_run_time: 0,
-                process_disk_usage_read_last_interval: 0,
-                process_disk_usage_write_last_interval: 0,
-                process_disk_usage_read_total: 0,
-                process_disk_usage_write_total: 0,
-            },
-        }
-    };
-
-    send_log_short_lived_process_request(socket_path, data).await?;
-
-    println!("Logged short lived process: {}", command);
     Ok(())
 }
