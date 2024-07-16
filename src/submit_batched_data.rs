@@ -32,7 +32,9 @@ pub async fn submit_batched_data(
 
         send_http_event(service_url, api_key, &data)
             .await
-            .context("Failed to send HTTP event")
+            .context("Failed to send HTTP event")?;
+
+        Ok(())
     } else {
         Ok(())
     }

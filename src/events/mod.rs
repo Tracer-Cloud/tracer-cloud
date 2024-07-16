@@ -23,7 +23,7 @@ impl std::fmt::Display for EventStatus {
     }
 }
 
-pub async fn send_log_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
+pub async fn send_log_event(service_url: &str, api_key: &str, message: String) -> Result<String> {
     let log_entry = json!({
         "message": message,
         "process_type": "pipeline",
@@ -37,7 +37,7 @@ pub async fn send_log_event(service_url: &str, api_key: &str, message: String) -
         .context("Failed to send HTTP event")
 }
 
-pub async fn send_alert_event(service_url: &str, api_key: &str, message: String) -> Result<()> {
+pub async fn send_alert_event(service_url: &str, api_key: &str, message: String) -> Result<String> {
     let alert_entry = json!({
         "message": message,
         "process_type": "pipeline",
@@ -51,7 +51,7 @@ pub async fn send_alert_event(service_url: &str, api_key: &str, message: String)
         .context("Failed to send HTTP event")
 }
 
-pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<()> {
+pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<String> {
     info!("Starting new pipeline...");
 
     let init_entry = json!({
@@ -68,7 +68,7 @@ pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<()
     result
 }
 
-pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<()> {
+pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<String> {
     info!("Finishing pipeline run...");
 
     let end_entry = json!({
@@ -85,7 +85,7 @@ pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<()> 
     result
 }
 
-pub async fn send_daemon_start_event(service_url: &str, api_key: &str) -> Result<()> {
+pub async fn send_daemon_start_event(service_url: &str, api_key: &str) -> Result<String> {
     let daemon_start_entry: serde_json::Value = json!({
         "message": "[CLI] Starting daemon",
         "process_type": "pipeline",
@@ -101,7 +101,7 @@ pub async fn send_update_tags_event(
     service_url: &str,
     api_key: &str,
     tags: Vec<String>,
-) -> Result<()> {
+) -> Result<String> {
     let tags_entry = json!({
         "tags": tags,
         "message": "[CLI] Updating tags",
@@ -123,8 +123,7 @@ mod tests {
     #[tokio::test]
     async fn test_event_pipeline_run_start_new() -> Result<(), Error> {
         let config = ConfigManager::load_default_config();
-        let result =
-            send_start_run_event(&config.service_url.clone(), &config.api_key.clone()).await;
+        send_start_run_event(&config.service_url.clone(), &config.api_key.clone()).await?;
 
         //     //     assert!(result.is_ok(), "Expected success, but got an error");
 
@@ -155,6 +154,6 @@ mod tests {
         //         Ok(())
         //     }
         // }
-        result
+        Ok(())
     }
 }
