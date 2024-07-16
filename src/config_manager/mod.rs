@@ -250,10 +250,10 @@ impl ConfigManager {
 
         let result = send_daemon_start_event(&config.service_url, &config.api_key).await;
 
-        if result.is_err() {
+        if let Err(error) = result {
             println!("Failed to test the service configuration! Please check the configuration and try again.");
-            println!("{}", result.as_ref().unwrap_err());
-            return result;
+            println!("{}", &error);
+            return Err(error);
         }
 
         Ok(())
