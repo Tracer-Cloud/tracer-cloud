@@ -66,8 +66,8 @@ impl Target {
         Target {
             match_type,
             display_name: None,
-            merge_with_parents: false,
-            force_ancestor_to_match: false,
+            merge_with_parents: true,
+            force_ancestor_to_match: true,
         }
     }
 
