@@ -375,11 +375,12 @@ setup_tracer_configuration_file() {
         return 1
     fi
 
-    SETUP_COMMAND = "tracer setup --api-key $API_KEY"
+    SETUP_COMMAND="tracer setup --api-key \"$API_KEY\""
     if [ -n "$SERVICE_URL" ]; then
-        SETUP_COMMAND="$SETUP_COMMAND --service-url $SERVICE_URL"
+        SETUP_COMMAND="${SETUP_COMMAND} --service-url \"${SERVICE_URL}\""
     fi
 
+    echo $SETUP_COMMAND
     $SETUP_COMMAND
 
     # Debugging: display the first few lines of the created file
