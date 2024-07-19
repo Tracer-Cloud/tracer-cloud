@@ -138,7 +138,7 @@ impl ProcessWatcher {
         let mut nodes: HashMap<Pid, ProcessTreeNode> = HashMap::new();
 
         for (pid, proc) in system_processes {
-            let properties = Self::gather_process_data(pid, proc);
+            let properties = Self::gather_process_data(pid, proc, None);
             let node = ProcessTreeNode {
                 properties,
                 children: vec![],
@@ -240,11 +240,11 @@ impl ProcessWatcher {
         Ok(())
     }
 
-    pub fn gather_process_data(pid: &Pid, proc: &Process) -> ProcessProperties {
+    pub fn gather_process_data(pid: &Pid, proc: &Process, display_name: Option<String>) -> ProcessProperties {
         let start_time = Utc::now();
 
         ProcessProperties {
-            tool_name: proc.name().to_owned(),
+            tool_name: display_name.unwrap_or(proc.name().to_owned()),
             tool_pid: pid.to_string(),
             tool_binary_path: proc
                 .exe()
@@ -302,7 +302,7 @@ impl ProcessWatcher {
             ShortLivedProcessLog {
                 command: command.to_string(),
                 timestamp: chrono::Utc::now().to_rfc3339(),
-                properties: ProcessWatcher::gather_process_data(&process.pid(), process),
+                properties: ProcessWatcher::gather_process_data(&process.pid(), process, None),
             }
         } else {
             ShortLivedProcessLog {
@@ -351,8 +351,6 @@ impl ProcessWatcher {
 
         let start_time = Utc::now();
 
-        let properties = json!(Self::gather_process_data(&pid, p));
-
         let display_name = if let Some(target) = target {
             if let Some(display_name) = target.get_display_name() {
                 display_name
@@ -362,6 +360,8 @@ impl ProcessWatcher {
         } else {
             proc.name().to_owned()
         };
+
+        let properties = json!(Self::gather_process_data(&pid, p, Some(display_name.clone())));
 
         event_logger.record_event(
             EventType::ToolExecution,
@@ -382,8 +382,6 @@ impl ProcessWatcher {
         let pid = proc.pid();
         let start_time = Utc::now();
 
-        let properties = json!(Self::gather_process_data(&pid, proc));
-
         let display_name = if let Some(target) = target {
             if let Some(display_name) = target.get_display_name() {
                 display_name
@@ -393,6 +391,8 @@ impl ProcessWatcher {
         } else {
             proc.name().to_owned()
         };
+
+        let properties = json!(Self::gather_process_data(&pid, proc, Some(display_name.clone())));
 
         event_logger.record_event(
             EventType::ToolMetricEvent,
