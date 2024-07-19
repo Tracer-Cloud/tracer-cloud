@@ -240,7 +240,11 @@ impl ProcessWatcher {
         Ok(())
     }
 
-    pub fn gather_process_data(pid: &Pid, proc: &Process, display_name: Option<String>) -> ProcessProperties {
+    pub fn gather_process_data(
+        pid: &Pid,
+        proc: &Process,
+        display_name: Option<String>,
+    ) -> ProcessProperties {
         let start_time = Utc::now();
 
         ProcessProperties {
@@ -361,7 +365,11 @@ impl ProcessWatcher {
             proc.name().to_owned()
         };
 
-        let properties = json!(Self::gather_process_data(&pid, p, Some(display_name.clone())));
+        let properties = json!(Self::gather_process_data(
+            &pid,
+            p,
+            Some(display_name.clone())
+        ));
 
         event_logger.record_event(
             EventType::ToolExecution,
@@ -392,7 +400,11 @@ impl ProcessWatcher {
             proc.name().to_owned()
         };
 
-        let properties = json!(Self::gather_process_data(&pid, proc, Some(display_name.clone())));
+        let properties = json!(Self::gather_process_data(
+            &pid,
+            proc,
+            Some(display_name.clone())
+        ));
 
         event_logger.record_event(
             EventType::ToolMetricEvent,
