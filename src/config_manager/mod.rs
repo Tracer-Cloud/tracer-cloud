@@ -71,25 +71,19 @@ impl Target {
         }
     }
 
-    pub fn set_display_name(self, display_name: Option<String>) -> Target {
-        Target {
-            display_name,
-            ..self
-        }
+    pub fn set_display_name(mut self, display_name: Option<String>) -> Target {
+        self.display_name = display_name;
+        self
     }
 
-    pub fn set_merge_with_parents(self, merge_with_parents: bool) -> Target {
-        Target {
-            merge_with_parents,
-            ..self
-        }
+    pub fn set_merge_with_parents(mut self, merge_with_parents: bool) -> Target {
+        self.merge_with_parents = merge_with_parents;
+        self
     }
 
-    pub fn set_force_ancestor_to_match(self, force_ancestor_to_match: bool) -> Target {
-        Target {
-            force_ancestor_to_match,
-            ..self
-        }
+    pub fn set_force_ancestor_to_match(mut self, force_ancestor_to_match: bool) -> Target {
+        self.force_ancestor_to_match = force_ancestor_to_match;
+        self
     }
 }
 
