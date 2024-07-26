@@ -16,6 +16,8 @@ pub struct RunMetadata {
     pub start_time: DateTime<Utc>,
 }
 
+const RUN_COMPLICATED_PROCESS_IDENTIFICATION: bool = false;
+
 pub struct TracerClient {
     system: System,
     last_sent: Option<Instant>,
@@ -88,6 +90,9 @@ impl TracerClient {
 
     pub async fn run_cleanup(&mut self) -> Result<()> {
         if let Some(run) = self.current_run.as_mut() {
+            if !RUN_COMPLICATED_PROCESS_IDENTIFICATION {
+                return Ok(());
+            }
             if run.last_interaction.elapsed() > self.last_interaction_new_run_duration {
                 self.logs.record_event(
                     EventType::FinishedRun,
