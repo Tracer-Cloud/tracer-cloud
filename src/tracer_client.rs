@@ -17,6 +17,7 @@ pub struct RunMetadata {
 }
 
 const RUN_COMPLICATED_PROCESS_IDENTIFICATION: bool = false;
+const WAIT_FOR_PROCESS_BEFORE_NEW_RUN: bool = false;
 
 pub struct TracerClient {
     system: System,
@@ -118,7 +119,7 @@ impl TracerClient {
                     self.current_run = None;
                 }
             }
-        } else if !self.process_watcher.is_empty() {
+        } else if !WAIT_FOR_PROCESS_BEFORE_NEW_RUN || !self.process_watcher.is_empty() {
             let earliest_process_time = self.process_watcher.get_earliest_process_time();
             self.start_new_run(Some(earliest_process_time.sub(Duration::from_millis(1))))
                 .await?;
