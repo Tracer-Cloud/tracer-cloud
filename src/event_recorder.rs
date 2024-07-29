@@ -23,6 +23,7 @@ pub enum EventType {
     NewRun,
     FinishedRun,
     ToolExecution,
+    FinishedToolExecution,
     ToolMetricEvent,
     MetricEvent,
     TestEvent, // Added TestEvent variant
@@ -34,6 +35,7 @@ impl EventType {
             EventType::NewRun => "new_run",
             EventType::FinishedRun => "finished_run",
             EventType::ToolExecution => "tool_execution",
+            EventType::FinishedToolExecution => "finished_tool_execution",
             EventType::MetricEvent => "metric_event",
             EventType::ToolMetricEvent => "tool_metric_event",
             EventType::TestEvent => "test_event", // Handle TestEvent

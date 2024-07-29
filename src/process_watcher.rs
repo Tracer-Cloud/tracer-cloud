@@ -122,7 +122,9 @@ impl ProcessWatcher {
         let mut to_remove = vec![];
         for (pid, proc) in self.seen.iter() {
             if !system.processes().contains_key(pid) {
-                self.log_completed_process(proc, event_logger)?;
+                if false {
+                    self.log_completed_process(pid, proc, event_logger)?;
+                }
                 to_remove.push(*pid);
             }
         }
@@ -485,14 +487,22 @@ impl ProcessWatcher {
         system.process(pid).is_some()
     }
 
-    fn log_completed_process(&self, proc: &Proc, event_logger: &mut EventRecorder) -> Result<()> {
+    fn log_completed_process(
+        &self,
+        pid: &Pid,
+        proc: &Proc,
+        event_logger: &mut EventRecorder,
+    ) -> Result<()> {
         let duration = (Utc::now() - proc.start_time).to_std()?.as_millis();
+
         let properties = json!({
-            "execution_duration": duration,
+            "tool_name": proc.name.clone(),
+            "tool_pid": pid.to_string(),
+            "duration": duration
         });
 
         event_logger.record_event(
-            EventType::FinishedRun,
+            EventType::FinishedToolExecution,
             format!("[{}] {} exited", Utc::now(), &proc.name),
             Some(properties),
             None,
