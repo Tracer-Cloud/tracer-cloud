@@ -122,9 +122,7 @@ impl ProcessWatcher {
         let mut to_remove = vec![];
         for (pid, proc) in self.seen.iter() {
             if !system.processes().contains_key(pid) {
-                if false {
-                    self.log_completed_process(pid, proc, event_logger)?;
-                }
+                self.log_completed_process(pid, proc, event_logger)?;
                 to_remove.push(*pid);
             }
         }
