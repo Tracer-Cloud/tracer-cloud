@@ -1,7 +1,10 @@
 // src/cli.rs
 use anyhow::Result;
 use serde_json::json;
-use tokio::{io::AsyncWriteExt, net::UnixStream};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::UnixStream,
+};
 
 use crate::process_watcher::ShortLivedProcessLog;
 
@@ -21,7 +24,7 @@ pub async fn send_log_request(socket_path: &str, message: String) -> Result<()> 
 
 pub async fn send_alert_request(socket_path: &str, message: String) -> Result<()> {
     let mut socket = UnixStream::connect(socket_path).await?;
-    let alert_request = json!({
+    let alert_request: serde_json::Value = json!({
             "command": "alert",
             "message": message
     });
@@ -32,17 +35,17 @@ pub async fn send_alert_request(socket_path: &str, message: String) -> Result<()
     Ok(())
 }
 
-pub async fn send_stop_request(socket_path: &str) -> Result<()> {
+pub async fn send_terminate_request(socket_path: &str) -> Result<()> {
     let mut socket = UnixStream::connect(socket_path).await?;
 
-    let stop_request = json!({
-            "command": "stop"
+    let terminate_request = json!({
+            "command": "terminate"
     });
 
-    let stop_request_json =
-        serde_json::to_string(&stop_request).expect("Failed to serialize stop request");
+    let terminate_request_json =
+        serde_json::to_string(&terminate_request).expect("Failed to serialize terminate request");
 
-    socket.write_all(stop_request_json.as_bytes()).await?;
+    socket.write_all(terminate_request_json.as_bytes()).await?;
 
     Ok(())
 }
@@ -53,9 +56,25 @@ pub async fn send_start_run_request(socket_path: &str) -> Result<()> {
     let start_request = json!({
             "command": "start"
     });
+
     let start_request_json =
         serde_json::to_string(&start_request).expect("Failed to serialize start request");
+
     socket.write_all(start_request_json.as_bytes()).await?;
+
+    socket.shutdown().await?;
+
+    #[derive(serde::Deserialize)]
+    struct StartRunResponse {
+        run_name: String,
+    }
+
+    let mut buffer = [0; 1024];
+    let n = socket.read(&mut buffer).await?;
+    let response = std::str::from_utf8(&buffer[..n])?;
+    let response: StartRunResponse = serde_json::from_str(response)?;
+
+    println!("Started a new run with name: {}", response.run_name);
 
     Ok(())
 }
@@ -210,35 +229,15 @@ mod tests {
 
     #[tokio::test]
     #[serial]
-    async fn test_send_stop_request() -> Result<()> {
+    async fn test_send_terminate_request() -> Result<()> {
         let listener = setup_test_unix_listener();
 
-        send_stop_request(SOCKET_PATH).await?;
+        send_terminate_request(SOCKET_PATH).await?;
 
         check_listener_value(
             &listener,
             json!({
-                "command": "stop"
-            })
-            .to_string()
-            .as_str(),
-        )
-        .await;
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_send_start_run_request() -> Result<()> {
-        let listener = setup_test_unix_listener();
-
-        send_start_run_request(SOCKET_PATH).await?;
-
-        check_listener_value(
-            &listener,
-            json!({
-                "command": "start"
+                "command": "terminate"
             })
             .to_string()
             .as_str(),

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 /// src/system_metrics.rs
 use anyhow::Result;
 use chrono::Utc;
@@ -22,7 +24,7 @@ impl SystemMetricsCollector {
 
         let disks: Disks = Disks::new_with_refreshed_list();
 
-        let mut d_stats = vec![];
+        let mut d_stats: HashMap<String, serde_json::Value> = HashMap::new();
 
         for d in disks.iter() {
             let Some(d_name) = d.name().to_str() else {
@@ -35,31 +37,30 @@ impl SystemMetricsCollector {
             let disk_utilization = (used_space as f64 / total_space as f64) * 100.0;
 
             let disk_data = json!({
-                d_name: {
                   "disk_total_space": total_space,
                   "disk_used_space": used_space,
                   "disk_available_space": available_space,
                   "disk_utilization": disk_utilization,
-                },
             });
 
-            d_stats.push(disk_data);
+            d_stats.insert(d_name.to_string(), disk_data);
         }
 
         let attributes = json!({
             "events_name": "global_system_metrics",
-            "total_memory": total_memory,
-            "used_memory": used_memory,
-            "available_memory": system.available_memory(),
-            "memory_utilization": memory_utilization,
-            "cpu_usage_percentage": cpu_usage,
-            "disk_data": d_stats,
+            "system_memory_total": total_memory,
+            "system_memory_used": used_memory,
+            "system_memory_available": system.available_memory(),
+            "system_memory_utilization": memory_utilization,
+            "system_cpu_utilization": cpu_usage,
+            "system_disk_io": d_stats,
         });
 
         logs.record_event(
             EventType::MetricEvent,
             format!("[{}] System's resources metric", Utc::now()),
             Some(attributes),
+            None,
         );
 
         Ok(())
@@ -88,11 +89,11 @@ mod tests {
 
         let attributes = event.attributes.as_ref().unwrap();
         assert_eq!(attributes["events_name"], "global_system_metrics");
-        assert!(attributes["total_memory"].is_number());
-        assert!(attributes["used_memory"].is_number());
-        assert!(attributes["available_memory"].is_number());
-        assert!(attributes["memory_utilization"].is_number());
-        assert!(attributes["cpu_usage_percentage"].is_number());
-        assert!(attributes["disk_data"].is_array());
+        assert!(attributes["system_memory_total"].is_number());
+        assert!(attributes["system_memory_used"].is_number());
+        assert!(attributes["system_memory_available"].is_number());
+        assert!(attributes["system_memory_utilization"].is_number());
+        assert!(attributes["system_cpu_utilization"].is_number());
+        assert!(attributes["system_disk_io"].is_object());
     }
 }

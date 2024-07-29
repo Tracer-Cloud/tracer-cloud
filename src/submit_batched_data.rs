@@ -32,7 +32,9 @@ pub async fn submit_batched_data(
 
         send_http_event(service_url, api_key, &data)
             .await
-            .context("Failed to send HTTP event")
+            .context("Failed to send HTTP event")?;
+
+        Ok(())
     } else {
         Ok(())
     }
@@ -64,6 +66,7 @@ mod tests {
         logs.record_event(
             EventType::TestEvent,
             "[submit_batched_data.rs] Test event".to_string(),
+            None,
             None,
         );
 

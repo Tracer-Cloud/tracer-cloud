@@ -5,7 +5,6 @@ use anyhow::{Context, Ok, Result};
 use crate::{
     config_manager::ConfigManager,
     daemon_communication::client::{send_ping_request, send_refresh_config_request},
-    events::send_daemon_start_event,
     PID_FILE, REPO_NAME, REPO_OWNER, SOCKET_PATH, STDERR_FILE, STDOUT_FILE,
 };
 
@@ -50,20 +49,13 @@ pub async fn setup_config(
     process_polling_interval_ms: &Option<u64>,
     batch_submission_interval_ms: &Option<u64>,
 ) -> Result<()> {
-    let mut current_config = ConfigManager::load_config();
-    if let Some(api_key) = api_key {
-        current_config.api_key.clone_from(api_key);
-    }
-    if let Some(service_url) = service_url {
-        current_config.service_url.clone_from(service_url);
-    }
-    if let Some(process_polling_interval_ms) = process_polling_interval_ms {
-        current_config.process_polling_interval_ms = *process_polling_interval_ms;
-    }
-    if let Some(batch_submission_interval_ms) = batch_submission_interval_ms {
-        current_config.batch_submission_interval_ms = *batch_submission_interval_ms;
-    }
-    ConfigManager::save_config(&current_config)?;
+    ConfigManager::modify_config(
+        api_key,
+        service_url,
+        process_polling_interval_ms,
+        batch_submission_interval_ms,
+    )?;
+
     let _ = send_refresh_config_request(SOCKET_PATH).await;
     print_config_info().await?;
     Ok(())
@@ -95,24 +87,4 @@ pub async fn update_tracer() -> Result<()> {
         .context("Failed to update Tracer. Please try again.")?;
 
     Ok(())
-}
-
-pub async fn test_service_config() -> Result<()> {
-    let config = ConfigManager::load_config();
-
-    let result = send_daemon_start_event(&config.service_url, &config.api_key).await;
-
-    if result.is_err() {
-        println!("Failed to test the service configuration! Please check the configuration and try again.");
-        println!("{}", result.as_ref().unwrap_err());
-        print_config_info().await?;
-        return result;
-    }
-
-    Ok(())
-}
-
-pub fn test_service_config_sync() -> Result<()> {
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(test_service_config())
 }

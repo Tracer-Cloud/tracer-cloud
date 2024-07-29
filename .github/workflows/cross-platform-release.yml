@@ -13,9 +13,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Update version in Cargo.toml
         run: |
-          sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
-          sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-          sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{github.ref_name}}\"/" install-tracer.sh
+          if [[ "${{github.ref_name}}" == *"-dev" ]] ; then
+            export TRACER_VERSION_DEVELOP="${{github.ref_name}}"
+            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
+            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
+            sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{github.ref_name}}\"/" install-tracer.sh
+          else
+            sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
+            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
+            sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{github.ref_name}}\"/" install-tracer.sh
+          fi
       - name: Setup Github user
         run: git config --local user.name actions-user
       - run: git config --local user.email "actions@github.com"
@@ -56,9 +63,16 @@ jobs:
       - uses: actions/checkout@v4
       - name: Update version in Cargo.toml # The tagged commit is still an old one
         run: |
-          sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
-          sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-          sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{github.ref_name}}\"/" install-tracer.sh
+          if [[ "${{github.ref_name}}" == *"-dev" ]] ; then
+            export TRACER_VERSION_DEVELOP="${{github.ref_name}}"
+            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
+            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
+            sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{github.ref_name}}\"/" install-tracer.sh
+          else
+            sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
+            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
+            sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{github.ref_name}}\"/" install-tracer.sh
+          fi
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:

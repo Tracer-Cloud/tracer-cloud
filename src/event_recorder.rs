@@ -20,8 +20,10 @@ pub struct EventRecorder {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub enum EventType {
+    NewRun,
     FinishedRun,
     ToolExecution,
+    ToolMetricEvent,
     MetricEvent,
     TestEvent, // Added TestEvent variant
 }
@@ -29,9 +31,11 @@ pub enum EventType {
 impl EventType {
     pub fn as_str(&self) -> &'static str {
         match self {
+            EventType::NewRun => "new_run",
             EventType::FinishedRun => "finished_run",
             EventType::ToolExecution => "tool_execution",
             EventType::MetricEvent => "metric_event",
+            EventType::ToolMetricEvent => "tool_metric_event",
             EventType::TestEvent => "test_event", // Handle TestEvent
         }
     }
@@ -47,9 +51,10 @@ impl EventRecorder {
         event_type: EventType,
         message: String,
         attributes: Option<Value>,
+        timestamp: Option<DateTime<Utc>>,
     ) {
         let event = Event {
-            timestamp: Utc::now(),
+            timestamp: timestamp.unwrap_or_else(Utc::now),
             message,
             event_type: "process_status".to_owned(),
             process_type: "pipeline".to_owned(),
@@ -99,6 +104,7 @@ mod tests {
             EventType::ToolExecution,
             message.clone(),
             attributes.clone(),
+            None,
         );
 
         assert_eq!(recorder.len(), 1);
@@ -114,7 +120,12 @@ mod tests {
     #[test]
     fn test_clear_events() {
         let mut recorder = EventRecorder::new();
-        recorder.record_event(EventType::ToolExecution, "Test event".to_string(), None);
+        recorder.record_event(
+            EventType::ToolExecution,
+            "Test event".to_string(),
+            None,
+            None,
+        );
         assert_eq!(recorder.len(), 1);
 
         recorder.clear();
@@ -135,7 +146,12 @@ mod tests {
         let message = "Test event for testing".to_string();
         let attributes = Some(json!({"test_key": "test_value"}));
 
-        recorder.record_event(EventType::TestEvent, message.clone(), attributes.clone());
+        recorder.record_event(
+            EventType::TestEvent,
+            message.clone(),
+            attributes.clone(),
+            None,
+        );
 
         assert_eq!(recorder.len(), 1);
 
