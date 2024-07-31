@@ -29,6 +29,7 @@ pub struct Proc {
 pub struct ProcessProperties {
     pub tool_name: String,
     pub tool_pid: String,
+    pub tool_parent_pid: String,
     pub tool_binary_path: String,
     pub tool_cmd: String,
     pub start_timestamp: String,
@@ -250,6 +251,7 @@ impl ProcessWatcher {
         ProcessProperties {
             tool_name: display_name.unwrap_or(proc.name().to_owned()),
             tool_pid: pid.to_string(),
+            tool_parent_pid: proc.parent().unwrap_or(0.into()).to_string(),
             tool_binary_path: proc
                 .exe()
                 .unwrap_or_else(|| Path::new(""))
@@ -315,6 +317,7 @@ impl ProcessWatcher {
                 properties: ProcessProperties {
                     tool_name: command.to_string(),
                     tool_pid: "".to_string(),
+                    tool_parent_pid: "".to_string(),
                     tool_binary_path: "".to_string(),
                     tool_cmd: command.to_string(),
                     start_timestamp: chrono::Utc::now().to_rfc3339(),
@@ -547,6 +550,7 @@ mod tests {
             let properties = ProcessProperties {
                 tool_name: "test".to_string(),
                 tool_pid: child.to_string(),
+                tool_parent_pid: parent.to_string(),
                 tool_binary_path: "test".to_string(),
                 tool_cmd: "test".to_string(),
                 start_timestamp: "test".to_string(),
