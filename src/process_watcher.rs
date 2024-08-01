@@ -22,7 +22,8 @@ pub struct ProcessWatcher {
 pub struct Proc {
     name: String,
     start_time: DateTime<Utc>,
-    last_update: DateTime<Utc>,
+    last_update: Option<DateTime<Utc>>,
+    just_started: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -105,14 +106,23 @@ impl ProcessWatcher {
     ) -> Result<()> {
         for (pid, proc) in system.processes().iter() {
             if let Some(p) = self.seen.get(pid) {
-                if Utc::now() - process_metrics_send_interval > p.last_update {
+                if !p.just_started
+                    && (p.last_update.is_none()
+                        || Utc::now() - process_metrics_send_interval > p.last_update.unwrap())
+                {
                     self.add_process_metrics(proc, event_logger, None)?;
-                    self.seen.get_mut(pid).unwrap().last_update = Utc::now();
+                    self.seen.get_mut(pid).unwrap().last_update = Some(Utc::now());
                 }
             }
         }
 
         Ok(())
+    }
+
+    pub fn reset_just_started_process_flag(&mut self) {
+        for (_, proc) in self.seen.iter_mut() {
+            proc.just_started = false;
+        }
     }
 
     pub fn remove_completed_processes(
@@ -295,7 +305,8 @@ impl ProcessWatcher {
             v.insert(Proc {
                 name: short_lived_process.command,
                 start_time: Utc::now(),
-                last_update: Utc::now(),
+                last_update: None,
+                just_started: true,
             });
         }
 
@@ -347,7 +358,8 @@ impl ProcessWatcher {
             Proc {
                 name: proc.name().to_string(),
                 start_time: Utc::now(),
-                last_update: Utc::now(),
+                last_update: None,
+                just_started: true,
             },
         );
 

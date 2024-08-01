@@ -194,6 +194,10 @@ impl TracerClient {
         self.system.refresh_all();
     }
 
+    pub fn reset_just_started_process_flag(&mut self) {
+        self.process_watcher.reset_just_started_process_flag();
+    }
+
     pub fn get_service_url(&self) -> &str {
         &self.service_url
     }
