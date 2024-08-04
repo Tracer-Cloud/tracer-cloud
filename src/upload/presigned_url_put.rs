@@ -37,43 +37,43 @@ pub async fn request_presigned_url(api_key: &str, file_name: &str) -> Result<Str
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::config_manager::ConfigManager;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config_manager::ConfigManager;
 
-//     #[tokio::test]
-//     async fn test_request_presigned_url() -> Result<()> {
-//         // Load the configuration
-//         let config = ConfigManager::load_default_config();
-//         let api_key = config.api_key.clone();
+    #[tokio::test]
+    async fn test_request_presigned_url() -> Result<()> {
+        // Load the configuration
+        let config = ConfigManager::load_default_config();
+        let api_key = config.api_key.clone();
 
-//         // Test file name
-//         let file_name = "log_outgoing_http_calls.txt";
+        // Test file name
+        let file_name = "log_outgoing_http_calls.txt";
 
-//         // Call the function
-//         let presigned_url = request_presigned_url(&api_key, file_name).await?;
+        // Call the function
+        let presigned_url = request_presigned_url(&api_key, file_name).await?;
 
-//         // Validate the returned presigned URL
-//         let url = Url::parse(&presigned_url)?;
+        // Validate the returned presigned URL
+        let url = Url::parse(&presigned_url)?;
 
-//         // Check if the URL is valid
-//         assert!(url.scheme() == "https", "URL scheme should be https");
-//         assert!(url.host_str().is_some(), "URL should have a host");
+        // Check if the URL is valid
+        assert!(url.scheme() == "https", "URL scheme should be https");
+        assert!(url.host_str().is_some(), "URL should have a host");
 
-//         // Check if the URL contains the file name
-//         assert!(
-//             url.path().contains(file_name),
-//             "URL should contain the file name"
-//         );
+        // Check if the URL contains the file name
+        assert!(
+            url.path().contains(file_name),
+            "URL should contain the file name"
+        );
 
-//         // Check if the URL contains required query parameters
-//         let query_pairs: Vec<(String, String)> = url.query_pairs().into_owned().collect();
-//         assert!(
-//             query_pairs.iter().any(|(k, _)| k == "X-Amz-Signature"),
-//             "URL should contain X-Amz-Signature"
-//         );
+        // Check if the URL contains required query parameters
+        let query_pairs: Vec<(String, String)> = url.query_pairs().into_owned().collect();
+        assert!(
+            query_pairs.iter().any(|(k, _)| k == "X-Amz-Signature"),
+            "URL should contain X-Amz-Signature"
+        );
 
-//         Ok(())
-//     }
-// }
+        Ok(())
+    }
+}
