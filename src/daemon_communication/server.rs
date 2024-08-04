@@ -1,8 +1,8 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use anyhow::{Ok, Result};
+use core::panic;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::{fs, future::Future, pin::Pin, sync::Arc};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{UnixListener, UnixStream},
@@ -12,6 +12,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     config_manager::{Config, ConfigManager},
+    debug::Logger,
     events::{
         send_alert_event, send_end_run_event, send_log_event, send_start_run_event,
         send_update_tags_event,
@@ -160,6 +161,30 @@ pub fn process_log_short_lived_process_command<'a>(
     }))
 }
 
+pub fn process_upload_command<'a>(
+    object: &serde_json::Map<String, serde_json::Value>,
+) -> ProcessOutput<'a> {
+    let logger = Logger::new();
+
+    let _ = logger.log("process_upload_command", None);
+
+    if !object.contains_key("file_path") {
+        panic!("No file path provided");
+    };
+
+    let file_path = object
+        .get("file_path")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    Some(Box::pin(async move {
+        let content = fs::read_to_string(&file_path)?;
+        Ok(content)
+    }))
+}
+
 pub async fn run_server(
     tracer_client: Arc<Mutex<TracerClient>>,
     socket_path: &str,
@@ -167,7 +192,8 @@ pub async fn run_server(
     config: Arc<RwLock<Config>>,
 ) -> Result<(), anyhow::Error> {
     if std::fs::metadata(socket_path).is_ok() {
-        std::fs::remove_file(socket_path).expect("Failed to remove existing socket file");
+        std::fs::remove_file(socket_path)
+            .unwrap_or_else(|_| panic!("Failed to remove existing socket file"));
     }
     let listener = UnixListener::bind(socket_path).expect("Failed to bind to unix socket");
     loop {
@@ -227,6 +253,7 @@ pub async fn run_server(
                 process_log_short_lived_process_command(&tracer_client, object)
             }
             "ping" => None,
+            "upload" => process_upload_command(object),
             _ => {
                 eprintln!("Invalid command: {}", command);
                 None

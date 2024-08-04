@@ -6,29 +6,35 @@ use serde_json::{json, Value};
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 
+/// Creates a log message for outgoing HTTP calls.
+fn create_log_message(service_url: &str, api_key: &str, request_body: &Value) -> String {
+    let timestamp = Utc::now().to_rfc3339();
+    format!(
+        "[{}] send_http_event: {} - {}\nRequest body: {}\n----------\n",
+        timestamp, api_key, service_url, request_body
+    )
+}
+
+/// Writes a log message to a specified file.
+async fn write_to_log_file(filename: &str, log_message: &str) -> Result<()> {
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(filename)
+        .await?;
+
+    file.write_all(log_message.as_bytes()).await?;
+    Ok(())
+}
+
 /// Logs all outgoing HTTP calls to a file.
 async fn record_all_outgoing_http_calls(
     service_url: &str,
     api_key: &str,
     request_body: &Value,
 ) -> Result<()> {
-    // Log the request body to a log file so that we can test WHAT and IF there are any outgoing messages
-    let timestamp = Utc::now().to_rfc3339();
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("log_outgoing_http_calls.txt")
-        .await?;
-
-    let incoming_logs_string = format!(
-        "[{}] send_http_event: {} - {}\nRequest body: {}\n----------\n",
-        timestamp,
-        api_key,
-        service_url,
-        request_body, // Convert request_body to string
-    );
-    file.write_all(incoming_logs_string.as_bytes()).await?;
-    Ok(())
+    let log_message = create_log_message(service_url, api_key, request_body);
+    write_to_log_file("log_outgoing_http_calls.txt", &log_message).await
 }
 
 pub async fn send_http_body(

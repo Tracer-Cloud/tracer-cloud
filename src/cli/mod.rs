@@ -78,7 +78,7 @@ pub enum Commands {
     Test,
 
     /// Upload a file to the service
-    Upload { file_path: String },
+    Upload,
 
     /// Change the tags of the current pipeline run
     Tag { tags: Vec<String> },
@@ -160,7 +160,7 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
             let data = ProcessWatcher::gather_short_lived_process_data(&System::new(), &command);
             send_log_short_lived_process_request(SOCKET_PATH, data).await
         }
-        Commands::Upload { file_path } => send_upload_file_request(SOCKET_PATH, &file_path).await,
+        Commands::Upload => send_upload_file_request(SOCKET_PATH).await,
         _ => {
             println!("Command not implemented yet");
             Ok(())

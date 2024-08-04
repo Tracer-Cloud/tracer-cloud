@@ -1,12 +1,13 @@
 // src/cli.rs
 use anyhow::Result;
 use serde_json::json;
-use std::path::Path;
+
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
 };
 
+use crate::debug::Logger;
 use crate::process_watcher::ShortLivedProcessLog;
 
 pub async fn send_log_request(socket_path: &str, message: String) -> Result<()> {
@@ -160,12 +161,24 @@ pub async fn send_log_short_lived_process_request(
     Ok(())
 }
 
-pub async fn send_upload_file_request(socket_path: &str, file_path: &str) -> Result<()> {
+pub async fn send_upload_file_request(socket_path: &str) -> Result<()> {
+    let logger = Logger::new();
+    logger
+        .log(
+            "send_upload_file_request",
+            Some(&json!({
+                // "file_path": &file_path,
+                "socket_path": &socket_path
+
+            })),
+        )
+        .await?;
+
     let mut socket = UnixStream::connect(socket_path).await?;
 
     let upload_request = json!({
         "command": "upload",
-        "file_path": file_path
+        // "file_path": &file_path
     });
 
     let upload_request_json =
@@ -173,12 +186,12 @@ pub async fn send_upload_file_request(socket_path: &str, file_path: &str) -> Res
 
     socket.write_all(upload_request_json.as_bytes()).await?;
 
-    // Wait for response
-    let mut buffer = [0; 1024];
-    let n = socket.read(&mut buffer).await?;
-    let response = std::str::from_utf8(&buffer[..n])?;
-
-    println!("Upload response: {}", response);
+    logger
+        .log(
+            "send_upload_file_request//socket.write_all",
+            Some(&upload_request),
+        )
+        .await?;
 
     Ok(())
 }
@@ -357,15 +370,15 @@ mod tests {
     #[serial]
     async fn test_send_upload_file_request() -> Result<()> {
         let listener = setup_test_unix_listener();
-        let file_path = "log_outgoing_http_calls.txt".to_string();
+        // let file_path = "log_outgoing_http_calls.txt".to_string();
 
-        send_upload_file_request(SOCKET_PATH, &file_path).await?;
+        send_upload_file_request(SOCKET_PATH).await?;
 
         check_listener_value(
             &listener,
             json!({
                 "command": "upload",
-                "file_path": file_path
+                // "file_path": file_path.clone()
             })
             .to_string()
             .as_str(),

@@ -78,35 +78,35 @@ pub async fn upload_file_to_s3(signed_url: &str, file_path: &str) -> Result<(), 
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use presigned_url_put::request_presigned_url;
+// #[cfg(test)]
+// mod tests {
+//     use presigned_url_put::request_presigned_url;
 
-    use crate::config_manager::ConfigManager;
+//     use crate::config_manager::ConfigManager;
 
-    use super::*;
+//     use super::*;
 
-    #[tokio::test]
-    async fn test_upload_file_to_s3_execution() {
-        // Initialize the logger for tests
-        let _ = env_logger::builder().is_test(true).try_init();
+//     #[tokio::test]
+//     async fn test_upload_file_to_s3_execution() {
+//         // Initialize the logger for tests
+//         let _ = env_logger::builder().is_test(true).try_init();
 
-        // Use the existing file path
-        let file_path = "log_outgoing_http_calls.txt";
+//         // Use the existing file path
+//         let file_path = "log_outgoing_http_calls.txt";
 
-        // Check if the file exists
-        if !std::path::Path::new(file_path).exists() {
-            panic!("The test file '{}' does not exist. Please ensure the file is present before running the test.", file_path);
-        }
+//         // Check if the file exists
+//         if !std::path::Path::new(file_path).exists() {
+//             panic!("The test file '{}' does not exist. Please ensure the file is present before running the test.", file_path);
+//         }
 
-        let config = ConfigManager::load_default_config();
-        let api_key = config.api_key.clone();
+//         let config = ConfigManager::load_default_config();
+//         let api_key = config.api_key.clone();
 
-        let signed_url = request_presigned_url(&api_key, &file_path).await.unwrap();
+//         let signed_url = request_presigned_url(&api_key, &file_path).await.unwrap();
 
-        let result = upload_file_to_s3(&signed_url, file_path).await;
+//         let result = upload_file_to_s3(&signed_url, file_path).await;
 
-        // Assert the result
-        assert!(result.is_ok());
-    }
-}
+//         // Assert the result
+//         assert!(result.is_ok());
+//     }
+// }

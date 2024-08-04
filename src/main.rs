@@ -1,6 +1,7 @@
 mod cli;
 mod config_manager;
 mod daemon_communication;
+mod debug;
 mod event_recorder;
 mod events;
 mod http_client;
@@ -9,7 +10,6 @@ mod process_watcher;
 mod submit_batched_data;
 mod tracer_client;
 mod upload;
-
 use anyhow::{Context, Ok, Result};
 use cli::process_cli;
 use daemon_communication::server::run_server;

@@ -1,0 +1,6 @@
+[2024-08-04T06:18:22.300742+00:00] send_upload_file_request
+Context: {"socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T06:18:22.305209+00:00] send_upload_file_request//socket.write_all
+Context: {"command":"upload"}
+----------
