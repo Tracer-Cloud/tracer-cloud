@@ -7,7 +7,9 @@ use crate::{
         send_update_tags_request, send_upload_file_request,
     },
     process_watcher::ProcessWatcher,
-    run, start_daemon, SOCKET_PATH,
+    run, start_daemon,
+    upload::upload_from_file_path,
+    SOCKET_PATH,
 };
 use anyhow::{Ok, Result};
 
@@ -79,8 +81,10 @@ pub enum Commands {
     /// Test the configuration by sending a request to the service
     Test,
 
-    /// Upload a file to the service
-    Upload,
+    /// Upload a file to the service [Works only directly from the function not the daemon]
+    Upload { file_path: String },
+    /// Upload a file to the service [Works only directly from the function not the daemon]
+    UploadDaemon,
 
     /// Change the tags of the current pipeline run
     Tag { tags: Vec<String> },
@@ -162,7 +166,12 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
             let data = ProcessWatcher::gather_short_lived_process_data(&System::new(), &command);
             send_log_short_lived_process_request(SOCKET_PATH, data).await
         }
-        Commands::Upload => send_upload_file_request(SOCKET_PATH).await,
+
+        Commands::Upload { file_path } => {
+            upload_from_file_path(&file_path).await?;
+            Ok(())
+        }
+        Commands::UploadDaemon => send_upload_file_request(SOCKET_PATH).await,
         _ => {
             println!("Command not implemented yet");
             Ok(())
@@ -176,4 +185,38 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::{remove_file, File};
+    use std::io::{Seek, SeekFrom, Write};
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn test_upload_file_command() -> Result<()> {
+        // Create a temporary directory
+        let temp_dir = tempdir()?;
+        let file_path = temp_dir.path().join("big_log_3.log");
+
+        // Create a 4MB file
+        let mut file = File::create(&file_path)?;
+        let data = vec![b'A'; 1024 * 1024]; // 1MB of 'A' characters
+        for _ in 0..4 {
+            file.write_all(&data)?;
+        }
+        file.seek(SeekFrom::Start(0))?;
+
+        // Attempt to upload the file
+        let result = upload_from_file_path(file_path.to_str().unwrap()).await;
+
+        // Clean up
+        remove_file(&file_path)?;
+
+        // Check the result
+        assert!(result.is_ok(), "File upload failed: {:?}", result.err());
+
+        Ok(())
+    }
 }

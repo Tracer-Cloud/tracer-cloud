@@ -388,7 +388,3 @@ mod tests {
         Ok(())
     }
 }
-
-// I am having an issue with the test_upload_file_request which uploads files based on a file path, what do you think the issue is?
-
-// could it be that there is a problem with the way the file path is being passed to the function? Or the filesie or memory

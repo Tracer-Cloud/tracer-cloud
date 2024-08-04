@@ -1,112 +1,116 @@
-use log::{debug, error, info};
-use reqwest::Client;
-use std::error::Error;
-use std::fs::File;
-use std::io::Read;
-
 pub mod presigned_url_put;
+pub mod upload_to_signed_url;
 
-#[derive(Debug)]
-pub enum UploadError {
-    #[allow(dead_code)]
-    FileReadError(std::io::Error),
-    #[allow(dead_code)]
-    RequestError(reqwest::Error),
-    #[allow(dead_code)]
-    UploadFailed(String),
-}
+use anyhow::{Context, Result};
+use presigned_url_put::request_presigned_url;
+use std::fs;
+use std::path::Path;
 
-impl std::fmt::Display for UploadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            UploadError::FileReadError(e) => write!(f, "Failed to read file: {}", e),
-            UploadError::RequestError(e) => write!(f, "HTTP request failed: {}", e),
-            UploadError::UploadFailed(s) => write!(f, "Upload failed: {}", s),
-        }
+use crate::{
+    config_manager::ConfigManager, upload::upload_to_signed_url::upload_file_to_signed_url_s3,
+};
+
+pub async fn upload_from_file_path(file_path: &str) -> Result<()> {
+    const MAX_FILE_SIZE: u64 = 5 * 1024 * 1024; // 5MB in bytes
+
+    // Step #1: Check if the file exists
+    let path = Path::new(file_path);
+    if !path.exists() {
+        return Err(anyhow::anyhow!("The file '{}' does not exist.", file_path));
     }
-}
 
-impl Error for UploadError {}
+    // Step #2: Extract the file name
+    let file_name = path
+        .file_name()
+        .context("Failed to extract file name")?
+        .to_str()
+        .context("File name is not valid UTF-8")?;
 
-#[allow(dead_code)]
-pub async fn upload_file_to_s3(signed_url: &str, file_path: &str) -> Result<(), UploadError> {
-    info!("Starting file upload to S3");
-    debug!("Signed URL: {}", signed_url);
-    debug!("File path: {}", file_path);
-
-    // Create a new HTTP client
-    let client = Client::new();
-
-    // Open the file
-    let mut file = File::open(file_path).map_err(|e| {
-        error!("Failed to open file: {}", e);
-        UploadError::FileReadError(e)
-    })?;
-
-    let mut contents = Vec::new();
-    file.read_to_end(&mut contents).map_err(|e| {
-        error!("Failed to read file contents: {}", e);
-        UploadError::FileReadError(e)
-    })?;
-
-    debug!("File size: {} bytes", contents.len());
-
-    // Send the PUT request
-    info!("Sending PUT request to S3");
-    let response = client
-        .put(signed_url)
-        .body(contents)
-        .header("Content-Type", "application/octet-stream")
-        .send()
-        .await
-        .map_err(|e| {
-            error!("Failed to send request: {}", e);
-            UploadError::RequestError(e)
-        })?;
-
-    // Check if the upload was successful
-    let status = response.status();
-    debug!("Response status: {}", status);
-
-    if status.is_success() {
-        info!("File uploaded successfully!");
-        Ok(())
-    } else {
-        let error_message = format!("Upload failed with status: {}", status);
-        error!("{}", error_message);
-        Err(UploadError::UploadFailed(error_message))
+    // Step #3: Check if the file is under 5MB
+    let metadata = fs::metadata(file_path)?;
+    let file_size = metadata.len();
+    if file_size > MAX_FILE_SIZE {
+        println!(
+            "Warning: File size ({} bytes) exceeds 5MB limit.",
+            file_size
+        );
+        return Err(anyhow::anyhow!("File size exceeds 5MB limit"));
     }
+
+    let config = ConfigManager::load_default_config();
+    let api_key = config.api_key.clone();
+
+    // Step #4: Request the upload URL
+    let signed_url = request_presigned_url(&api_key, file_name).await?;
+
+    // Step #5: Upload the file
+    upload_file_to_signed_url_s3(&signed_url, file_path).await?;
+
+    // Log success
+    println!("File '{}' has been uploaded successfully.", file_name);
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use presigned_url_put::request_presigned_url;
-
-    use crate::config_manager::ConfigManager;
-
     use super::*;
+    use std::fs::File;
+    use std::io::Write;
 
     #[tokio::test]
-    async fn test_upload_file_to_s3_execution() {
-        // Initialize the logger for tests
-        let _ = env_logger::builder().is_test(true).try_init();
-
-        // Use the existing file path
+    async fn test_upload_from_file_path() -> Result<()> {
+        // Use an existing file in your project
         let file_path = "log_outgoing_http_calls.txt";
 
-        // Check if the file exists
-        if !std::path::Path::new(file_path).exists() {
-            panic!("The test file '{}' does not exist. Please ensure the file is present before running the test.", file_path);
+        // Ensure the file exists before running the test
+        assert!(Path::new(file_path).exists(), "Test file does not exist");
+
+        let result = upload_from_file_path(file_path).await;
+        assert!(result.is_ok(), "Upload failed: {:?}", result.err());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_upload_from_file_path_file_not_found() -> Result<()> {
+        let file_path = "non_existent_file.txt";
+
+        // Ensure the file does not exist
+        assert!(
+            !Path::new(file_path).exists(),
+            "Test file unexpectedly exists"
+        );
+
+        let result = upload_from_file_path(file_path).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("does not exist"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_upload_from_file_path_file_too_large() -> Result<()> {
+        let file_path = "large_test_file.txt";
+
+        // Create a file larger than 5MB
+        {
+            let mut file = File::create(file_path)?;
+            let large_content = vec![0u8; 6 * 1024 * 1024]; // 6MB
+            file.write_all(&large_content)?;
         }
 
-        let config = ConfigManager::load_default_config();
-        let api_key = config.api_key.clone();
+        let result = upload_from_file_path(file_path).await;
 
-        let signed_url = request_presigned_url(&api_key, &file_path).await.unwrap();
+        // Clean up the large file
+        fs::remove_file(file_path)?;
 
-        let result = upload_file_to_s3(&signed_url, file_path).await;
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("exceeds 5MB limit"));
 
-        // Assert the result
-        assert!(result.is_ok());
+        Ok(())
     }
 }
