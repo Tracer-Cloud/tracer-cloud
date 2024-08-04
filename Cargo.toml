@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.86"
+assert_cmd = "2.0.15"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.7", features = ["derive"] }
 daemonize = "0.5"
@@ -13,6 +14,7 @@ lazy_static = "1.5.0"
 log = "0.4.21"
 log4rs = "1.0"
 octocrab = "0.38.0"
+predicates = "3.1.2"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["std", "derive", "serde_derive"] }
 serde_json = "1.0.117"

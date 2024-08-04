@@ -114,7 +114,7 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config_manager::ConfigManager;
+    use crate::{config_manager::ConfigManager, debug::Logger};
     use anyhow::Error;
     use serde_json::json;
 
@@ -126,6 +126,17 @@ mod tests {
         let config = ConfigManager::load_default_config();
         let api_key = config.api_key.clone(); // Cloning here to avoid moving
         let service_url = config.service_url.clone(); // Cloning here to avoid moving
+
+        let logger = Logger::new();
+        logger
+            .log(
+                "test:http_client",
+                Some(json!({
+                    "api_key": &api_key,
+                    "service_url": &service_url
+                })),
+            )
+            .await?;
 
         // Define the log data to send
         let logs = json!([

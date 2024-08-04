@@ -7,13 +7,17 @@ use crate::{
         send_update_tags_request, send_upload_file_request,
     },
     process_watcher::ProcessWatcher,
-    run, start_daemon, SOCKET_PATH,
+    run, start_daemon,
+    upload::presigned_url_put::request_presigned_url,
+    SOCKET_PATH,
 };
 use anyhow::{Ok, Result};
+use assert_cmd::Command;
 use clap::{Parser, Subcommand};
 use nondaemon_commands::{
     clean_up_after_daemon, print_config_info_sync, setup_config, update_tracer,
 };
+use predicates::prelude::predicate;
 use std::env;
 use sysinfo::System;
 mod nondaemon_commands;
@@ -174,4 +178,15 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[test]
+fn test_upload_command() {
+    // Create a temporary file to simulate the file to be uploaded
+    // let file_path = "log_outgoing_http_calls.txt";
+
+    // Run the upload command
+    let mut cmd = Command::cargo_bin("tracer").unwrap();
+    cmd.arg("upload").assert();
+    // .arg(file_path).assert();
 }

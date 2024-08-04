@@ -1,0 +1,60 @@
+[2024-08-04T17:57:21.050154+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T17:57:21.051189+00:00] send_upload_file_request//socket.write_all
+Context: {"command":"upload"}
+----------
+[2024-08-04T18:14:19.134738+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:14:19.137844+00:00] send_upload_file_request//socket.write_all
+Context: {"command":"upload"}
+----------
+[2024-08-04T18:14:19.837553+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:14:49.332232+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:14:49.332484+00:00] send_upload_file_request//socket.write_all
+Context: {"command":"upload"}
+----------
+[2024-08-04T18:14:49.353381+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:18:05.404688+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:18:05.404863+00:00] send_upload_file_request//socket.write_all
+Context: {"command":"upload"}
+----------
+[2024-08-04T18:18:05.430530+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:23:07.887605+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:23:07.888043+00:00] send_upload_file_request//socket.write_all
+Context: {"command":"upload"}
+----------
+[2024-08-04T18:23:07.912829+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:24:45.256524+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:24:46.235399+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:24:46.235921+00:00] send_upload_file_request//socket.write_all
+Context: {"command":"upload"}
+----------
+[2024-08-04T18:31:01.646522+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
+[2024-08-04T18:31:01.646714+00:00] send_upload_file_request//socket.write_all
+Context: {"command":"upload"}
+----------
+[2024-08-04T18:31:01.674074+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------

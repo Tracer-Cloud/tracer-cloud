@@ -2,7 +2,7 @@ use anyhow::{Ok, Result};
 use core::panic;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::{fs, future::Future, pin::Pin, sync::Arc};
+use std::{future::Future, pin::Pin, sync::Arc};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{UnixListener, UnixStream},
@@ -19,6 +19,7 @@ use crate::{
     },
     process_watcher::ShortLivedProcessLog,
     tracer_client::TracerClient,
+    upload::presigned_url_put::request_presigned_url,
 };
 
 type ProcessOutput<'a> =
@@ -32,6 +33,10 @@ pub fn process_log_command<'a>(
     if !object.contains_key("message") {
         return None;
     };
+
+    let logger = Logger::new();
+
+    let _ = logger.log("server.rs//process_logcommand", None);
 
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
     Some(Box::pin(send_log_event(service_url, api_key, message)))
@@ -161,14 +166,16 @@ pub fn process_log_short_lived_process_command<'a>(
     }))
 }
 
-pub fn process_upload_command<'a>(// object: &serde_json::Map<String, serde_json::Value>,
-) -> ProcessOutput<'a> {
+pub fn process_upload_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
     let logger = Logger::new();
-
-    // let _ = logger.log("process_upload_command", None);
+    let file_name = "log_outgoing_http_calls.txt";
 
     Some(Box::pin(async move {
-        logger.log("process_upload_command", None).await?;
+        let _ = logger.log("server.rs//process_upload_command", None).await;
+
+        request_presigned_url(&api_key, &file_name).await?;
+
+        logger.log("process_upload_command completed", None).await?;
         Ok("Upload command processed".to_string())
     }))
 }
@@ -241,7 +248,7 @@ pub async fn run_server(
                 process_log_short_lived_process_command(&tracer_client, object)
             }
             "ping" => None,
-            "upload" => process_upload_command(),
+            "upload" => process_upload_command(&service_url, &api_key),
             _ => {
                 eprintln!("Invalid command: {}", command);
                 None

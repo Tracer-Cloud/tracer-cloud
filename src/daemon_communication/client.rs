@@ -163,11 +163,12 @@ pub async fn send_log_short_lived_process_request(
 
 pub async fn send_upload_file_request(socket_path: &str) -> Result<()> {
     let logger = Logger::new();
+    let file_path = "log_outgoing_http_calls.txt";
     logger
         .log(
             "send_upload_file_request",
             Some(&json!({
-                // "file_path": &file_path,
+                "file_path": &file_path,
                 "socket_path": &socket_path
 
             })),
@@ -178,7 +179,6 @@ pub async fn send_upload_file_request(socket_path: &str) -> Result<()> {
 
     let upload_request = json!({
         "command": "upload",
-        // "file_path": &file_path
     });
 
     let upload_request_json =
