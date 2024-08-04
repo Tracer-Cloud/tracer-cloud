@@ -37,3 +37,6 @@ Context: {"command":"upload"}
 [2024-08-04T19:00:52.979017+00:00] send_upload_file_request
 Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
 ----------
+[2024-08-04T19:13:02.893174+00:00] send_upload_file_request
+Context: {"file_path":"log_outgoing_http_calls.txt","socket_path":"/tmp/tracerd.sock"}
+----------
