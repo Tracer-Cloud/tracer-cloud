@@ -8,16 +8,15 @@ use crate::{
     },
     process_watcher::ProcessWatcher,
     run, start_daemon,
-    upload::presigned_url_put::request_presigned_url,
     SOCKET_PATH,
 };
 use anyhow::{Ok, Result};
-use assert_cmd::Command;
+
 use clap::{Parser, Subcommand};
 use nondaemon_commands::{
     clean_up_after_daemon, print_config_info_sync, setup_config, update_tracer,
 };
-use predicates::prelude::predicate;
+
 use std::env;
 use sysinfo::System;
 mod nondaemon_commands;

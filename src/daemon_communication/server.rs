@@ -166,7 +166,7 @@ pub fn process_log_short_lived_process_command<'a>(
     }))
 }
 
-pub fn process_upload_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
+pub fn process_upload_command<'a>(_service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
     let logger = Logger::new();
     let file_name = "log_outgoing_http_calls.txt";
 
