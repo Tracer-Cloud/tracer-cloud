@@ -1,6 +1,7 @@
 // src/cli.rs
 use anyhow::Result;
 use serde_json::json;
+use std::path::Path;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
@@ -155,6 +156,29 @@ pub async fn send_log_short_lived_process_request(
         serde_json::to_string(&log_request).expect("Failed to serialize log request");
 
     socket.write_all(log_request_json.as_bytes()).await?;
+
+    Ok(())
+}
+
+pub async fn send_upload_file_request(socket_path: &str, file_path: &str) -> Result<()> {
+    let mut socket = UnixStream::connect(socket_path).await?;
+
+    let upload_request = json!({
+        "command": "upload",
+        "file_path": file_path
+    });
+
+    let upload_request_json =
+        serde_json::to_string(&upload_request).expect("Failed to serialize upload request");
+
+    socket.write_all(upload_request_json.as_bytes()).await?;
+
+    // Wait for response
+    let mut buffer = [0; 1024];
+    let n = socket.read(&mut buffer).await?;
+    let response = std::str::from_utf8(&buffer[..n])?;
+
+    println!("Upload response: {}", response);
 
     Ok(())
 }
@@ -328,4 +352,30 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_send_upload_file_request() -> Result<()> {
+        let listener = setup_test_unix_listener();
+        let file_path = "log_outgoing_http_calls.txt".to_string();
+
+        send_upload_file_request(SOCKET_PATH, &file_path).await?;
+
+        check_listener_value(
+            &listener,
+            json!({
+                "command": "upload",
+                "file_path": file_path
+            })
+            .to_string()
+            .as_str(),
+        )
+        .await;
+
+        Ok(())
+    }
 }
+
+// I am having an issue with the test_upload_file_request which uploads files based on a file path, what do you think the issue is?
+
+// could it be that there is a problem with the way the file path is being passed to the function? Or the filesie or memory

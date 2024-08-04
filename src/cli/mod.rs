@@ -1,14 +1,13 @@
+// src/cli/mod.rs
 use crate::{
     config_manager::ConfigManager,
     daemon_communication::client::{
         send_alert_request, send_end_run_request, send_log_request,
         send_log_short_lived_process_request, send_start_run_request, send_terminate_request,
-        send_update_tags_request,
+        send_update_tags_request, send_upload_file_request,
     },
     process_watcher::ProcessWatcher,
-    run, start_daemon,
-    upload::presigned_url_put::request_presigned_url,
-    SOCKET_PATH,
+    run, start_daemon, SOCKET_PATH,
 };
 use anyhow::{Ok, Result};
 use clap::{Parser, Subcommand};
@@ -161,6 +160,7 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
             let data = ProcessWatcher::gather_short_lived_process_data(&System::new(), &command);
             send_log_short_lived_process_request(SOCKET_PATH, data).await
         }
+        Commands::Upload { file_path } => send_upload_file_request(SOCKET_PATH, &file_path).await,
         _ => {
             println!("Command not implemented yet");
             Ok(())
