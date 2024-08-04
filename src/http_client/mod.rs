@@ -31,22 +31,17 @@ async fn record_all_outgoing_http_calls(
     Ok(())
 }
 
-pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> Result<String> {
-    // Log request body
-    let logs_array = match logs {
-        Value::Array(_) => logs.clone(),
-        _ => json!([logs]),
-    };
-    let request_body = json!({ "logs": logs_array });
-    record_all_outgoing_http_calls(service_url, api_key, &request_body).await?;
-
-    // Send request
+pub async fn send_http_body(
+    service_url: &str,
+    api_key: &str,
+    request_body: &Value,
+) -> Result<(u16, String)> {
     let client = Client::new();
     let response = client
         .post(service_url)
         .header("x-api-key", api_key)
         .header("Content-Type", "application/json")
-        .json(&request_body)
+        .json(request_body)
         .send()
         .await
         .context("Failed to send event data")?;
@@ -57,13 +52,28 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
         .await
         .unwrap_or_else(|_| "Unknown error".to_string());
 
+    Ok((status.as_u16(), response_text))
+}
+
+pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> Result<String> {
+    // Log request body
+    let logs_array = match logs {
+        Value::Array(_) => logs.clone(),
+        _ => json!([logs]),
+    };
+    let request_body = json!({ "logs": logs_array });
+    record_all_outgoing_http_calls(service_url, api_key, &request_body).await?;
+
+    // Send request
+    let (status, response_text) = send_http_body(service_url, api_key, &request_body).await?;
+
     // Log response body
     info!(
         "Response status: {}, Response body: {}",
         status, response_text
     );
 
-    if status.is_success() {
+    if (200..300).contains(&status) {
         info!(
             "Successfully sent HTTP event: {} - {}",
             status, response_text

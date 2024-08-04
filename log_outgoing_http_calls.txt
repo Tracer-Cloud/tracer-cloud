@@ -1,81 +1,56 @@
-[2024-06-28 12:18:40.648156 UTC] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: {"event_type":"process_status","message":"[shipping] Test log message from the test suite","process_status":"new_run","process_type":"pipeline"}
+//// hahahahahah
+
+[2024-08-04T03:37:24.953073+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"Test","process_status":"run_status_message","process_type":"pipeline","timestamp":1722742644.952}]}
 ----------
-[2024-06-28 12:18:40.648174 UTC] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: {"event_type":"process_status","message":"[CLI] Starting pipeline run","process_status":"new_run","process_type":"pipeline"}
-----------
-[2024-06-28 12:18:40.651880 UTC] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: [{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]
-----------
-[2024-06-28 12:18:40.741084 UTC] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: [{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1719577120},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":20306756022,"disk_total_space":245107195904,"disk_used_space":224800439882,"disk_utilization":91.71515305900955}},{"Macintosh HD":{"disk_available_space":20306756022,"disk_total_space":245107195904,"disk_used_space":224800439882,"disk_utilization":91.71515305900955}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-06-28 12:18:40.741018 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1719577120}]
-----------
-[2024-06-28T12:21:24.508642+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"event_type":"process_status","message":"[shipping] Test log message from the test suite","process_status":"new_run","process_type":"pipeline"}]}
-----------
-[2024-06-28T12:21:24.508820+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"event_type":"process_status","message":"[CLI] Starting pipeline run","process_status":"new_run","process_type":"pipeline"}]}
-----------
-[2024-06-28T12:21:24.509781+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
+[2024-08-04T03:37:24.955515+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
 Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
 ----------
-[2024-06-28T12:21:24.619582+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1719577284},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":20312256950,"disk_total_space":245107195904,"disk_used_space":224794938954,"disk_utilization":91.71290876423082}},{"Macintosh HD":{"disk_available_space":20312306102,"disk_total_space":245107195904,"disk_used_space":224794889802,"disk_utilization":91.712888710964}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-06-28 12:21:24.619493 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1719577284}]}
+[2024-08-04T03:37:25.087923+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1722742644},{"attributes":{"events_name":"global_system_metrics","system_cpu_utilization":0.0,"system_disk_io":{"Macintosh HD":{"disk_available_space":7128748032,"disk_total_space":245107195904,"disk_used_space":237978447872,"disk_utilization":97.09157945946552},"VLC media player":{"disk_available_space":2031616,"disk_total_space":166072320,"disk_used_space":164040704,"disk_utilization":98.77666789986435}},"system_memory_available":0,"system_memory_total":0,"system_memory_used":0,"system_memory_utilization":null},"event_type":"process_status","message":"[2024-08-04 03:37:25.087870 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1722742645}]}
 ----------
-[2024-06-28T12:22:00.567050+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - http://localhost:3000/api/data-collector-api
-Request body: {"logs":[{"event_type":"process_status","message":"[CLI] Starting pipeline run","process_status":"new_run","process_type":"pipeline"}]}
+[2024-08-04T03:39:12.610117+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"Test","process_status":"run_status_message","process_type":"pipeline","timestamp":1722742752.61}]}
 ----------
-[2024-06-28T12:22:00.567029+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - http://localhost:3000/api/data-collector-api
-Request body: {"logs":[{"event_type":"process_status","message":"[shipping] Test log message from the test suite","process_status":"new_run","process_type":"pipeline"}]}
-----------
-[2024-06-28T12:22:00.567338+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - http://localhost:3000/api/data-collector-api
+[2024-08-04T03:39:12.610621+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
 Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
 ----------
-[2024-06-28T12:22:00.763105+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - http://localhost:3000/api/data-collector-api
-Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1719577320},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":20310204854,"disk_total_space":245107195904,"disk_used_space":224796991050,"disk_utilization":91.71374598812072}},{"Macintosh HD":{"disk_available_space":20310204854,"disk_total_space":245107195904,"disk_used_space":224796991050,"disk_utilization":91.71374598812072}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-06-28 12:22:00.763030 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1719577320}]}
+[2024-08-04T03:39:12.733943+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1722742752},{"attributes":{"events_name":"global_system_metrics","system_cpu_utilization":0.0,"system_disk_io":{"Macintosh HD":{"disk_available_space":7096115200,"disk_total_space":245107195904,"disk_used_space":238011080704,"disk_utilization":97.10489315753125},"VLC media player":{"disk_available_space":2031616,"disk_total_space":166072320,"disk_used_space":164040704,"disk_utilization":98.77666789986435}},"system_memory_available":0,"system_memory_total":0,"system_memory_used":0,"system_memory_utilization":null},"event_type":"process_status","message":"[2024-08-04 03:39:12.733883 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1722742752}]}
 ----------
-[2024-06-28T12:24:26.655212+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - http://localhost:3000/api/data-collector-api
-Request body: {"logs":[{"event_type":"process_status","message":"[CLI] Starting pipeline run","process_status":"new_run","process_type":"pipeline"}]}
+[2024-08-04T03:39:58.732470+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"Test","process_status":"run_status_message","process_type":"pipeline","timestamp":1722742798.732}]}
 ----------
-[2024-06-28T12:24:26.655082+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - http://localhost:3000/api/data-collector-api
-Request body: {"logs":[{"event_type":"process_status","message":"[shipping] Test log message from the test suite","process_status":"new_run","process_type":"pipeline"}]}
-----------
-[2024-06-28T12:24:26.659405+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - http://localhost:3000/api/data-collector-api
+[2024-08-04T03:39:58.734947+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
 Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
 ----------
-[2024-06-28T12:24:26.772209+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - http://localhost:3000/api/data-collector-api
-Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1719577466},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":20306059702,"disk_total_space":245107195904,"disk_used_space":224801136202,"disk_utilization":91.71543714695623}},{"Macintosh HD":{"disk_available_space":20306059702,"disk_total_space":245107195904,"disk_used_space":224801136202,"disk_utilization":91.71543714695623}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-06-28 12:24:26.772158 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1719577466}]}
+[2024-08-04T03:39:58.999179+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1722742798},{"attributes":{"events_name":"global_system_metrics","system_cpu_utilization":0.0,"system_disk_io":{"Macintosh HD":{"disk_available_space":7090667520,"disk_total_space":245107195904,"disk_used_space":238016528384,"disk_utilization":97.1071157279376},"VLC media player":{"disk_available_space":2031616,"disk_total_space":166072320,"disk_used_space":164040704,"disk_utilization":98.77666789986435}},"system_memory_available":0,"system_memory_total":0,"system_memory_used":0,"system_memory_utilization":null},"event_type":"process_status","message":"[2024-08-04 03:39:58.999122 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1722742798}]}
 ----------
-[2024-07-01T10:22:01.997042+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
+[2024-08-04T03:40:12.429595+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"Test","process_status":"run_status_message","process_type":"pipeline","timestamp":1722742812.429}]}
+----------
+[2024-08-04T03:40:12.430172+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
 Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
 ----------
-[2024-07-01T10:22:02.562613+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1719829321},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":26601530304,"disk_total_space":245107195904,"disk_used_space":218505665600,"disk_utilization":89.14698109703035}},{"Macintosh HD":{"disk_available_space":26601530304,"disk_total_space":245107195904,"disk_used_space":218505665600,"disk_utilization":89.14698109703035}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-07-01 10:22:02.562567 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1719829322}]}
+[2024-08-04T03:40:12.590897+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1722742812},{"attributes":{"events_name":"global_system_metrics","system_cpu_utilization":0.0,"system_disk_io":{"Macintosh HD":{"disk_available_space":7132532736,"disk_total_space":245107195904,"disk_used_space":237974663168,"disk_utilization":97.09003535792007},"VLC media player":{"disk_available_space":2031616,"disk_total_space":166072320,"disk_used_space":164040704,"disk_utilization":98.77666789986435}},"system_memory_available":0,"system_memory_total":0,"system_memory_used":0,"system_memory_utilization":null},"event_type":"process_status","message":"[2024-08-04 03:40:12.590841 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1722742812}]}
 ----------
-[2024-07-01T14:30:46.698489+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"event_type":"process_status","message":"[CLI] Starting new pipeline run","process_status":"new_run","process_type":"pipeline"}]}
+[2024-08-04T03:41:36.984937+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"Test","process_status":"run_status_message","process_type":"pipeline","timestamp":1722742896.984}]}
 ----------
-[2024-07-01T14:30:46.698419+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
+[2024-08-04T03:41:36.985478+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
 Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
 ----------
-[2024-07-01T14:30:46.841693+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1719844246},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":22023240052,"disk_total_space":245107195904,"disk_used_space":223083955852,"disk_utilization":91.01485373745382}},{"Macintosh HD":{"disk_available_space":22023240052,"disk_total_space":245107195904,"disk_used_space":223083955852,"disk_utilization":91.01485373745382}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-07-01 14:30:46.841629 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1719844246}]}
+[2024-08-04T03:41:37.103627+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1722742896},{"attributes":{"events_name":"global_system_metrics","system_cpu_utilization":0.0,"system_disk_io":{"Macintosh HD":{"disk_available_space":7140462592,"disk_total_space":245107195904,"disk_used_space":237966733312,"disk_utilization":97.0868000975391},"VLC media player":{"disk_available_space":2031616,"disk_total_space":166072320,"disk_used_space":164040704,"disk_utilization":98.77666789986435}},"system_memory_available":0,"system_memory_total":0,"system_memory_used":0,"system_memory_utilization":null},"event_type":"process_status","message":"[2024-08-04 03:41:37.103574 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1722742897}]}
 ----------
-[2024-07-04T12:27:19.226325+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"event_type":"process_status","message":"[CLI] Starting new pipeline run","process_status":"new_run","process_type":"pipeline"}]}
+[2024-08-04T03:44:59.478728+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"Test","process_status":"run_status_message","process_type":"pipeline","timestamp":1722743099.478}]}
 ----------
-[2024-07-04T12:27:19.226416+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
+[2024-08-04T03:44:59.479288+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
 Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
 ----------
-[2024-07-04T12:27:19.575360+00:00] send_http_event: dIdd4HI9ixcQtw7xsulnv - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1720096039},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":22103506104,"disk_total_space":245107195904,"disk_used_space":223003689800,"disk_utilization":90.98210641165461}},{"Macintosh HD":{"disk_available_space":22103506104,"disk_total_space":245107195904,"disk_used_space":223003689800,"disk_utilization":90.98210641165461}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-07-04 12:27:19.575288 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1720096039}]}
-----------
-[2024-07-04T15:15:18.998183+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"event_type":"process_status","message":"[CLI] Starting new pipeline run","process_status":"new_run","process_type":"pipeline"}]}
-----------
-[2024-07-04T15:15:18.998221+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
-----------
-[2024-07-04T15:15:19.428312+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
-Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1720106118},{"attributes":{"available_memory":0,"cpu_usage_percentage":0.0,"disk_data":[{"Macintosh HD":{"disk_available_space":21170937912,"disk_total_space":245107195904,"disk_used_space":223936257992,"disk_utilization":91.36258001976738}},{"Macintosh HD":{"disk_available_space":21170937912,"disk_total_space":245107195904,"disk_used_space":223936257992,"disk_utilization":91.36258001976738}}],"events_name":"global_system_metrics","memory_utilization":null,"total_memory":0,"used_memory":0},"event_type":"process_status","message":"[2024-07-04 15:15:19.428240 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1720106119}]}
+[2024-08-04T03:44:59.676599+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1722743099},{"attributes":{"events_name":"global_system_metrics","system_cpu_utilization":0.0,"system_disk_io":{"Macintosh HD":{"disk_available_space":7136088064,"disk_total_space":245107195904,"disk_used_space":237971107840,"disk_utilization":97.08858483828644},"VLC media player":{"disk_available_space":2031616,"disk_total_space":166072320,"disk_used_space":164040704,"disk_utilization":98.77666789986435}},"system_memory_available":0,"system_memory_total":0,"system_memory_used":0,"system_memory_utilization":null},"event_type":"process_status","message":"[2024-08-04 03:44:59.676533 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1722743099}]}
 ----------

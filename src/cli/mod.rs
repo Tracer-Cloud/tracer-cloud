@@ -6,7 +6,9 @@ use crate::{
         send_update_tags_request,
     },
     process_watcher::ProcessWatcher,
-    run, start_daemon, SOCKET_PATH,
+    run, start_daemon,
+    upload::presigned_url_put::request_presigned_url,
+    SOCKET_PATH,
 };
 use anyhow::{Ok, Result};
 use clap::{Parser, Subcommand};
@@ -75,6 +77,9 @@ pub enum Commands {
 
     /// Test the configuration by sending a request to the service
     Test,
+
+    /// Upload a file to the service
+    Upload { file_path: String },
 
     /// Change the tags of the current pipeline run
     Tag { tags: Vec<String> },
