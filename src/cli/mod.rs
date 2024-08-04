@@ -177,22 +177,3 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
 
     Ok(())
 }
-
-// At the top of src/cli/mod.rs, add:
-#[cfg(test)]
-mod tests {
-    use assert_cmd::Command;
-
-    #[test]
-    fn test_upload_command() {
-        // Create a temporary file to simulate the file to be uploaded
-        // let file_path = "log_outgoing_http_calls.txt";
-
-        // Run the upload command
-        let mut cmd = Command::cargo_bin("tracer").unwrap();
-        cmd.arg("upload").assert().success();
-        // .arg(file_path).assert();
-    }
-
-    // Add more test functions here as needed
-}

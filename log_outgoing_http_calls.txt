@@ -31,3 +31,12 @@ Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http
 [2024-08-04T19:00:53.009254+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
 Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1722798052},{"attributes":{"events_name":"global_system_metrics","system_cpu_utilization":0.0,"system_disk_io":{"Macintosh HD":{"disk_available_space":11921553159,"disk_total_space":245107195904,"disk_used_space":233185642745,"disk_utilization":95.13618801968211}},"system_memory_available":0,"system_memory_total":0,"system_memory_used":0,"system_memory_utilization":null},"event_type":"process_status","message":"[2024-08-04 19:00:53.009173 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1722798053}]}
 ----------
+[2024-08-04T19:43:45.949053+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"Test","process_status":"run_status_message","process_type":"pipeline","timestamp":1722800625.949}]}
+----------
+[2024-08-04T19:43:45.949170+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"event_type":"process_status","message":"[test_send_http_event] starting RNA-seq pipeline RID 255050","process_status":"new_run","process_type":"pipeline"}]}
+----------
+[2024-08-04T19:43:46.034831+00:00] send_http_event: EAjg7eHtsGnP3fTURcPz1 - https://app.tracer.bio/api/data-collector-api
+Request body: {"logs":[{"attributes":null,"event_type":"process_status","message":"[submit_batched_data.rs] Test event","process_status":"test_event","process_type":"pipeline","timestamp":1722800625},{"attributes":{"events_name":"global_system_metrics","system_cpu_utilization":0.0,"system_disk_io":{"Macintosh HD":{"disk_available_space":7626781760,"disk_total_space":245107195904,"disk_used_space":237480414144,"disk_utilization":96.88838928948167}},"system_memory_available":0,"system_memory_total":0,"system_memory_used":0,"system_memory_utilization":null},"event_type":"process_status","message":"[2024-08-04 19:43:46.034781 UTC] System's resources metric","process_status":"metric_event","process_type":"pipeline","timestamp":1722800626}]}
+----------
