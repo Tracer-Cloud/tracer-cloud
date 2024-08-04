@@ -1,7 +1,7 @@
 mod cli;
 mod config_manager;
 mod daemon_communication;
-mod debug;
+mod debug_log;
 mod event_recorder;
 mod events;
 mod http_client;

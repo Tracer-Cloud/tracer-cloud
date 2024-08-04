@@ -7,7 +7,7 @@ use tokio::{
     net::UnixStream,
 };
 
-use crate::debug::Logger;
+use crate::debug_log::Logger;
 use crate::process_watcher::ShortLivedProcessLog;
 
 pub async fn send_log_request(socket_path: &str, message: String) -> Result<()> {

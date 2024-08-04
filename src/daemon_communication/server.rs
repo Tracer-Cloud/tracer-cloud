@@ -12,7 +12,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     config_manager::{Config, ConfigManager},
-    debug::Logger,
+    debug_log::Logger,
     events::{
         send_alert_event, send_end_run_event, send_log_event, send_start_run_event,
         send_update_tags_event,

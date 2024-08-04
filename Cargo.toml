@@ -12,7 +12,6 @@ daemonize = "0.5"
 homedir = "0.2.1"
 lazy_static = "1.5.0"
 log = "0.4.21"
-log4rs = "1.0"
 octocrab = "0.38.0"
 predicates = "3.1.2"
 reqwest = { version = "0.12", features = ["json"] }
@@ -28,10 +27,3 @@ url = "2.5.2"
 
 [dev-dependencies]
 env_logger = "0.9"
-tempfile = "3.2"
-log4rs = { version = "1.0", features = [
-    "rolling_file_appender",
-    "fixed_window_roller",
-    "size_trigger",
-    "json_encoder",
-] }

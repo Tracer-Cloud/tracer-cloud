@@ -114,7 +114,7 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{config_manager::ConfigManager, debug::Logger};
+    use crate::{config_manager::ConfigManager, debug_log::Logger};
     use anyhow::Error;
     use serde_json::json;
 
