@@ -34,10 +34,6 @@ pub fn process_log_command<'a>(
         return None;
     };
 
-    let logger = Logger::new();
-
-    let _ = logger.log("server.rs//process_logcommand", None);
-
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
     Some(Box::pin(send_log_event(service_url, api_key, message)))
 }
