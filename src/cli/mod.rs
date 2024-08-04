@@ -7,11 +7,11 @@ use crate::{
         send_update_tags_request, send_upload_file_request,
     },
     process_watcher::ProcessWatcher,
-    run, start_daemon,
-    SOCKET_PATH,
+    run, start_daemon, SOCKET_PATH,
 };
 use anyhow::{Ok, Result};
 
+use assert_cmd::Command;
 use clap::{Parser, Subcommand};
 use nondaemon_commands::{
     clean_up_after_daemon, print_config_info_sync, setup_config, update_tracer,

@@ -173,7 +173,7 @@ pub fn process_upload_command<'a>(_service_url: &'a str, api_key: &'a str) -> Pr
     Some(Box::pin(async move {
         let _ = logger.log("server.rs//process_upload_command", None).await;
 
-        request_presigned_url(&api_key, &file_name).await?;
+        request_presigned_url(api_key, file_name).await?;
 
         logger.log("process_upload_command completed", None).await?;
         Ok("Upload command processed".to_string())
