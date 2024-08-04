@@ -161,27 +161,15 @@ pub fn process_log_short_lived_process_command<'a>(
     }))
 }
 
-pub fn process_upload_command<'a>(
-    object: &serde_json::Map<String, serde_json::Value>,
+pub fn process_upload_command<'a>(// object: &serde_json::Map<String, serde_json::Value>,
 ) -> ProcessOutput<'a> {
     let logger = Logger::new();
 
-    let _ = logger.log("process_upload_command", None);
-
-    if !object.contains_key("file_path") {
-        panic!("No file path provided");
-    };
-
-    let file_path = object
-        .get("file_path")
-        .unwrap()
-        .as_str()
-        .unwrap()
-        .to_string();
+    // let _ = logger.log("process_upload_command", None);
 
     Some(Box::pin(async move {
-        let content = fs::read_to_string(&file_path)?;
-        Ok(content)
+        logger.log("process_upload_command", None).await?;
+        Ok("Upload command processed".to_string())
     }))
 }
 
@@ -253,7 +241,7 @@ pub async fn run_server(
                 process_log_short_lived_process_command(&tracer_client, object)
             }
             "ping" => None,
-            "upload" => process_upload_command(object),
+            "upload" => process_upload_command(),
             _ => {
                 eprintln!("Invalid command: {}", command);
                 None
