@@ -134,7 +134,8 @@ mod tests {
                 Some(json!({
                     "api_key": &api_key,
                     "service_url": &service_url
-                })),
+                }))
+                .as_ref(),
             )
             .await?;
 

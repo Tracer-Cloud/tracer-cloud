@@ -122,7 +122,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_event_log() -> Result<(), Error> {
-        let config = ConfigManager::load_config();
+        let config = ConfigManager::load_default_config();
         send_log_event(
             &config.service_url.clone(),
             &config.api_key.clone(),
