@@ -5,7 +5,7 @@ use url::Url;
 use crate::http_client::send_http_body;
 
 pub async fn request_presigned_url(api_key: &str, file_name: &str) -> Result<String> {
-    let service_url = "https://app.tracer.bio/api/upload/presigned-put".to_string();
+    let service_url = "https://develop.app.tracer.bio/api/upload/presigned-put".to_string();
 
     // Construct the full URL with the query parameter
     let mut url = Url::parse(&service_url).context("Failed to parse service URL")?;
