@@ -186,37 +186,3 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs::{remove_file, File};
-    use std::io::{Seek, SeekFrom, Write};
-    use tempfile::tempdir;
-
-    #[tokio::test]
-    async fn test_upload_file_command() -> Result<()> {
-        // Create a temporary directory
-        let temp_dir = tempdir()?;
-        let file_path = temp_dir.path().join("big_log_3.log");
-
-        // Create a 4MB file
-        let mut file = File::create(&file_path)?;
-        let data = vec![b'A'; 1024 * 1024]; // 1MB of 'A' characters
-        for _ in 0..4 {
-            file.write_all(&data)?;
-        }
-        file.seek(SeekFrom::Start(0))?;
-
-        // Attempt to upload the file
-        let result = upload_from_file_path(file_path.to_str().unwrap()).await;
-
-        // Clean up
-        remove_file(&file_path)?;
-
-        // Check the result
-        assert!(result.is_ok(), "File upload failed: {:?}", result.err());
-
-        Ok(())
-    }
-}

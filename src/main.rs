@@ -14,6 +14,7 @@ use anyhow::{Context, Ok, Result};
 use cli::process_cli;
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
+use events::send_start_run_event;
 use std::borrow::BorrowMut;
 
 use std::fs::File;
@@ -96,6 +97,10 @@ pub async fn run() -> Result<()> {
             .submit_batched_data()
             .await?;
     }
+
+    // Automatically start a new run upon daemon start
+    let config_read = config.read().await;
+    send_start_run_event(&config_read.service_url, &config_read.api_key).await?;
 
     Ok(())
 }
