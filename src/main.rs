@@ -75,6 +75,10 @@ pub async fn run() -> Result<()> {
         config.clone(),
     ));
 
+    // Automatically start a new run upon daemon start
+    let config_read = config.read().await;
+    send_start_run_event(&config_read.service_url, &config_read.api_key).await?;
+
     while !cancellation_token.is_cancelled() {
         let start_time = Instant::now();
         while start_time.elapsed()
@@ -97,10 +101,6 @@ pub async fn run() -> Result<()> {
             .submit_batched_data()
             .await?;
     }
-
-    // Automatically start a new run upon daemon start
-    let config_read = config.read().await;
-    send_start_run_event(&config_read.service_url, &config_read.api_key).await?;
 
     Ok(())
 }
