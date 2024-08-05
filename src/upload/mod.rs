@@ -37,7 +37,7 @@ pub async fn upload_from_file_path(file_path: &str) -> Result<()> {
         return Err(anyhow::anyhow!("File size exceeds 5MB limit"));
     }
 
-    let config = ConfigManager::load_default_config();
+    let config = ConfigManager::load_config();
     let api_key = config.api_key.clone();
 
     // Step #4: Request the upload URL
