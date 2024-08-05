@@ -5,7 +5,8 @@ use url::Url;
 use crate::http_client::send_http_body;
 
 pub async fn request_presigned_url(api_key: &str, file_name: &str) -> Result<String> {
-    let service_url = "https://develop.app.tracer.bio/api/upload/presigned-put".to_string();
+    // @todo: this service url needs to be set automatically by the CLI and be develop or prod based on the environment (currentyl the default rust client api key is from production though so better to keep this as production as well)
+    let service_url = "https://app.tracer.bio/api/upload/presigned-put".to_string();
 
     // Construct the full URL with the query parameter
     let mut url = Url::parse(&service_url).context("Failed to parse service URL")?;
