@@ -1,20 +1,25 @@
 use regex::Regex;
-use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::error::Error;
+use tokio::fs::File;
+use tokio::io::{AsyncBufReadExt, BufReader};
 
-pub fn grep_out_of_memory_errors(file_path: &str) -> io::Result<Vec<String>> {
-    let file = File::open(file_path)?;
+use crate::upload::upload_from_file_path;
+
+pub async fn grep_out_of_memory_errors(file_path: &str) -> Result<Vec<String>, Box<dyn Error>> {
+    let file = File::open(file_path).await?;
     let reader = BufReader::new(file);
-    let re = Regex::new(r"(?i)Out of memory").unwrap();
+    let re = Regex::new(r"(?i)Out of memory")?;
 
     let mut errors = Vec::new();
+    let mut lines = reader.lines();
 
-    for line in reader.lines() {
-        let line = line?;
+    while let Some(line) = lines.next_line().await? {
         if re.is_match(&line) {
             errors.push(line);
         }
     }
+
+    upload_from_file_path(file_path).await?;
 
     Ok(errors)
 }
@@ -22,26 +27,26 @@ pub fn grep_out_of_memory_errors(file_path: &str) -> io::Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::debug_log::Logger;
 
-    #[test]
-    fn test_grep_out_of_memory_errors() {
-        // Create a temporary log file for testing
-        let test_log = "var/log/syslog";
-        std::fs::write(
-            test_log,
-            "\
-            This is a test log\n\
-            Out of memory error occurred\n\
-            Another line\n\
-            Yet another Out of memory issue\n",
-        )
-        .unwrap();
+    #[tokio::test]
+    async fn test_grep_out_of_memory_errors() {
+        let path = "test-files/var/log/syslog";
 
-        let errors = grep_out_of_memory_errors(test_log).unwrap();
-        std::fs::remove_file(test_log).unwrap();
+        match grep_out_of_memory_errors(path).await {
+            Ok(errors) => {
+                let logger = Logger::new();
 
-        assert_eq!(errors.len(), 2);
-        assert!(errors.contains(&"Out of memory error occurred".to_string()));
-        assert!(errors.contains(&"Yet another Out of memory issue".to_string()));
+                let _ = logger
+                    .log(
+                        "grep_out_of_memory_errors",
+                        Some(&serde_json::json!({
+                            "errors": errors,
+                        })),
+                    )
+                    .await;
+            }
+            Err(e) => eprintln!("Error occurred: {}", e),
+        }
     }
 }

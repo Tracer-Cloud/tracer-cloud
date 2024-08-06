@@ -78,7 +78,7 @@ mod tests {
                 Some(&json!({
                     "file_path": file_path,
                     "result": result.as_ref().map_err(|e| e.to_string()),
-                    "api_key": ConfigManager::load_config().api_key,
+                    "api_key": ConfigManager::load_default_config().api_key,
                 })),
             )
             .await?;

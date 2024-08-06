@@ -8,16 +8,15 @@ use crate::{
     },
     process_watcher::ProcessWatcher,
     run, start_daemon,
+    syslog::grep_out_of_memory_errors,
     upload::upload_from_file_path,
     SOCKET_PATH,
 };
-use anyhow::{Ok, Result};
-
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use nondaemon_commands::{
     clean_up_after_daemon, print_config_info_sync, setup_config, update_tracer,
 };
-
 use std::env;
 use sysinfo::System;
 mod nondaemon_commands;
@@ -83,8 +82,12 @@ pub enum Commands {
 
     /// Upload a file to the service [Works only directly from the function not the daemon]
     Upload { file_path: String },
+
     /// Upload a file to the service [Works only directly from the function not the daemon]
     UploadDaemon,
+
+    /// Syslog
+    Syslog { file_path: String },
 
     /// Change the tags of the current pipeline run
     Tag { tags: Vec<String> },
@@ -140,7 +143,7 @@ pub fn process_cli() -> Result<()> {
 
 #[tokio::main]
 pub async fn run_async_command(commands: Commands) -> Result<()> {
-    let value = match commands {
+    let result = match commands {
         Commands::Log { message } => send_log_request(SOCKET_PATH, message).await,
         Commands::Alert { message } => send_alert_request(SOCKET_PATH, message).await,
         Commands::Terminate => send_terminate_request(SOCKET_PATH).await,
@@ -166,9 +169,12 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
             let data = ProcessWatcher::gather_short_lived_process_data(&System::new(), &command);
             send_log_short_lived_process_request(SOCKET_PATH, data).await
         }
-
         Commands::Upload { file_path } => {
             upload_from_file_path(&file_path).await?;
+            Ok(())
+        }
+        Commands::Syslog { file_path } => {
+            let _ = grep_out_of_memory_errors(&file_path).await;
             Ok(())
         }
         Commands::UploadDaemon => send_upload_file_request(SOCKET_PATH).await,
@@ -178,7 +184,7 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
         }
     };
 
-    if value.is_err() {
+    if result.is_err() {
         println!("Failed to send command to the daemon. Maybe the daemon is not running? If it's not, run `tracer init` to start the daemon.");
     } else {
         println!("Command sent successfully.")
