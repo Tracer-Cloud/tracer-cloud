@@ -8,6 +8,7 @@ mod http_client;
 mod metrics;
 mod process_watcher;
 mod submit_batched_data;
+mod syslog;
 mod tracer_client;
 mod upload;
 use anyhow::{Context, Ok, Result};

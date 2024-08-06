@@ -54,7 +54,10 @@ pub async fn upload_from_file_path(file_path: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use crate::debug_log::Logger;
+
     use super::*;
+    use serde_json::json;
     use std::fs::File;
     use std::io::Write;
 
@@ -67,6 +70,19 @@ mod tests {
         assert!(Path::new(file_path).exists(), "Test file does not exist");
 
         let result = upload_from_file_path(file_path).await;
+        let logger = Logger::new();
+
+        logger
+            .log(
+                "upload_from_file_path",
+                Some(&json!({
+                    "file_path": file_path,
+                    "result": result.as_ref().map_err(|e| e.to_string()),
+                    "api_key": ConfigManager::load_config().api_key,
+                })),
+            )
+            .await?;
+
         assert!(result.is_ok(), "Upload failed: {:?}", result.err());
 
         Ok(())
