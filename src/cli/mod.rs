@@ -7,9 +7,7 @@ use crate::{
         send_update_tags_request, send_upload_file_request,
     },
     process_watcher::ProcessWatcher,
-    run, start_daemon,
-    upload::upload_from_file_path,
-    SOCKET_PATH,
+    run, start_daemon, SOCKET_PATH,
 };
 use anyhow::{Ok, Result};
 
@@ -18,7 +16,7 @@ use nondaemon_commands::{
     clean_up_after_daemon, print_config_info_sync, setup_config, update_tracer,
 };
 
-use std::env;
+use std::{env, fs::canonicalize};
 use sysinfo::System;
 mod nondaemon_commands;
 
@@ -166,12 +164,18 @@ pub async fn run_async_command(commands: Commands) -> Result<()> {
             let data = ProcessWatcher::gather_short_lived_process_data(&System::new(), &command);
             send_log_short_lived_process_request(SOCKET_PATH, data).await
         }
-
         Commands::Upload { file_path } => {
-            upload_from_file_path(&file_path).await?;
-            Ok(())
+            let path = canonicalize(&file_path);
+            if let Err(e) = path {
+                println!(
+                    "Failed to find the file. Please provide the full path to the file. Error: {}",
+                    e
+                );
+                return Ok(());
+            }
+
+            send_upload_file_request(SOCKET_PATH, &path.unwrap()).await
         }
-        Commands::UploadDaemon => send_upload_file_request(SOCKET_PATH).await,
         _ => {
             println!("Command not implemented yet");
             Ok(())

@@ -6,18 +6,30 @@ use presigned_url_put::request_presigned_url;
 use std::fs;
 use std::path::Path;
 
-use crate::{
-    config_manager::ConfigManager, upload::upload_to_signed_url::upload_file_to_signed_url_s3,
-};
+use crate::debug_log::Logger;
+use crate::upload::upload_to_signed_url::upload_file_to_signed_url_s3;
 
-pub async fn upload_from_file_path(file_path: &str) -> Result<()> {
+pub async fn upload_from_file_path(
+    service_url: &str,
+    api_key: &str,
+    file_path: &str,
+) -> Result<()> {
     const MAX_FILE_SIZE: u64 = 5 * 1024 * 1024; // 5MB in bytes
+
+    let logger = Logger::new();
 
     // Step #1: Check if the file exists
     let path = Path::new(file_path);
     if !path.exists() {
+        logger
+            .log(&format!("The file '{}' does not exist.", file_path), None)
+            .await?;
         return Err(anyhow::anyhow!("The file '{}' does not exist.", file_path));
     }
+
+    logger
+        .log(&format!("The file '{}' exists.", file_path), None)
+        .await?;
 
     // Step #2: Extract the file name
     let file_name = path
@@ -25,6 +37,10 @@ pub async fn upload_from_file_path(file_path: &str) -> Result<()> {
         .context("Failed to extract file name")?
         .to_str()
         .context("File name is not valid UTF-8")?;
+
+    logger
+        .log(&format!("Uploading file '{}'", file_name), None)
+        .await?;
 
     // Step #3: Check if the file is under 5MB
     let metadata = fs::metadata(file_path)?;
@@ -37,14 +53,21 @@ pub async fn upload_from_file_path(file_path: &str) -> Result<()> {
         return Err(anyhow::anyhow!("File size exceeds 5MB limit"));
     }
 
-    let config = ConfigManager::load_config();
-    let api_key = config.api_key.clone();
+    logger
+        .log(&format!("File size: {} bytes", file_size), None)
+        .await?;
 
     // Step #4: Request the upload URL
-    let signed_url = request_presigned_url(&api_key, file_name).await?;
+    let signed_url = request_presigned_url(service_url, api_key, file_name).await?;
+
+    logger
+        .log(&format!("Presigned URL: {}", signed_url), None)
+        .await?;
 
     // Step #5: Upload the file
     upload_file_to_signed_url_s3(&signed_url, file_path).await?;
+
+    logger.log("File uploaded successfully", None).await?;
 
     // Log success
     println!("File '{}' has been uploaded successfully.", file_name);
@@ -54,6 +77,8 @@ pub async fn upload_from_file_path(file_path: &str) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use crate::config_manager::ConfigManager;
+
     use super::*;
     use std::fs::File;
     use std::io::Write;
@@ -62,11 +87,12 @@ mod tests {
     async fn test_upload_from_file_path() -> Result<()> {
         // Use an existing file in your project
         let file_path = "log_outgoing_http_calls.txt";
+        let config = ConfigManager::load_default_config();
 
         // Ensure the file exists before running the test
         assert!(Path::new(file_path).exists(), "Test file does not exist");
 
-        let result = upload_from_file_path(file_path).await;
+        let result = upload_from_file_path(&config.service_url, &config.api_key, file_path).await;
         assert!(result.is_ok(), "Upload failed: {:?}", result.err());
 
         Ok(())
@@ -75,6 +101,7 @@ mod tests {
     #[tokio::test]
     async fn test_upload_from_file_path_file_not_found() -> Result<()> {
         let file_path = "non_existent_file.txt";
+        let config = ConfigManager::load_default_config();
 
         // Ensure the file does not exist
         assert!(
@@ -82,7 +109,7 @@ mod tests {
             "Test file unexpectedly exists"
         );
 
-        let result = upload_from_file_path(file_path).await;
+        let result = upload_from_file_path(&config.service_url, &config.api_key, file_path).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("does not exist"));
 
@@ -92,6 +119,7 @@ mod tests {
     #[tokio::test]
     async fn test_upload_from_file_path_file_too_large() -> Result<()> {
         let file_path = "large_test_file.txt";
+        let config = ConfigManager::load_default_config();
 
         // Create a file larger than 5MB
         {
@@ -100,8 +128,7 @@ mod tests {
             file.write_all(&large_content)?;
         }
 
-        let result = upload_from_file_path(file_path).await;
-
+        let result = upload_from_file_path(&config.service_url, &config.api_key, file_path).await;
         // Clean up the large file
         fs::remove_file(file_path)?;
 

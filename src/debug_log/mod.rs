@@ -29,14 +29,19 @@ impl Logger {
     }
 
     async fn write_to_log_file(&self, log_message: &str) -> Result<()> {
-        let mut file = OpenOptions::new()
+        let file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(&self.log_file_path)
-            .await
-            .with_context(|| format!("Failed to open log file: {}", self.log_file_path))?;
+            .await;
 
-        file.write_all(log_message.as_bytes())
+        if let Err(error) = file {
+            eprintln!("Failed to open log file: {}", error);
+            return Ok(());
+        }
+
+        file.unwrap()
+            .write_all(log_message.as_bytes())
             .await
             .context("Failed to write to log file")?;
 
