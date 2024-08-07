@@ -108,12 +108,13 @@ pub fn process_cli() -> Result<()> {
                 return Ok(());
             }
             println!("Starting daemon...");
+            let current_working_directory = env::current_dir()?;
             let result = start_daemon();
             if result.is_err() {
                 println!("Failed to start daemon. Maybe the daemon is already running? If it's not, run `tracer cleanup` to clean up the previous daemon files.");
                 return Ok(());
             }
-            run()?;
+            run(current_working_directory.to_str().unwrap().to_string())?;
             clean_up_after_daemon()
         }
         Commands::Test => {

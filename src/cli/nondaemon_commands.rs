@@ -5,13 +5,14 @@ use anyhow::{Context, Ok, Result};
 use crate::{
     config_manager::ConfigManager,
     daemon_communication::client::{send_ping_request, send_refresh_config_request},
-    PID_FILE, REPO_NAME, REPO_OWNER, SOCKET_PATH, STDERR_FILE, STDOUT_FILE,
+    FILE_CACHE_DIR, PID_FILE, REPO_NAME, REPO_OWNER, SOCKET_PATH, STDERR_FILE, STDOUT_FILE,
 };
 
 pub fn clean_up_after_daemon() -> Result<()> {
     std::fs::remove_file(PID_FILE).context("Failed to remove pid file")?;
     std::fs::remove_file(STDOUT_FILE).context("Failed to remove stdout file")?;
     std::fs::remove_file(STDERR_FILE).context("Failed to remove stderr file")?;
+    std::fs::remove_dir_all(FILE_CACHE_DIR).context("Failed to remove cache directory")?;
     Ok(())
 }
 

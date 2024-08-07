@@ -174,9 +174,7 @@ pub fn process_upload_command<'a>(
     Some(Box::pin(async move {
         let logger = Logger::new();
 
-        logger
-            .log("server.rs//process_upload_command", None)
-            .await?;
+        logger.log("server.rs//process_upload_command", None).await;
 
         upload_from_file_path(
             service_url,
@@ -185,7 +183,7 @@ pub fn process_upload_command<'a>(
         )
         .await?;
 
-        logger.log("process_upload_command completed", None).await?;
+        logger.log("process_upload_command completed", None).await;
         Ok("Upload command processed".to_string())
     }))
 }
@@ -247,7 +245,7 @@ pub async fn run_server(
 
         logger
             .log(&format!("Received command: {}, {}", command, message), None)
-            .await?;
+            .await;
 
         let result = match command {
             "terminate" => {

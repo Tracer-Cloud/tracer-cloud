@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Context;
 use chrono::Utc;
 use serde_json::Value;
 use tokio::fs::OpenOptions;
@@ -15,7 +15,7 @@ impl Logger {
         }
     }
 
-    pub async fn log(&self, message: &str, context: Option<&Value>) -> Result<()> {
+    pub async fn log(&self, message: &str, context: Option<&Value>) {
         let timestamp = Utc::now().to_rfc3339();
         let log_message = match context {
             Some(ctx) => format!(
@@ -28,7 +28,7 @@ impl Logger {
         self.write_to_log_file(&log_message).await
     }
 
-    async fn write_to_log_file(&self, log_message: &str) -> Result<()> {
+    async fn write_to_log_file(&self, log_message: &str) {
         let file = OpenOptions::new()
             .create(true)
             .append(true)
@@ -37,14 +37,17 @@ impl Logger {
 
         if let Err(error) = file {
             eprintln!("Failed to open log file: {}", error);
-            return Ok(());
+            return;
         }
 
-        file.unwrap()
+        let write_result = file
+            .unwrap()
             .write_all(log_message.as_bytes())
             .await
-            .context("Failed to write to log file")?;
+            .context("Failed to write to log file");
 
-        Ok(())
+        if let Err(error) = write_result {
+            eprintln!("Failed to write to log file: {}", error);
+        }
     }
 }

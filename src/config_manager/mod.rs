@@ -15,6 +15,7 @@ const PROCESS_POLLING_INTERVAL_MS: u64 = 50;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 const NEW_RUN_PAUSE_MS: u64 = 10 * 60 * 1000;
 const PROCESS_METRICS_SEND_INTERVAL_MS: u64 = 10000;
+const FILE_SIZE_NOT_CHANGING_PERIOD_MS: u64 = 1000 * 60;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CommandContainsStruct {
@@ -100,6 +101,7 @@ pub struct ConfigFile {
     pub process_polling_interval_ms: Option<u64>,
     pub batch_submission_interval_ms: Option<u64>,
     pub new_run_pause_ms: Option<u64>,
+    pub file_size_not_changing_period_ms: Option<u64>,
     pub process_metrics_send_interval_ms: Option<u64>,
     pub targets: Option<Vec<Target>>,
 }
@@ -110,6 +112,7 @@ pub struct Config {
     pub process_polling_interval_ms: u64,
     pub batch_submission_interval_ms: u64,
     pub process_metrics_send_interval_ms: u64,
+    pub file_size_not_changing_period_ms: u64,
     pub service_url: String,
     pub new_run_pause_ms: u64,
     pub targets: Vec<Target>,
@@ -148,6 +151,9 @@ impl ConfigManager {
             process_metrics_send_interval_ms: config
                 .process_metrics_send_interval_ms
                 .unwrap_or(PROCESS_METRICS_SEND_INTERVAL_MS),
+            file_size_not_changing_period_ms: config
+                .file_size_not_changing_period_ms
+                .unwrap_or(FILE_SIZE_NOT_CHANGING_PERIOD_MS),
             targets: config.targets.unwrap_or_else(|| targets::TARGETS.to_vec()),
         })
     }
@@ -158,6 +164,7 @@ impl ConfigManager {
             process_polling_interval_ms: PROCESS_POLLING_INTERVAL_MS,
             batch_submission_interval_ms: BATCH_SUBMISSION_INTERVAL_MS,
             new_run_pause_ms: NEW_RUN_PAUSE_MS,
+            file_size_not_changing_period_ms: FILE_SIZE_NOT_CHANGING_PERIOD_MS,
             service_url: DEFAULT_SERVICE_URL.to_string(),
             targets: targets::TARGETS.to_vec(),
             process_metrics_send_interval_ms: PROCESS_METRICS_SEND_INTERVAL_MS,
@@ -218,6 +225,7 @@ impl ConfigManager {
             api_key: config.api_key.clone(),
             service_url: Some(config.service_url.clone()),
             new_run_pause_ms: Some(config.new_run_pause_ms),
+            file_size_not_changing_period_ms: Some(config.file_size_not_changing_period_ms),
             process_polling_interval_ms: Some(config.process_polling_interval_ms),
             batch_submission_interval_ms: Some(config.batch_submission_interval_ms),
             targets: Some(config.targets.clone()),

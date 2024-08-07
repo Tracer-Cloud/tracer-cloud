@@ -1,11 +1,13 @@
 // src/tracer_client.rs
 use crate::event_recorder::{EventRecorder, EventType};
+use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
 use crate::submit_batched_data::submit_batched_data;
+use crate::FILE_CACHE_DIR;
 use crate::{config_manager::Config, process_watcher::ShortLivedProcessLog};
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use std::ops::Sub;
 use std::time::{Duration, Instant};
 use sysinfo::{Pid, System};
@@ -25,20 +27,27 @@ pub struct TracerClient {
     interval: Duration,
     last_interaction_new_run_duration: Duration,
     process_metrics_send_interval: Duration,
+    last_file_size_change_time_delta: TimeDelta,
     pub logs: EventRecorder,
     process_watcher: ProcessWatcher,
     metrics_collector: SystemMetricsCollector,
+    file_watcher: FileWatcher,
+    workflow_directory: String,
     api_key: String,
     service_url: String,
     current_run: Option<RunMetadata>,
 }
 
 impl TracerClient {
-    pub fn new(config: Config) -> Result<TracerClient> {
+    pub fn new(config: Config, workflow_directory: String) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
         println!("Initializing TracerClient with API Key: {}", config.api_key);
         println!("Service URL: {}", service_url);
+
+        let file_watcher = FileWatcher::new();
+
+        file_watcher.prepare_cache_directory(FILE_CACHE_DIR)?;
 
         Ok(TracerClient {
             // fixed values
@@ -49,12 +58,17 @@ impl TracerClient {
             process_metrics_send_interval: Duration::from_millis(
                 config.process_metrics_send_interval_ms,
             ),
+            last_file_size_change_time_delta: TimeDelta::milliseconds(
+                config.file_size_not_changing_period_ms as i64,
+            ),
             // updated values
             system: System::new_all(),
             last_sent: None,
             current_run: None,
             // Sub mannagers
             logs: EventRecorder::new(),
+            file_watcher,
+            workflow_directory,
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
         })
@@ -187,6 +201,19 @@ impl TracerClient {
     pub async fn remove_completed_processes(&mut self) -> Result<()> {
         self.process_watcher
             .remove_completed_processes(&mut self.system, &mut self.logs)?;
+        Ok(())
+    }
+
+    pub async fn poll_files(&mut self) -> Result<()> {
+        self.file_watcher
+            .poll_files(
+                &self.service_url,
+                &self.api_key,
+                &self.workflow_directory,
+                FILE_CACHE_DIR,
+                self.last_file_size_change_time_delta,
+            )
+            .await?;
         Ok(())
     }
 

@@ -174,7 +174,7 @@ pub async fn send_upload_file_request(socket_path: &str, file_path: &PathBuf) ->
 
             })),
         )
-        .await?;
+        .await;
 
     let mut socket = UnixStream::connect(socket_path).await?;
 
@@ -193,7 +193,7 @@ pub async fn send_upload_file_request(socket_path: &str, file_path: &PathBuf) ->
             "send_upload_file_request//socket.write_all",
             Some(&upload_request),
         )
-        .await?;
+        .await;
 
     Ok(())
 }

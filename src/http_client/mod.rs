@@ -135,7 +135,7 @@ mod tests {
                 }))
                 .as_ref(),
             )
-            .await?;
+            .await;
 
         // Define the log data to send
         let logs = json!([

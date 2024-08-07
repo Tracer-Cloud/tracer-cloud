@@ -23,13 +23,13 @@ pub async fn upload_from_file_path(
     if !path.exists() {
         logger
             .log(&format!("The file '{}' does not exist.", file_path), None)
-            .await?;
+            .await;
         return Err(anyhow::anyhow!("The file '{}' does not exist.", file_path));
     }
 
     logger
         .log(&format!("The file '{}' exists.", file_path), None)
-        .await?;
+        .await;
 
     // Step #2: Extract the file name
     let file_name = path
@@ -40,7 +40,7 @@ pub async fn upload_from_file_path(
 
     logger
         .log(&format!("Uploading file '{}'", file_name), None)
-        .await?;
+        .await;
 
     // Step #3: Check if the file is under 5MB
     let metadata = fs::metadata(file_path)?;
@@ -55,19 +55,19 @@ pub async fn upload_from_file_path(
 
     logger
         .log(&format!("File size: {} bytes", file_size), None)
-        .await?;
+        .await;
 
     // Step #4: Request the upload URL
     let signed_url = request_presigned_url(service_url, api_key, file_name).await?;
 
     logger
         .log(&format!("Presigned URL: {}", signed_url), None)
-        .await?;
+        .await;
 
     // Step #5: Upload the file
     upload_file_to_signed_url_s3(&signed_url, file_path).await?;
 
-    logger.log("File uploaded successfully", None).await?;
+    logger.log("File uploaded successfully", None).await;
 
     // Log success
     println!("File '{}' has been uploaded successfully.", file_name);
