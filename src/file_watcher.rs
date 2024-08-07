@@ -53,17 +53,29 @@ lazy_static! {
             FileAction::Upload
         ),
         (
-            FilePattern::PathMatch(predicate::str::is_match(".narrowPeak").unwrap()),
+            FilePattern::FilenameMatch(predicate::str::is_match(".narrowPeak").unwrap()),
             FileAction::Upload
         ),
         (
-            FilePattern::PathMatch(predicate::str::is_match("_counts.summary").unwrap()),
+            FilePattern::FilenameMatch(predicate::str::is_match("_counts.summary").unwrap()),
             FileAction::Upload
         ),
         (
-            FilePattern::DirectoryPath("example-directory-path".to_string()),
+            FilePattern::DirectoryPath("example-directory-path/".to_string()),
+            FileAction::Upload
+        ),
+        (
+            FilePattern::PathMatch(predicate::str::is_match("example-path[a-Z]*").unwrap()),
+            FileAction::Upload
+        ),
+        (
+            FilePattern::FilenameMatch(predicate::str::is_match("example-filename").unwrap()),
+            FileAction::Upload,
+        ),
+        (
+            FilePattern::PathMatch(predicate::str::is_match("example-path_nonaction").unwrap()),
             FileAction::None
-        )
+        ),
     ];
 }
 
@@ -116,7 +128,7 @@ impl FileWatcher {
 
             match pattern {
                 FilePattern::DirectoryPath(path) => {
-                    if file_path.contains(path) {
+                    if path == directory.to_str().unwrap() {
                         matched = true;
                     }
                 }
