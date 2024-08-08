@@ -2,14 +2,18 @@ use anyhow::{Context, Result};
 use serde_json::{json, Value};
 use url::Url;
 
-use crate::http_client::send_http_body;
+use crate::{debug_log::Logger, http_client::send_http_body};
 
-pub async fn request_presigned_url(api_key: &str, file_name: &str) -> Result<String> {
-    // @todo: this service url needs to be set automatically by the CLI and be develop or prod based on the environment (currentyl the default rust client api key is from production though so better to keep this as production as well)
-    let service_url = "https://app.tracer.bio/api/upload/presigned-put".to_string();
-
+pub async fn request_presigned_url(
+    service_url: &str,
+    api_key: &str,
+    file_name: &str,
+) -> Result<String> {
     // Construct the full URL with the query parameter
-    let mut url = Url::parse(&service_url).context("Failed to parse service URL")?;
+    let presigned_url = service_url.replace("data-collector-api", "upload/presigned-put");
+    let logger = Logger::new();
+    logger.log(&presigned_url, None).await;
+    let mut url = Url::parse(&presigned_url).context("Failed to parse service URL")?;
     url.query_pairs_mut().append_pair("fileName", file_name);
 
     // Prepare the request body (empty in this case)
@@ -28,8 +32,22 @@ pub async fn request_presigned_url(api_key: &str, file_name: &str) -> Result<Str
             .context("Presigned URL not found in response")?
             .to_string();
 
+        logger
+            .log(&format!("Presigned URL: {}", presigned_url), None)
+            .await;
+
         Ok(presigned_url)
     } else {
+        logger
+            .log(
+                &format!(
+                    "Failed to get presigned URL. Status: {}, Response: {}",
+                    status, response_text
+                ),
+                None,
+            )
+            .await;
+
         Err(anyhow::anyhow!(
             "Failed to get presigned URL. Status: {}, Response: {}",
             status,
@@ -53,7 +71,7 @@ mod tests {
         let file_name = "log_outgoing_http_calls.txt";
 
         // Call the function
-        let presigned_url = request_presigned_url(&api_key, file_name).await?;
+        let presigned_url = request_presigned_url(&config.service_url, &api_key, file_name).await?;
 
         // Validate the returned presigned URL
         let url = Url::parse(&presigned_url)?;

@@ -4,6 +4,7 @@ mod daemon_communication;
 mod debug_log;
 mod event_recorder;
 mod events;
+mod file_watcher;
 mod http_client;
 mod metrics;
 mod process_watcher;
@@ -31,6 +32,7 @@ const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
 const SOCKET_PATH: &str = "/tmp/tracerd.sock";
+const FILE_CACHE_DIR: &str = "/tmp/tracerd_cache";
 
 const REPO_OWNER: &str = "davincios";
 const REPO_NAME: &str = "tracer-daemon";
@@ -61,9 +63,10 @@ pub fn main() -> Result<()> {
 }
 
 #[tokio::main]
-pub async fn run() -> Result<()> {
+pub async fn run(workflow_directory_path: String) -> Result<()> {
     let raw_config = ConfigManager::load_config();
-    let client = TracerClient::new(raw_config.clone()).context("Failed to create TracerClient")?;
+    let client = TracerClient::new(raw_config.clone(), workflow_directory_path)
+        .context("Failed to create TracerClient")?;
     let tracer_client = Arc::new(Mutex::new(client));
     let config: Arc<RwLock<config_manager::Config>> = Arc::new(RwLock::new(raw_config));
 
@@ -110,6 +113,7 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
     tracer_client.poll_processes().await?;
     // tracer_client.run_cleanup().await?;
     tracer_client.poll_process_metrics().await?;
+    tracer_client.poll_files().await?;
     tracer_client.refresh_sysinfo();
     tracer_client.reset_just_started_process_flag();
     Ok(())
@@ -128,7 +132,9 @@ mod tests {
     #[tokio::test]
     async fn test_monitor_processes_with_tracer_client() {
         let config = load_test_config();
-        let mut tracer_client = TracerClient::new(config).unwrap();
+        let pwd = std::env::current_dir().unwrap();
+        let mut tracer_client =
+            TracerClient::new(config, pwd.to_str().unwrap().to_string()).unwrap();
         let result = monitor_processes_with_tracer_client(&mut tracer_client).await;
         assert!(result.is_ok());
     }
