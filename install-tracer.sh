@@ -5,7 +5,7 @@
 #   DESCRIPTION:  Parameters used in the rest of this script
 #-------------------------------------------------------------------------------
 SCRIPT_VERSION="v0.0.1"
-TRACER_VERSION="v0.0.83"
+TRACER_VERSION="v0.0.102"
 TRACER_VERSION_DEVELOP="v0.0.101-dev"
 
 TRACER_HOME="$HOME/.tracerbio"
@@ -18,7 +18,7 @@ PACKAGE_NAME="" # set later
 BINDIRS=("$HOME/bin" "$HOME/.local/bin" "$TRACER_HOME/bin")
 BINDIR="" # set later
 
-API_KEY="" # set later
+API_KEY=""     # set later
 SERVICE_URL="" # set later
 ENVIRONMENT="" # set later
 
@@ -407,7 +407,7 @@ main() {
 
     print_header
     check_args "$@"
-    set_urls 
+    set_urls
     check_os
     check_prereqs
     get_package_name
