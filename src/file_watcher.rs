@@ -52,6 +52,10 @@ const CACHED_FILE_NAME_LENGTH: usize = 16;
 lazy_static! {
     static ref FILE_WATCHER_PATTERNS: Vec<(FilePattern, FileAction)> = vec![
         (
+            FilePattern::FilenameMatch(predicate::str::is_match("P1s1Log.final.out").unwrap()),
+            FileAction::Upload
+        ),
+        (
             FilePattern::FilenameMatch(predicate::str::is_match("Log.final.out").unwrap()),
             FileAction::Upload
         ),
