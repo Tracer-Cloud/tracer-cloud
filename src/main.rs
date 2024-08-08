@@ -103,6 +103,8 @@ pub async fn run(workflow_directory_path: String) -> Result<()> {
             .borrow_mut()
             .submit_batched_data()
             .await?;
+
+        tracer_client.lock().await.borrow_mut().poll_files().await?;
     }
 
     Ok(())
@@ -113,7 +115,6 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
     tracer_client.poll_processes().await?;
     // tracer_client.run_cleanup().await?;
     tracer_client.poll_process_metrics().await?;
-    tracer_client.poll_files().await?;
     tracer_client.refresh_sysinfo();
     tracer_client.reset_just_started_process_flag();
     Ok(())
