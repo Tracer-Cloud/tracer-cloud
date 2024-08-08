@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs;
 use std::{collections::HashMap, path::Path};
 
@@ -12,11 +13,12 @@ use predicates::Predicate;
 use crate::debug_log::Logger;
 use crate::upload::upload_from_file_path;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct FileInfo {
     pub path: String,
     pub size: u64,
     pub last_update: DateTime<Utc>,
+    pub last_upload: Option<DateTime<Utc>>,
     pub cached_path: Option<String>,
     pub action: FileAction,
 }
@@ -31,12 +33,13 @@ pub enum FilePattern {
     PathMatch(RegexPredicate),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum FileAction {
     None,
     Upload,
 }
 
+#[derive(Debug)]
 enum FileUploadType {
     None,
     Old,
@@ -65,7 +68,7 @@ lazy_static! {
             FileAction::Upload
         ),
         (
-            FilePattern::PathMatch(predicate::str::is_match("example-path[a-Z]*").unwrap()),
+            FilePattern::PathMatch(predicate::str::is_match("example-path[a-zA-Z]*").unwrap()),
             FileAction::Upload
         ),
         (
@@ -73,7 +76,7 @@ lazy_static! {
             FileAction::Upload,
         ),
         (
-            FilePattern::PathMatch(predicate::str::is_match("example-path_nonaction").unwrap()),
+            FilePattern::PathMatch(predicate::str::is_match("example-path-nonaction").unwrap()),
             FileAction::None
         ),
     ];
@@ -157,6 +160,7 @@ impl FileWatcher {
                         last_update: last_update.into(),
                         cached_path: None,
                         action: action.clone(),
+                        last_upload: None,
                     },
                 );
             }
@@ -172,6 +176,7 @@ impl FileWatcher {
     ) -> bool {
         match (old_file_info, new_file_info) {
             (Some(old), Some(new)) => new.last_update > old.last_update,
+            (None, Some(_)) => true,
             _ => false,
         }
     }
@@ -184,16 +189,21 @@ impl FileWatcher {
     ) -> FileUploadType {
         match (old_file_info, new_file_info) {
             (Some(old), Some(new)) => match (&old.action, &new.action) {
-                (FileAction::Upload, _) => {
+                (FileAction::Upload, FileAction::None) => {
                     if new.size < old.size {
                         FileUploadType::Old
                     } else {
                         FileUploadType::None
                     }
                 }
-                (_, FileAction::Upload) => {
-                    if new.last_update - old.last_update > new_size_duration {
+                (FileAction::Upload, FileAction::Upload) => {
+                    if new.last_update == old.last_update
+                        && chrono::Utc::now() - new.last_update > new_size_duration
+                        && (old.last_upload.is_none() || old.last_upload.unwrap() < new.last_update)
+                    {
                         FileUploadType::New
+                    } else if new.size < old.size {
+                        FileUploadType::Old
                     } else {
                         FileUploadType::None
                     }
@@ -246,7 +256,13 @@ impl FileWatcher {
 
         let file_path = file_info.cached_path.as_ref().unwrap_or(&file_info.path);
 
-        upload_from_file_path(service_url, api_key, file_path).await?;
+        upload_from_file_path(
+            service_url,
+            api_key,
+            file_path,
+            Path::new(&file_info.path).file_name().unwrap().to_str(),
+        )
+        .await?;
 
         Ok(())
     }
@@ -259,9 +275,16 @@ impl FileWatcher {
         file_cache_dir: &str,
         new_size_duration: TimeDelta,
     ) -> Result<()> {
+        let logger = Logger::new();
         let mut to_upload: Vec<FileInfo> = Vec::new();
         let workflow_path = Path::new(workflow_directory);
         if !workflow_path.exists() {
+            logger
+                .log(
+                    &format!("Workflow directory does not exist - {:?}", workflow_path),
+                    None,
+                )
+                .await;
             return Ok(());
         }
 
@@ -274,11 +297,15 @@ impl FileWatcher {
 
         let paths = found_files.keys().cloned().collect::<Vec<String>>();
 
-        let paths = [
-            paths,
-            self.watched_files.keys().cloned().collect::<Vec<String>>(),
-        ]
-        .concat();
+        logger.log(&format!("Found files: {:?}", paths), None).await;
+
+        let paths: HashSet<String> = HashSet::from_iter(
+            [
+                paths,
+                self.watched_files.keys().cloned().collect::<Vec<String>>(),
+            ]
+            .concat(),
+        );
 
         // Upload action processing
         for path in paths {
@@ -296,7 +323,9 @@ impl FileWatcher {
                     to_upload.push(old_file_info.unwrap().clone());
                 }
                 FileUploadType::New => {
-                    to_upload.push(new_file_info.unwrap().clone());
+                    let new_file_info = new_file_info.unwrap();
+                    new_file_info.last_upload = Some(Utc::now());
+                    to_upload.push(new_file_info.clone());
                 }
                 _ => {}
             }
@@ -311,6 +340,13 @@ impl FileWatcher {
             let update = self.check_if_file_to_update(old_file_info, Some(file_info));
             if update {
                 self.cache_file(file_cache_dir, file_info)?;
+            } else if let Some(old_file_info) = old_file_info {
+                file_info.cached_path = old_file_info.cached_path.clone();
+                file_info.last_upload = if let Some(last_upload) = old_file_info.last_upload {
+                    Some(last_upload)
+                } else {
+                    file_info.last_upload
+                };
             }
         }
 

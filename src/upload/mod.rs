@@ -13,6 +13,7 @@ pub async fn upload_from_file_path(
     service_url: &str,
     api_key: &str,
     file_path: &str,
+    custom_file_name: Option<&str>,
 ) -> Result<()> {
     const MAX_FILE_SIZE: u64 = 5 * 1024 * 1024; // 5MB in bytes
 
@@ -32,11 +33,14 @@ pub async fn upload_from_file_path(
         .await;
 
     // Step #2: Extract the file name
-    let file_name = path
-        .file_name()
-        .context("Failed to extract file name")?
-        .to_str()
-        .context("File name is not valid UTF-8")?;
+    let file_name = if let Some(file_name) = custom_file_name {
+        file_name
+    } else {
+        path.file_name()
+            .context("Failed to extract file name")?
+            .to_str()
+            .context("File name is not valid UTF-8")?
+    };
 
     logger
         .log(&format!("Uploading file '{}'", file_name), None)
@@ -92,7 +96,8 @@ mod tests {
         // Ensure the file exists before running the test
         assert!(Path::new(file_path).exists(), "Test file does not exist");
 
-        let result = upload_from_file_path(&config.service_url, &config.api_key, file_path).await;
+        let result =
+            upload_from_file_path(&config.service_url, &config.api_key, file_path, None).await;
         assert!(result.is_ok(), "Upload failed: {:?}", result.err());
 
         Ok(())
@@ -109,7 +114,8 @@ mod tests {
             "Test file unexpectedly exists"
         );
 
-        let result = upload_from_file_path(&config.service_url, &config.api_key, file_path).await;
+        let result =
+            upload_from_file_path(&config.service_url, &config.api_key, file_path, None).await;
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("does not exist"));
 
@@ -128,7 +134,8 @@ mod tests {
             file.write_all(&large_content)?;
         }
 
-        let result = upload_from_file_path(&config.service_url, &config.api_key, file_path).await;
+        let result =
+            upload_from_file_path(&config.service_url, &config.api_key, file_path, None).await;
         // Clean up the large file
         fs::remove_file(file_path)?;
 

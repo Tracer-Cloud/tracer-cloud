@@ -180,6 +180,7 @@ pub fn process_upload_command<'a>(
             service_url,
             api_key,
             object.get("file_path").unwrap().as_str().unwrap(),
+            None,
         )
         .await?;
 
