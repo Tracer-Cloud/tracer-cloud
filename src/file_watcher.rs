@@ -355,3 +355,61 @@ impl FileWatcher {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use chrono::Days;
+
+    use super::*;
+
+    #[test]
+    fn test_check_if_file_to_update_no_changes() {
+        let now: DateTime<Utc> = Utc::now();
+        let file_watcher = FileWatcher::new();
+        let old_file_info = FileInfo {
+            path: "/tmp/test.txt".to_string(),
+            size: 50,
+            last_update: now.clone(),
+            last_upload: Some(now.clone()),
+            cached_path: None,
+            action: FileAction::None,
+        };
+
+        let new_file_info = FileInfo {
+            path: "/tmp/test.txt".to_string(),
+            size: 50,
+            last_update: now.clone(),
+            last_upload: Some(now.clone()),
+            cached_path: None,
+            action: FileAction::None,
+        };
+
+        assert!(!file_watcher.check_if_file_to_update(Some(&old_file_info), Some(&new_file_info)));
+    }
+
+    #[test]
+    fn test_check_if_file_to_update_new_file() {
+        let now: DateTime<Utc> = Utc::now();
+        let file_watcher = FileWatcher::new();
+        let old_file_info = FileInfo {
+            path: "/tmp/test.txt".to_string(),
+            size: 50,
+            last_update: now.clone(),
+            last_upload: Some(now.clone()),
+            cached_path: None,
+            action: FileAction::None,
+        };
+
+        let newer = now.checked_add_days(Days::new(1)).unwrap();
+        let new_file_info = FileInfo {
+            path: "/tmp/test.txt".to_string(),
+            size: 50,
+            last_update: newer.clone(),
+            last_upload: Some(now.clone()),
+            cached_path: None,
+            action: FileAction::None,
+        };
+
+        assert!(file_watcher.check_if_file_to_update(Some(&old_file_info), Some(&new_file_info)));
+    }
+}
