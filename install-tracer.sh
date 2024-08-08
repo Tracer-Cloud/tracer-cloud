@@ -6,7 +6,7 @@
 #-------------------------------------------------------------------------------
 SCRIPT_VERSION="v0.0.1"
 TRACER_VERSION="v0.0.104"
-TRACER_VERSION_DEVELOP="v0.0.102-dev"
+TRACER_VERSION_DEVELOP="v0.0.105-dev"
 
 TRACER_HOME="$HOME/.tracerbio"
 LOGFILE_NAME="tracer-installer.log"
