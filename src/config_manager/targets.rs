@@ -20,6 +20,7 @@ lazy_static! {
         Target::new(TargetMatch::ProcessName("STAR".to_string())),
         Target::new(TargetMatch::ProcessName("bowtie2".to_string())),
         Target::new(TargetMatch::ProcessName("bowtie2-build-s".to_string())),
+        Target::new(TargetMatch::ProcessName("bowtie2-align-s".to_string())),
         Target::new(TargetMatch::ProcessName("bwa".to_string())),
         Target::new(TargetMatch::ProcessName("salmon".to_string())),
         Target::new(TargetMatch::ProcessName("hisat2".to_string())),
