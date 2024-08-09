@@ -12,6 +12,11 @@ lazy_static! {
         .set_display_name(Some("fastqc".to_string()))
         .set_merge_with_parents(true)
         .set_force_ancestor_to_match(false),
+        Target::new(TargetMatch::CommandContains(CommandContainsStruct {
+            process_name: Some("bowtie2-build-s".to_string()),
+            command_content: "/opt/conda/bin/bowtie2-build-s".to_string()
+        }))
+        .set_display_name(Some("bowtie2-build-s (Conda)".to_string())),
         Target::new(TargetMatch::ProcessName("STAR".to_string())),
         Target::new(TargetMatch::ProcessName("bowtie2".to_string())),
         Target::new(TargetMatch::ProcessName("bowtie2-build-s".to_string())),
@@ -74,7 +79,7 @@ lazy_static! {
         Target::new(TargetMatch::ProcessName("casper".to_string())),
         Target::new(TargetMatch::ProcessName("DESeq".to_string())),
         Target::new(TargetMatch::ProcessName("EdgeR".to_string())),
-        Target::new(TargetMatch::ProcessName("Kallisto".to_string())),
+        Target::new(TargetMatch::ProcessName("kallisto".to_string())),
         Target::new(TargetMatch::ProcessName("pairtools".to_string())),
         Target::new(TargetMatch::ProcessName("HiCExplorer".to_string())),
         Target::new(TargetMatch::ProcessName("GITAR".to_string())),
@@ -85,6 +90,7 @@ lazy_static! {
         Target::new(TargetMatch::ProcessName("cooltools".to_string())),
         Target::new(TargetMatch::ProcessName("runHiC".to_string())),
         Target::new(TargetMatch::ProcessName("HTSlib".to_string())),
+        Target::new(TargetMatch::ProcessName("htslib".to_string())),
         Target::new(TargetMatch::ProcessName("zlib".to_string())),
         Target::new(TargetMatch::ProcessName("libbz2".to_string())),
         Target::new(TargetMatch::ProcessName("liblzma".to_string())),

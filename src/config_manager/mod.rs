@@ -40,13 +40,35 @@ pub struct Target {
 
 impl Target {
     pub fn matches(&self, process_name: &str, command: &str) -> bool {
+        use std::borrow::Cow;
+
+        fn to_lowercase(s: &str) -> Cow<str> {
+            if s.chars().any(|c| c.is_uppercase()) {
+                Cow::Owned(s.to_lowercase())
+            } else {
+                Cow::Borrowed(s)
+            }
+        }
+
         match &self.match_type {
-            TargetMatch::ProcessName(name) => process_name == name,
+            TargetMatch::ProcessName(name) => {
+                let process_name_lower = to_lowercase(process_name);
+                let name_lower = to_lowercase(name);
+                process_name_lower == name_lower
+            }
             TargetMatch::ShortLivedProcessExecutable(_) => false,
             TargetMatch::CommandContains(inner) => {
-                (inner.process_name.is_none()
-                    || inner.process_name.as_ref().unwrap() == process_name)
-                    && command.contains(&inner.command_content)
+                let process_name_matches =
+                    inner.process_name.as_ref().map_or(true, |expected_name| {
+                        let process_name_lower = to_lowercase(process_name);
+                        let expected_name_lower = to_lowercase(expected_name);
+                        process_name_lower == expected_name_lower
+                    });
+
+                let command_lower = to_lowercase(command);
+                let content_lower = to_lowercase(&inner.command_content);
+
+                process_name_matches && command_lower.contains(content_lower.as_ref())
             }
         }
     }
