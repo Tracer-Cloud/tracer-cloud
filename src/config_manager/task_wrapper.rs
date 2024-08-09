@@ -5,7 +5,9 @@ use std::{
     path::PathBuf,
 };
 
-use crate::config_manager::{Target, TargetMatch};
+use crate::config_manager::targets_list::TargetMatch;
+
+use super::targets_list::Target;
 
 const TRACER_BASH_RC_PATH: &str = ".config/tracer/.bashrc";
 const WRAPPER_SOURCE_COMMAND: &str = "source ~/.config/tracer/.bashrc";
