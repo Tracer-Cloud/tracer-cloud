@@ -2,10 +2,11 @@ use std::{env, path::PathBuf};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use targets_list::{Target, TargetMatch};
 use task_wrapper::{modify_bashrc_file, rewrite_wrapper_bashrc_file};
 
 use crate::events::send_daemon_start_event;
-mod targets;
+pub mod targets_list;
 mod task_wrapper;
 
 const DEFAULT_API_KEY: &str = "EAjg7eHtsGnP3fTURcPz1";
@@ -21,99 +22,6 @@ const FILE_SIZE_NOT_CHANGING_PERIOD_MS: u64 = 1000 * 60;
 pub struct CommandContainsStruct {
     pub process_name: Option<String>,
     pub command_content: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum TargetMatch {
-    ProcessName(String),
-    ShortLivedProcessExecutable(String),
-    CommandContains(CommandContainsStruct),
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct Target {
-    pub match_type: TargetMatch,
-    pub display_name: Option<String>,
-    pub merge_with_parents: bool,
-    pub force_ancestor_to_match: bool,
-}
-
-impl Target {
-    pub fn matches(&self, process_name: &str, command: &str) -> bool {
-        use std::borrow::Cow;
-
-        fn to_lowercase(s: &str) -> Cow<str> {
-            if s.chars().any(|c| c.is_uppercase()) {
-                Cow::Owned(s.to_lowercase())
-            } else {
-                Cow::Borrowed(s)
-            }
-        }
-
-        match &self.match_type {
-            TargetMatch::ProcessName(name) => {
-                let process_name_lower = to_lowercase(process_name);
-                let name_lower = to_lowercase(name);
-                process_name_lower == name_lower
-            }
-            TargetMatch::ShortLivedProcessExecutable(_) => false,
-            TargetMatch::CommandContains(inner) => {
-                let process_name_matches =
-                    inner.process_name.as_ref().map_or(true, |expected_name| {
-                        let process_name_lower = to_lowercase(process_name);
-                        let expected_name_lower = to_lowercase(expected_name);
-                        process_name_lower == expected_name_lower
-                    });
-
-                let command_lower = to_lowercase(command);
-                let content_lower = to_lowercase(&inner.command_content);
-
-                process_name_matches && command_lower.contains(content_lower.as_ref())
-            }
-        }
-    }
-
-    pub fn should_be_merged_with_parents(&self) -> bool {
-        self.merge_with_parents
-    }
-
-    pub fn should_force_ancestor_to_match(&self) -> bool {
-        self.force_ancestor_to_match
-    }
-
-    pub fn get_display_name(&self) -> Option<String> {
-        self.display_name.clone()
-    }
-
-    pub fn new(match_type: TargetMatch) -> Target {
-        Target {
-            match_type,
-            display_name: None,
-            merge_with_parents: true,
-            force_ancestor_to_match: true,
-        }
-    }
-
-    pub fn set_display_name(self, display_name: Option<String>) -> Target {
-        Target {
-            display_name,
-            ..self
-        }
-    }
-
-    pub fn set_merge_with_parents(self, merge_with_parents: bool) -> Target {
-        Target {
-            merge_with_parents,
-            ..self
-        }
-    }
-
-    pub fn set_force_ancestor_to_match(self, force_ancestor_to_match: bool) -> Target {
-        Target {
-            force_ancestor_to_match,
-            ..self
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -176,7 +84,9 @@ impl ConfigManager {
             file_size_not_changing_period_ms: config
                 .file_size_not_changing_period_ms
                 .unwrap_or(FILE_SIZE_NOT_CHANGING_PERIOD_MS),
-            targets: config.targets.unwrap_or_else(|| targets::TARGETS.to_vec()),
+            targets: config
+                .targets
+                .unwrap_or_else(|| targets_list::TARGETS.to_vec()),
         })
     }
 
@@ -188,7 +98,7 @@ impl ConfigManager {
             new_run_pause_ms: NEW_RUN_PAUSE_MS,
             file_size_not_changing_period_ms: FILE_SIZE_NOT_CHANGING_PERIOD_MS,
             service_url: DEFAULT_SERVICE_URL.to_string(),
-            targets: targets::TARGETS.to_vec(),
+            targets: targets_list::TARGETS.to_vec(),
             process_metrics_send_interval_ms: PROCESS_METRICS_SEND_INTERVAL_MS,
         }
     }
