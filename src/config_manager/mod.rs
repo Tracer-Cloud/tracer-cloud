@@ -1,5 +1,4 @@
 mod bashrc_intercept;
 mod config;
-pub mod targets_list;
-
+pub mod target_process;
 pub use config::{Config, ConfigManager};

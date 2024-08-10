@@ -7,12 +7,14 @@ use serde::{Deserialize, Serialize};
 use crate::{
     config_manager::{
         bashrc_intercept::{modify_bashrc_file, rewrite_interceptor_bashrc_file},
-        targets_list::TargetMatch,
+        target_process::target_matching::TargetMatch,
     },
     events::send_daemon_start_event,
 };
 
-use super::targets_list::{self, Target};
+use crate::config_manager::target_process::Target;
+
+use super::target_process::targets_list;
 
 const DEFAULT_API_KEY: &str = "EAjg7eHtsGnP3fTURcPz1";
 const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
@@ -22,12 +24,6 @@ const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 const NEW_RUN_PAUSE_MS: u64 = 10 * 60 * 1000;
 const PROCESS_METRICS_SEND_INTERVAL_MS: u64 = 10000;
 const FILE_SIZE_NOT_CHANGING_PERIOD_MS: u64 = 1000 * 60;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct CommandContainsStruct {
-    pub process_name: Option<String>,
-    pub command_content: String,
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ConfigFile {
