@@ -1,5 +1,5 @@
-use crate::config_manager::targets_list::Target;
 // src/process_watcher.rs
+use crate::config_manager::targets_list::Target;
 use crate::event_recorder::EventRecorder;
 use crate::event_recorder::EventType;
 use anyhow::Result;
