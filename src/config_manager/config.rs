@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     config_manager::{
-        bashrc_intercept::rewrite_interceptor_bashrc_file, targets_list::TargetMatch,
+        bashrc_intercept::{modify_bashrc_file, rewrite_interceptor_bashrc_file},
+        targets_list::TargetMatch,
     },
     events::send_daemon_start_event,
 };
@@ -134,7 +135,7 @@ impl ConfigManager {
         config
     }
 
-    pub fn setup_interceptors() -> Result<()> {
+    pub fn setup_aliases() -> Result<()> {
         let config = ConfigManager::load_config();
         rewrite_interceptor_bashrc_file(
             env::current_exe()?,
@@ -150,6 +151,7 @@ impl ConfigManager {
                 .collect(),
         )?;
         // bashrc_intercept(".bashrc")?;
+        modify_bashrc_file(".bashrc")?;
 
         println!("Command interceptors setup successfully.");
         Ok(())
