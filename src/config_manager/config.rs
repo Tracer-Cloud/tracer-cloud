@@ -19,7 +19,7 @@ use super::target_process::targets_list;
 const DEFAULT_API_KEY: &str = "EAjg7eHtsGnP3fTURcPz1";
 const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
 const DEFAULT_CONFIG_FILE_LOCATION_FROM_HOME: &str = ".config/tracer/tracer.toml";
-const PROCESS_POLLING_INTERVAL_MS: u64 = 50;
+const PROCESS_POLLING_INTERVAL_MS: u64 = 5;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
 const NEW_RUN_PAUSE_MS: u64 = 10 * 60 * 1000;
 const PROCESS_METRICS_SEND_INTERVAL_MS: u64 = 10000;
