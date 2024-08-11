@@ -31,6 +31,8 @@ lazy_static! {
         Target::new(TargetMatch::ProcessName("stringtie".to_string())),
         Target::new(TargetMatch::ProcessName("HOMER".to_string())),
         Target::new(TargetMatch::ProcessName("samtools".to_string())),
+        Target::new(TargetMatch::ProcessName("seasmoke".to_string())),
+        Target::new(TargetMatch::ProcessName("alphafold".to_string())),
         Target::new(TargetMatch::ProcessName("bedtools".to_string())),
         Target::new(TargetMatch::ProcessName("deeptools".to_string())),
         Target::new(TargetMatch::ProcessName("macs3".to_string())),
