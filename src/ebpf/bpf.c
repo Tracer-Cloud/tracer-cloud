@@ -19,15 +19,15 @@
 // int trace_execve(struct trace_event_raw_sys_enter *ctx)
 // {
 //     struct event event = {};
-
+    
 //     event.pid = bpf_get_current_pid_tgid() >> 32;
 //     bpf_get_current_comm(&event.comm, sizeof(event.comm));
-
+    
 //     const char *filename = (const char *)ctx->args[0];
 //     bpf_probe_read_user_str(event.filename, sizeof(event.filename), filename);
-
+    
 //     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
-
+    
 //     return 0;
 // }
 
