@@ -11,7 +11,9 @@ use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
 
 use crate::{
-    debug_log::Logger, event_recorder::{EventRecorder, EventType}, metrics::SystemMetricsCollector
+    debug_log::Logger,
+    event_recorder::{EventRecorder, EventType},
+    metrics::SystemMetricsCollector,
 };
 
 const LINES_BEFORE: usize = 2;
@@ -50,8 +52,10 @@ pub async fn run_lines_read_thread(file_path: &str, pending_lines: Arc<RwLock<Ve
         let mut vec = pending_lines.write().await;
         let line = line.line();
 
-        logger.log(&format!("Got line from syslog: {}", line), None).await;
-        
+        logger
+            .log(&format!("Read line from syslog: {}", line), None)
+            .await;
+
         vec.push(line.to_string());
     }
 }
