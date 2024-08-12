@@ -12,6 +12,7 @@ lazy_static! {
         .set_display_name(Some("fastqc".to_string()))
         .set_merge_with_parents(true)
         .set_force_ancestor_to_match(false),
+        Target::new(TargetMatch::ProcessNameStartsWith("/opt/conda/bin".to_string())),
         Target::new(TargetMatch::ProcessName("STAR".to_string())),
         Target::new(TargetMatch::ProcessName("bowtie2".to_string())),
         Target::new(TargetMatch::ProcessName("bwa".to_string())),

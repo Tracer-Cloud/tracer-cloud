@@ -25,6 +25,7 @@ pub struct CommandContainsStruct {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum TargetMatch {
     ProcessName(String),
+    ProcessNameStartsWith(String),
     ShortLivedProcessExecutable(String),
     CommandContains(CommandContainsStruct),
 }
@@ -41,6 +42,7 @@ impl Target {
     pub fn matches(&self, process_name: &str, command: &str) -> bool {
         match &self.match_type {
             TargetMatch::ProcessName(name) => process_name == name,
+            TargetMatch::ProcessNameStartsWith(prefix) => process_name.starts_with(prefix),
             TargetMatch::ShortLivedProcessExecutable(_) => false,
             TargetMatch::CommandContains(inner) => {
                 (inner.process_name.is_none()
