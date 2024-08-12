@@ -26,6 +26,7 @@ pub enum EventType {
     FinishedToolExecution,
     ToolMetricEvent,
     MetricEvent,
+    SyslogEvent,
     TestEvent, // Added TestEvent variant
 }
 
@@ -37,6 +38,7 @@ impl EventType {
             EventType::ToolExecution => "tool_execution",
             EventType::FinishedToolExecution => "finished_tool_execution",
             EventType::MetricEvent => "metric_event",
+            EventType::SyslogEvent => "syslog_event",
             EventType::ToolMetricEvent => "tool_metric_event",
             EventType::TestEvent => "test_event", // Handle TestEvent
         }

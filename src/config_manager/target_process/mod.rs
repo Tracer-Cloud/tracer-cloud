@@ -49,8 +49,8 @@ impl Target {
         }
     }
 
-    pub fn matches(&self, process_name: &str, command: &str) -> bool {
-        matches_target(self, process_name, command)
+    pub fn matches(&self, process_name: &str, command: &str, bin_path: &str) -> bool {
+        matches_target(self, process_name, command, bin_path)
     }
 
     pub fn should_be_merged_with_parents(&self) -> bool {

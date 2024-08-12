@@ -14,6 +14,7 @@ lazy_static! {
         .set_display_name(Some("fastqc".to_string()))
         .set_merge_with_parents(true)
         .set_force_ancestor_to_match(false),
+        Target::new(TargetMatch::BinPathStartsWith("/opt/conda/bin".to_string())),
         Target::new(TargetMatch::CommandContains(CommandContainsStruct {
             process_name: Some("bowtie2-build-s".to_string()),
             command_content: "/opt/conda/bin/bowtie2-build-s".to_string()

@@ -4,13 +4,16 @@ use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
 use crate::submit_batched_data::submit_batched_data;
+use crate::syslog::SyslogWatcher;
 use crate::FILE_CACHE_DIR;
 use crate::{config_manager::Config, process_watcher::ShortLivedProcessLog};
 use anyhow::Result;
 use chrono::{DateTime, TimeDelta, Utc};
 use std::ops::Sub;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use sysinfo::{Pid, System};
+use tokio::sync::RwLock;
 
 pub struct RunMetadata {
     pub last_interaction: Instant,
@@ -30,16 +33,18 @@ pub struct TracerClient {
     last_file_size_change_time_delta: TimeDelta,
     pub logs: EventRecorder,
     process_watcher: ProcessWatcher,
+    syslog_watcher: SyslogWatcher,
     metrics_collector: SystemMetricsCollector,
     file_watcher: FileWatcher,
     workflow_directory: String,
     api_key: String,
     service_url: String,
     current_run: Option<RunMetadata>,
+    syslog_lines_buffer: Arc<RwLock<Vec<String>>>,
 }
 
 impl TracerClient {
-    pub fn new(config: Config, workflow_directory: String) -> Result<TracerClient> {
+    pub async fn new(config: Config, workflow_directory: String) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
         println!("Initializing TracerClient with API Key: {}", config.api_key);
@@ -65,10 +70,12 @@ impl TracerClient {
             system: System::new_all(),
             last_sent: None,
             current_run: None,
+            syslog_watcher: SyslogWatcher::new(),
             // Sub mannagers
             logs: EventRecorder::new(),
             file_watcher,
             workflow_directory,
+            syslog_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
         })
@@ -88,6 +95,10 @@ impl TracerClient {
         self.process_watcher
             .fill_logs_with_short_lived_process(short_lived_process_log, &mut self.logs)?;
         Ok(())
+    }
+
+    pub fn get_syslog_lines_buffer(&self) -> Arc<RwLock<Vec<String>>> {
+        self.syslog_lines_buffer.clone()
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
@@ -215,6 +226,16 @@ impl TracerClient {
             )
             .await?;
         Ok(())
+    }
+
+    pub async fn poll_syslog(&mut self) -> Result<()> {
+        self.syslog_watcher
+            .poll_syslog(
+                self.get_syslog_lines_buffer(),
+                &mut self.system,
+                &mut self.logs,
+            )
+            .await
     }
 
     pub fn refresh_sysinfo(&mut self) {

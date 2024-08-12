@@ -15,6 +15,7 @@ lazy_static = "1.5.0"
 log = "0.4.21"
 octocrab = "0.38.0"
 predicates = "3.1.2"
+regex = "1.10.6"
 random-string = "1.1.0"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["std", "derive", "serde_derive"] }
@@ -27,6 +28,9 @@ tokio-util = "0.7.11"
 toml = "0.8.14"
 tracing = "0.1.40"
 url = "2.5.2"
+linemux = "0.3.0"
+tokio-stream = "0.1.15"
+futures-util = "0.3.30"
 
 [dev-dependencies]
 env_logger = "0.9"
