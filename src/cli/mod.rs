@@ -84,9 +84,6 @@ pub enum Commands {
     /// Upload a file to the service [Works only directly from the function not the daemon]
     UploadDaemon,
 
-    /// Syslog
-    Syslog { file_path: String },
-
     /// Change the tags of the current pipeline run
     Tag { tags: Vec<String> },
 
