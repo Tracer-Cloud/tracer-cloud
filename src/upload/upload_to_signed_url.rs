@@ -100,9 +100,10 @@ mod tests {
         }
 
         let config = ConfigManager::load_default_config();
-        let api_key = config.api_key.clone();
 
-        let signed_url = request_presigned_url(&api_key, &file_path).await.unwrap();
+        let signed_url = request_presigned_url(&config.service_url, &config.api_key, &file_path)
+            .await
+            .unwrap();
 
         let result = upload_file_to_signed_url_s3(&signed_url, file_path).await;
 

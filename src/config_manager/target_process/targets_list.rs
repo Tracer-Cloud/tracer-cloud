@@ -1,6 +1,8 @@
 use lazy_static::lazy_static;
 
-use crate::config_manager::{CommandContainsStruct, Target, TargetMatch};
+use crate::config_manager::target_process::target_matching::{CommandContainsStruct, TargetMatch};
+
+use super::Target;
 
 lazy_static! {
     pub static ref TARGETS: Vec<Target> = [
@@ -12,18 +14,31 @@ lazy_static! {
         .set_display_name(Some("fastqc".to_string()))
         .set_merge_with_parents(true)
         .set_force_ancestor_to_match(false),
-        Target::new(TargetMatch::ProcessNameStartsWith("/opt/conda/bin".to_string())),
+        Target::new(TargetMatch::BinPathStartsWith("/opt/conda/bin".to_string())),
+        Target::new(TargetMatch::CommandContains(CommandContainsStruct {
+            process_name: Some("bowtie2-build-s".to_string()),
+            command_content: "/opt/conda/bin/bowtie2-build-s".to_string()
+        }))
+        .set_display_name(Some("bowtie2-build-s (Conda)".to_string())),
         Target::new(TargetMatch::ProcessName("STAR".to_string())),
+        // bowtie section
         Target::new(TargetMatch::ProcessName("bowtie2".to_string())),
+        Target::new(TargetMatch::ProcessName("bowtie2-build-s".to_string())),
+        Target::new(TargetMatch::ProcessName("bowtie2-align-s".to_string())),
         Target::new(TargetMatch::ProcessName("bwa".to_string())),
         Target::new(TargetMatch::ProcessName("salmon".to_string())),
-        Target::new(TargetMatch::ProcessName("hisat2".to_string())),
+        Target::new(TargetMatch::ProcessName("hisat2".to_string())).set_display_name(Some("HISAT2".to_string())),
+        Target::new(TargetMatch::ProcessName("hisat2-build".to_string())).set_display_name(Some("HISAT2_BUILD".to_string())),
+        Target::new(TargetMatch::ProcessName("stringtie".to_string())),
         Target::new(TargetMatch::ProcessName("HOMER".to_string())),
         Target::new(TargetMatch::ProcessName("samtools".to_string())),
+        Target::new(TargetMatch::ProcessName("seasmoke".to_string())),
+        Target::new(TargetMatch::ProcessName("alphafold".to_string())),
         Target::new(TargetMatch::ProcessName("bedtools".to_string())),
         Target::new(TargetMatch::ProcessName("deeptools".to_string())),
         Target::new(TargetMatch::ProcessName("macs3".to_string())),
         Target::new(TargetMatch::ProcessName("plotCoverage".to_string())),
+        Target::new(TargetMatch::ProcessName("plotFingerprint".to_string())),
         Target::new(TargetMatch::ProcessName("MACS33".to_string())),
         Target::new(TargetMatch::ProcessName("Genrich".to_string())),
         Target::new(TargetMatch::ProcessName("TopHat".to_string())),
@@ -71,7 +86,7 @@ lazy_static! {
         Target::new(TargetMatch::ProcessName("casper".to_string())),
         Target::new(TargetMatch::ProcessName("DESeq".to_string())),
         Target::new(TargetMatch::ProcessName("EdgeR".to_string())),
-        Target::new(TargetMatch::ProcessName("Kallisto".to_string())),
+        Target::new(TargetMatch::ProcessName("kallisto".to_string())),
         Target::new(TargetMatch::ProcessName("pairtools".to_string())),
         Target::new(TargetMatch::ProcessName("HiCExplorer".to_string())),
         Target::new(TargetMatch::ProcessName("GITAR".to_string())),
@@ -82,6 +97,7 @@ lazy_static! {
         Target::new(TargetMatch::ProcessName("cooltools".to_string())),
         Target::new(TargetMatch::ProcessName("runHiC".to_string())),
         Target::new(TargetMatch::ProcessName("HTSlib".to_string())),
+        Target::new(TargetMatch::ProcessName("htslib".to_string())),
         Target::new(TargetMatch::ProcessName("zlib".to_string())),
         Target::new(TargetMatch::ProcessName("libbz2".to_string())),
         Target::new(TargetMatch::ProcessName("liblzma".to_string())),

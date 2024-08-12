@@ -3,7 +3,7 @@ use std::collections::HashMap;
 /// src/system_metrics.rs
 use anyhow::Result;
 use chrono::Utc;
-use serde_json::json;
+use serde_json::{json, Value};
 use sysinfo::{Disks, System};
 
 use crate::event_recorder::{EventRecorder, EventType};
@@ -15,7 +15,7 @@ impl SystemMetricsCollector {
         SystemMetricsCollector
     }
 
-    pub fn collect_metrics(&self, system: &mut System, logs: &mut EventRecorder) -> Result<()> {
+    pub fn gather_metrics_object_attributes(system: &mut System) -> Value {
         let used_memory = system.used_memory();
         let total_memory = system.total_memory();
         let memory_utilization = (used_memory as f64 / total_memory as f64) * 100.0;
@@ -55,6 +55,12 @@ impl SystemMetricsCollector {
             "system_cpu_utilization": cpu_usage,
             "system_disk_io": d_stats,
         });
+
+        attributes
+    }
+
+    pub fn collect_metrics(&self, system: &mut System, logs: &mut EventRecorder) -> Result<()> {
+        let attributes = Self::gather_metrics_object_attributes(system);
 
         logs.record_event(
             EventType::MetricEvent,

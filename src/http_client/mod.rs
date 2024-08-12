@@ -124,20 +124,18 @@ mod tests {
 
         // Load configuration
         let config = ConfigManager::load_default_config();
-        let api_key = config.api_key.clone(); // Cloning here to avoid moving
-        let service_url = config.service_url.clone(); // Cloning here to avoid moving
 
         let logger = Logger::new();
         logger
             .log(
                 "test:http_client",
                 Some(json!({
-                    "api_key": &api_key,
-                    "service_url": &service_url
+                    "api_key": &config.api_key,
+                    "service_url": &config.service_url
                 }))
                 .as_ref(),
             )
-            .await?;
+            .await;
 
         // Define the log data to send
         let logs = json!([
@@ -150,7 +148,7 @@ mod tests {
         ]);
 
         // Send the HTTP event
-        let result = send_http_event(&service_url, &api_key, &logs).await;
+        let result = send_http_event(&config.service_url, &config.api_key, &logs).await;
 
         // Ensure the request succeeded
         assert!(

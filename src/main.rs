@@ -4,6 +4,7 @@ mod daemon_communication;
 mod debug_log;
 mod event_recorder;
 mod events;
+mod file_watcher;
 mod http_client;
 mod metrics;
 mod process_watcher;
@@ -17,6 +18,7 @@ use daemon_communication::server::run_server;
 use daemonize::Daemonize;
 use events::send_start_run_event;
 use std::borrow::BorrowMut;
+use syslog::run_lines_read_thread;
 
 use std::fs::File;
 use std::sync::Arc;
@@ -32,6 +34,9 @@ const WORKING_DIR: &str = "/tmp";
 const STDOUT_FILE: &str = "/tmp/tracerd.out";
 const STDERR_FILE: &str = "/tmp/tracerd.err";
 const SOCKET_PATH: &str = "/tmp/tracerd.sock";
+const FILE_CACHE_DIR: &str = "/tmp/tracerd_cache";
+
+const SYSLOG_FILE: &str = "/var/log/syslog";
 
 const REPO_OWNER: &str = "davincios";
 const REPO_NAME: &str = "tracer-daemon";
@@ -62,18 +67,26 @@ pub fn main() -> Result<()> {
 }
 
 #[tokio::main]
-pub async fn run() -> Result<()> {
+pub async fn run(workflow_directory_path: String) -> Result<()> {
     let raw_config = ConfigManager::load_config();
-    let client = TracerClient::new(raw_config.clone()).context("Failed to create TracerClient")?;
+    let client = TracerClient::new(raw_config.clone(), workflow_directory_path)
+        .await
+        .context("Failed to create TracerClient")?;
     let tracer_client = Arc::new(Mutex::new(client));
     let config: Arc<RwLock<config_manager::Config>> = Arc::new(RwLock::new(raw_config));
 
     let cancellation_token = CancellationToken::new();
+
     tokio::spawn(run_server(
         tracer_client.clone(),
         SOCKET_PATH,
         cancellation_token.clone(),
         config.clone(),
+    ));
+
+    let lines_task = tokio::spawn(run_lines_read_thread(
+        SYSLOG_FILE,
+        tracer_client.lock().await.get_syslog_lines_buffer(),
     ));
 
     // Automatically start a new run upon daemon start
@@ -101,7 +114,11 @@ pub async fn run() -> Result<()> {
             .borrow_mut()
             .submit_batched_data()
             .await?;
+
+        tracer_client.lock().await.borrow_mut().poll_files().await?;
     }
+
+    lines_task.abort();
 
     Ok(())
 }
@@ -111,6 +128,7 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
     tracer_client.poll_processes().await?;
     // tracer_client.run_cleanup().await?;
     tracer_client.poll_process_metrics().await?;
+    tracer_client.poll_syslog().await?;
     tracer_client.refresh_sysinfo();
     tracer_client.reset_just_started_process_flag();
     Ok(())
@@ -129,7 +147,10 @@ mod tests {
     #[tokio::test]
     async fn test_monitor_processes_with_tracer_client() {
         let config = load_test_config();
-        let mut tracer_client = TracerClient::new(config).unwrap();
+        let pwd = std::env::current_dir().unwrap();
+        let mut tracer_client = TracerClient::new(config, pwd.to_str().unwrap().to_string())
+            .await
+            .unwrap();
         let result = monitor_processes_with_tracer_client(&mut tracer_client).await;
         assert!(result.is_ok());
     }

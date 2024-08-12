@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 // src/cli.rs
 use anyhow::Result;
 use serde_json::json;
@@ -161,24 +163,24 @@ pub async fn send_log_short_lived_process_request(
     Ok(())
 }
 
-pub async fn send_upload_file_request(socket_path: &str) -> Result<()> {
+pub async fn send_upload_file_request(socket_path: &str, file_path: &PathBuf) -> Result<()> {
     let logger = Logger::new();
-    let file_path = "log_outgoing_http_calls.txt";
     logger
         .log(
             "send_upload_file_request",
             Some(&json!({
-                "file_path": &file_path,
+                "file_path": file_path,
                 "socket_path": &socket_path
 
             })),
         )
-        .await?;
+        .await;
 
     let mut socket = UnixStream::connect(socket_path).await?;
 
     let upload_request = json!({
         "command": "upload",
+        "file_path": file_path
     });
 
     let upload_request_json =
@@ -191,7 +193,7 @@ pub async fn send_upload_file_request(socket_path: &str) -> Result<()> {
             "send_upload_file_request//socket.write_all",
             Some(&upload_request),
         )
-        .await?;
+        .await;
 
     Ok(())
 }
@@ -370,15 +372,15 @@ mod tests {
     #[serial]
     async fn test_send_upload_file_request() -> Result<()> {
         let listener = setup_test_unix_listener();
-        // let file_path = "log_outgoing_http_calls.txt".to_string();
+        let file_path = PathBuf::from("log_outgoing_http_calls.txt".to_string());
 
-        send_upload_file_request(SOCKET_PATH).await?;
+        send_upload_file_request(SOCKET_PATH, &file_path).await?;
 
         check_listener_value(
             &listener,
             json!({
                 "command": "upload",
-                // "file_path": file_path.clone()
+                "file_path": file_path.clone()
             })
             .to_string()
             .as_str(),

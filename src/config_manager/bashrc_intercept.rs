@@ -5,12 +5,13 @@ use std::{
     path::PathBuf,
 };
 
-use crate::config_manager::{Target, TargetMatch};
+use crate::config_manager::target_process::target_matching::TargetMatch;
+use crate::config_manager::target_process::Target;
 
-const TRACER_BASH_RC_PATH: &str = ".config/tracer/.bashrc";
-const WRAPPER_SOURCE_COMMAND: &str = "source ~/.config/tracer/.bashrc";
+const INTERCEPTOR_BASHRC_PATH: &str = ".config/tracer/.bashrc";
+const INTERCEPTOR_SOURCE_COMMAND: &str = "source ~/.config/tracer/.bashrc";
 
-pub fn get_task_wrapper(
+pub fn get_command_interceptor(
     current_tracer_exe_path: PathBuf,
     command_name: &str,
     display_name: &str,
@@ -24,7 +25,7 @@ pub fn get_task_wrapper(
     )
 }
 
-pub fn rewrite_wrapper_bashrc_file(
+pub fn rewrite_interceptor_bashrc_file(
     current_tracer_exe_path: PathBuf,
     targets: Vec<&Target>,
 ) -> Result<()> {
@@ -34,7 +35,7 @@ pub fn rewrite_wrapper_bashrc_file(
         .write(true)
         .create(true)
         .truncate(true)
-        .open(path.join(TRACER_BASH_RC_PATH))?;
+        .open(path.join(INTERCEPTOR_BASHRC_PATH))?;
 
     for command in targets.into_iter().map(|target| {
         let name = target.get_display_name();
@@ -44,7 +45,7 @@ pub fn rewrite_wrapper_bashrc_file(
         };
         format!(
             "{}\n",
-            get_task_wrapper(
+            get_command_interceptor(
                 current_tracer_exe_path.clone(),
                 &command_to_alias,
                 &name.unwrap_or(command_to_alias.clone())
@@ -68,13 +69,13 @@ pub fn modify_bashrc_file(bashrc_file_path: &str) -> Result<()> {
     let reader = BufReader::new(&bashrc_file);
     for line in reader.lines() {
         let line = line.unwrap();
-        if line.contains(WRAPPER_SOURCE_COMMAND) {
+        if line.contains(INTERCEPTOR_SOURCE_COMMAND) {
             return Ok(());
         }
     }
 
     bashrc_file
-        .write_all(WRAPPER_SOURCE_COMMAND.as_bytes())
+        .write_all(INTERCEPTOR_SOURCE_COMMAND.as_bytes())
         .unwrap();
 
     Ok(())

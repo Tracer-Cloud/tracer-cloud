@@ -1,5 +1,5 @@
-use crate::config_manager::Target;
 // src/process_watcher.rs
+use crate::config_manager::target_process::Target;
 use crate::event_recorder::EventRecorder;
 use crate::event_recorder::EventType;
 use anyhow::Result;
@@ -75,10 +75,16 @@ impl ProcessWatcher {
     ) -> Result<()> {
         for (pid, proc) in system.processes().iter() {
             if !self.seen.contains_key(pid) {
-                let target = self
-                    .targets
-                    .iter()
-                    .find(|target| target.matches(proc.name(), &proc.cmd().join(" ")));
+                let target = self.targets.iter().find(|target| {
+                    target.matches(
+                        proc.name(),
+                        &proc.cmd().join(" "),
+                        proc.exe()
+                            .unwrap_or_else(|| Path::new(""))
+                            .to_str()
+                            .unwrap(),
+                    )
+                });
                 if let Some(target) = target {
                     self.add_new_process(*pid, proc, system, event_logger, Some(&target.clone()))?;
                 }
@@ -219,7 +225,11 @@ impl ProcessWatcher {
             let mut valid_processes = vec![];
 
             for (pid, node) in nodes {
-                if target.matches(&node.properties.tool_name, &node.properties.tool_cmd) {
+                if target.matches(
+                    &node.properties.tool_name,
+                    &node.properties.tool_cmd,
+                    &node.properties.tool_binary_path,
+                ) {
                     valid_processes.push(*pid);
                 }
             }
