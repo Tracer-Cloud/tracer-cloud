@@ -191,8 +191,11 @@ impl TracerClient {
 
     /// These functions require logs and the system
     pub async fn poll_processes(&mut self) -> Result<()> {
-        self.process_watcher
-            .poll_processes(&mut self.system, &mut self.logs)?;
+        self.process_watcher.poll_processes(
+            &mut self.system,
+            &mut self.logs,
+            &self.file_watcher,
+        )?;
 
         if self.current_run.is_some() && !self.process_watcher.is_empty() {
             self.current_run.as_mut().unwrap().last_interaction = Instant::now();

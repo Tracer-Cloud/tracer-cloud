@@ -2,6 +2,7 @@
 use crate::config_manager::target_process::Target;
 use crate::event_recorder::EventRecorder;
 use crate::event_recorder::EventType;
+use crate::file_watcher::FileWatcher;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -24,6 +25,15 @@ pub struct Proc {
     start_time: DateTime<Utc>,
     last_update: Option<DateTime<Utc>>,
     just_started: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct InputFile {
+    pub file_name: String,
+    pub file_size: u64,
+    pub file_path: String,
+    pub file_directory: String,
+    pub file_updated_at_timestamp: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -72,6 +82,7 @@ impl ProcessWatcher {
         &mut self,
         system: &mut System,
         event_logger: &mut EventRecorder,
+        file_watcher: &FileWatcher,
     ) -> Result<()> {
         for (pid, proc) in system.processes().iter() {
             if !self.seen.contains_key(pid) {
@@ -86,7 +97,14 @@ impl ProcessWatcher {
                     )
                 });
                 if let Some(target) = target {
-                    self.add_new_process(*pid, proc, system, event_logger, Some(&target.clone()))?;
+                    self.add_new_process(
+                        *pid,
+                        proc,
+                        system,
+                        event_logger,
+                        Some(&target.clone()),
+                        file_watcher,
+                    )?;
                 }
             }
         }
@@ -99,6 +117,7 @@ impl ProcessWatcher {
                 .cloned()
                 .collect(),
             event_logger,
+            file_watcher,
         )?;
 
         Ok(())
@@ -215,6 +234,7 @@ impl ProcessWatcher {
         system: &System,
         targets: Vec<Target>,
         event_logger: &mut EventRecorder,
+        file_watcher: &FileWatcher,
     ) -> Result<()> {
         self.build_process_trees(system.processes());
         let nodes: &HashMap<Pid, ProcessTreeNode> = &self.process_tree;
@@ -255,7 +275,7 @@ impl ProcessWatcher {
                     continue;
                 }
                 let proc = process.unwrap();
-                self.add_new_process(pid, proc, system, event_logger, Some(target))?;
+                self.add_new_process(pid, proc, system, event_logger, Some(target), file_watcher)?;
             }
         }
         Ok(())
@@ -362,6 +382,7 @@ impl ProcessWatcher {
         system: &System,
         event_logger: &mut EventRecorder,
         target: Option<&Target>,
+        file_watcher: &FileWatcher,
     ) -> Result<()> {
         self.seen.insert(
             pid,
@@ -390,11 +411,46 @@ impl ProcessWatcher {
             proc.name().to_owned()
         };
 
-        let properties = json!(Self::gather_process_data(
+        let mut properties = json!(Self::gather_process_data(
             &pid,
             p,
             Some(display_name.clone())
         ));
+
+        let cmd_arguments = p.cmd();
+        let mut input_files = vec![];
+
+        let mut arguments_to_check = vec![];
+
+        for arg in cmd_arguments {
+            if arg.starts_with('-') {
+                continue;
+            }
+
+            if arg.contains('=') {
+                let split: Vec<&str> = arg.split('=').collect();
+                if split.len() > 1 {
+                    arguments_to_check.push(split[1]);
+                }
+            }
+
+            arguments_to_check.push(arg);
+        }
+
+        for arg in arguments_to_check {
+            let file = file_watcher.get_file_by_path_suffix(arg);
+            if let Some((path, file_info)) = file {
+                input_files.push(InputFile {
+                    file_name: file_info.name.clone(),
+                    file_size: file_info.size,
+                    file_path: path.clone(),
+                    file_directory: file_info.directory.clone(),
+                    file_updated_at_timestamp: file_info.last_update.to_rfc3339(),
+                });
+            }
+        }
+
+        properties["input_files"] = serde_json::to_value(input_files)?;
 
         event_logger.record_event(
             EventType::ToolExecution,

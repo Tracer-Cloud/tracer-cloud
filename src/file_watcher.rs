@@ -3,7 +3,6 @@ use std::fs;
 use std::{collections::HashMap, path::Path};
 
 use anyhow::Result;
-use async_recursion::async_recursion;
 use chrono::{DateTime, TimeDelta, Utc};
 use lazy_static::lazy_static;
 use predicates::prelude::predicate;
@@ -14,7 +13,7 @@ use crate::debug_log::Logger;
 use crate::upload::upload_from_file_path;
 
 #[derive(Debug, Clone)]
-pub struct FileInfo {
+pub struct WatchedFileInfo {
     pub path: String,
     pub size: u64,
     pub last_update: DateTime<Utc>,
@@ -23,8 +22,17 @@ pub struct FileInfo {
     pub action: FileAction,
 }
 
+#[derive(Debug, Clone)]
+pub struct FileInfo {
+    pub name: String,
+    pub directory: String,
+    pub size: u64,
+    pub last_update: DateTime<Utc>,
+}
+
 pub struct FileWatcher {
-    watched_files: HashMap<String, FileInfo>,
+    watched_files: HashMap<String, WatchedFileInfo>,
+    all_files: HashMap<String, FileInfo>,
 }
 
 pub enum FilePattern {
@@ -90,78 +98,70 @@ impl FileWatcher {
     pub fn new() -> Self {
         Self {
             watched_files: HashMap::new(),
+            all_files: HashMap::new(),
         }
     }
 
-    #[async_recursion]
-    pub async fn gather_pattern_from_directory(
-        current_watched_files: &mut HashMap<String, FileInfo>,
+    pub fn gather_all_files_from_directory(
+        all_files: &mut HashMap<String, FileInfo>,
         directory: &Path,
-        pattern: &FilePattern,
-        action: &FileAction,
-    ) -> Result<()> {
-        let logger = Logger::new();
-
+    ) {
         if !directory.exists() {
-            return Ok(());
+            return;
         }
 
         let files = directory.read_dir().unwrap();
 
         for file in files {
-            if let Err(err) = file {
-                logger
-                    .log(&format!("Error reading file: {}", err), None)
-                    .await;
+            if file.is_err() {
                 continue;
             }
 
             let file = file.unwrap();
             if file.path().is_dir() {
-                Self::gather_pattern_from_directory(
-                    current_watched_files,
-                    &file.path(),
-                    pattern,
-                    action,
-                )
-                .await?;
+                Self::gather_all_files_from_directory(all_files, &file.path());
                 continue;
             }
 
-            let mut matched = false;
             let file_path = file.path();
-            let file_path = file_path.to_str().unwrap();
-            let file_name = file.file_name().into_string().unwrap();
+            let file_path_string = file_path.to_str().unwrap();
+            let directory = file_path.parent().unwrap().to_str().unwrap();
+            let metadata = file.metadata().unwrap();
+            let last_update = metadata.modified().unwrap();
+            let size = metadata.len();
 
-            match pattern {
-                FilePattern::DirectoryPath(path) => {
-                    if path == directory.to_str().unwrap() {
-                        matched = true;
-                    }
-                }
-                FilePattern::FilenameMatch(regex) => {
-                    if regex.eval(&file_name) {
-                        matched = true;
-                    }
-                }
-                FilePattern::PathMatch(regex) => {
-                    if regex.eval(file_path) {
-                        matched = true;
-                    }
-                }
-            }
+            all_files.insert(
+                file_path_string.to_string(),
+                FileInfo {
+                    name: file_path.file_name().unwrap().to_str().unwrap().to_string(),
+                    directory: directory.to_string(),
+                    size,
+                    last_update: last_update.into(),
+                },
+            );
+        }
+    }
+
+    pub fn gather_pattern_from_directory(
+        files: &HashMap<String, FileInfo>,
+        current_watched_files: &mut HashMap<String, WatchedFileInfo>,
+        pattern: &FilePattern,
+        action: &FileAction,
+    ) -> Result<()> {
+        for (file_path, file_info) in files {
+            let matched = match pattern {
+                FilePattern::DirectoryPath(path) => file_info.directory == *path,
+                FilePattern::FilenameMatch(regex) => regex.eval(&file_info.name),
+                FilePattern::PathMatch(regex) => regex.eval(file_path),
+            };
 
             if matched {
-                let metadata = file.metadata().unwrap();
-                let last_update = metadata.modified().unwrap();
-                let size = metadata.len();
-
                 current_watched_files.insert(
                     file_path.to_string(),
-                    FileInfo {
+                    WatchedFileInfo {
                         path: file_path.to_string(),
-                        size,
-                        last_update: last_update.into(),
+                        size: file_info.size,
+                        last_update: file_info.last_update,
                         cached_path: None,
                         action: action.clone(),
                         last_upload: None,
@@ -175,8 +175,8 @@ impl FileWatcher {
 
     fn check_if_file_to_update<'a>(
         &self,
-        old_file_info: Option<&'a FileInfo>,
-        new_file_info: Option<&'a FileInfo>,
+        old_file_info: Option<&'a WatchedFileInfo>,
+        new_file_info: Option<&'a WatchedFileInfo>,
     ) -> bool {
         match (old_file_info, new_file_info) {
             (Some(old), Some(new)) => new.last_update > old.last_update,
@@ -188,8 +188,8 @@ impl FileWatcher {
     fn check_if_file_to_upload<'a>(
         &self,
         new_size_duration: TimeDelta,
-        old_file_info: Option<&'a FileInfo>,
-        new_file_info: Option<&'a FileInfo>,
+        old_file_info: Option<&'a WatchedFileInfo>,
+        new_file_info: Option<&'a WatchedFileInfo>,
     ) -> FileUploadType {
         match (old_file_info, new_file_info) {
             (Some(old), Some(new)) => match (&old.action, &new.action) {
@@ -222,7 +222,7 @@ impl FileWatcher {
         }
     }
 
-    pub fn cache_file(&self, file_cache_dir: &str, file_info: &mut FileInfo) -> Result<()> {
+    pub fn cache_file(&self, file_cache_dir: &str, file_info: &mut WatchedFileInfo) -> Result<()> {
         if file_info.cached_path.is_none() {
             let file_name =
                 random_string::generate(CACHED_FILE_NAME_LENGTH, CACHED_FILE_NAME_CHARSET);
@@ -251,7 +251,7 @@ impl FileWatcher {
         &self,
         service_url: &str,
         api_key: &str,
-        file_info: &FileInfo,
+        file_info: &WatchedFileInfo,
     ) -> Result<()> {
         let logger = Logger::new();
         logger
@@ -271,6 +271,17 @@ impl FileWatcher {
         Ok(())
     }
 
+    pub fn get_file_by_path_suffix(&self, path_suffix: &str) -> Option<(&String, &FileInfo)> {
+        let path = self.all_files.keys().find(|path| {
+            path.ends_with(path_suffix) && path_suffix.contains(path.split('/').last().unwrap())
+        });
+
+        if let Some(path) = path {
+            return Some((path, self.all_files.get(path).unwrap()));
+        }
+        None
+    }
+
     pub async fn poll_files(
         &mut self,
         service_url: &str,
@@ -280,7 +291,7 @@ impl FileWatcher {
         new_size_duration: TimeDelta,
     ) -> Result<()> {
         let logger = Logger::new();
-        let mut to_upload: Vec<FileInfo> = Vec::new();
+        let mut to_upload: Vec<WatchedFileInfo> = Vec::new();
         let workflow_path = Path::new(workflow_directory);
         if !workflow_path.exists() {
             logger
@@ -293,10 +304,12 @@ impl FileWatcher {
         }
 
         let mut found_files = HashMap::new();
+        Self::gather_all_files_from_directory(&mut found_files, workflow_path);
+
+        let mut watched_files = self.watched_files.clone();
 
         for (pattern, action) in FILE_WATCHER_PATTERNS.iter() {
-            Self::gather_pattern_from_directory(&mut found_files, workflow_path, pattern, action)
-                .await?;
+            Self::gather_pattern_from_directory(&found_files, &mut watched_files, pattern, action)?;
         }
 
         let paths = found_files.keys().cloned().collect::<Vec<String>>();
@@ -314,7 +327,7 @@ impl FileWatcher {
         // Upload action processing
         for path in paths {
             let old_file_info = self.watched_files.get(&path);
-            let new_file_info = found_files.get_mut(&path);
+            let new_file_info = watched_files.get_mut(&path);
 
             let upload_type = self.check_if_file_to_upload(
                 new_size_duration,
@@ -339,7 +352,7 @@ impl FileWatcher {
             self.upload_file(service_url, api_key, &file_info).await?;
         }
 
-        for file_info in found_files.values_mut() {
+        for file_info in watched_files.values_mut() {
             let old_file_info = self.watched_files.get(&file_info.path);
             let update = self.check_if_file_to_update(old_file_info, Some(file_info));
             if update {
@@ -354,7 +367,8 @@ impl FileWatcher {
             }
         }
 
-        self.watched_files = found_files;
+        self.watched_files = watched_files;
+        self.all_files = found_files;
 
         Ok(())
     }
@@ -370,7 +384,7 @@ mod tests {
     fn test_check_if_file_to_update_no_changes() {
         let now: DateTime<Utc> = Utc::now();
         let file_watcher = FileWatcher::new();
-        let old_file_info = FileInfo {
+        let old_file_info = WatchedFileInfo {
             path: "/tmp/test.txt".to_string(),
             size: 50,
             last_update: now.clone(),
@@ -379,7 +393,7 @@ mod tests {
             action: FileAction::None,
         };
 
-        let new_file_info = FileInfo {
+        let new_file_info = WatchedFileInfo {
             path: "/tmp/test.txt".to_string(),
             size: 50,
             last_update: now.clone(),
@@ -395,7 +409,7 @@ mod tests {
     fn test_check_if_file_to_update_new_file() {
         let now: DateTime<Utc> = Utc::now();
         let file_watcher = FileWatcher::new();
-        let old_file_info = FileInfo {
+        let old_file_info = WatchedFileInfo {
             path: "/tmp/test.txt".to_string(),
             size: 50,
             last_update: now.clone(),
@@ -405,7 +419,7 @@ mod tests {
         };
 
         let newer = now.checked_add_days(Days::new(1)).unwrap();
-        let new_file_info = FileInfo {
+        let new_file_info = WatchedFileInfo {
             path: "/tmp/test.txt".to_string(),
             size: 50,
             last_update: newer.clone(),
