@@ -10,10 +10,9 @@ $ps -e | grep tracer
 
 ```rust
 
-/// kallisto
 /// featureCounts
 /// bamCompare
 /// multiBamSummary
-/// plotPCA
+/// plotPCA 
 
 ```
