@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 // src/cli.rs
 use anyhow::Result;
-use serde_json::json;
+use serde::Deserialize;
+use serde_json::{from_str, json};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -11,6 +12,8 @@ use tokio::{
 
 use crate::debug_log::Logger;
 use crate::process_watcher::ShortLivedProcessLog;
+
+use super::structs::InfoResponse;
 
 pub async fn send_log_request(socket_path: &str, message: String) -> Result<()> {
     let mut socket = UnixStream::connect(socket_path).await?;
@@ -68,7 +71,7 @@ pub async fn send_start_run_request(socket_path: &str) -> Result<()> {
 
     socket.shutdown().await?;
 
-    #[derive(serde::Deserialize)]
+    #[derive(Deserialize)]
     struct StartRunResponse {
         run_name: String,
     }
@@ -76,7 +79,7 @@ pub async fn send_start_run_request(socket_path: &str) -> Result<()> {
     let mut buffer = [0; 1024];
     let n = socket.read(&mut buffer).await?;
     let response = std::str::from_utf8(&buffer[..n])?;
-    let response: StartRunResponse = serde_json::from_str(response)?;
+    let response: StartRunResponse = from_str(response)?;
 
     println!("Started a new run with name: {}", response.run_name);
 
@@ -98,19 +101,26 @@ pub async fn send_end_run_request(socket_path: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn send_ping_request(socket_path: &str) -> Result<()> {
+pub async fn send_info_request(socket_path: &str) -> Result<InfoResponse> {
     let mut socket = UnixStream::connect(socket_path).await?;
 
     let ping_request = json!({
-            "command": "ping"
+            "command": "info"
     });
 
-    let ping_request_json =
-        serde_json::to_string(&ping_request).expect("Failed to serialize ping request");
+    let info_request_json =
+        serde_json::to_string(&ping_request).expect("Failed to serialize info request");
 
-    socket.write_all(ping_request_json.as_bytes()).await?;
+    socket.write_all(info_request_json.as_bytes()).await?;
 
-    Ok(())
+    socket.shutdown().await?;
+
+    let mut buffer = [0; 1024];
+    let n = socket.read(&mut buffer).await?;
+    let response = std::str::from_utf8(&buffer[..n])?;
+    let response: InfoResponse = from_str(response)?;
+
+    Ok(response)
 }
 
 pub async fn send_refresh_config_request(socket_path: &str) -> Result<()> {
@@ -297,26 +307,6 @@ mod tests {
             &listener,
             json!({
                 "command": "end"
-            })
-            .to_string()
-            .as_str(),
-        )
-        .await;
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn test_send_ping_request() -> Result<()> {
-        let listener = setup_test_unix_listener();
-
-        send_ping_request(SOCKET_PATH).await?;
-
-        check_listener_value(
-            &listener,
-            json!({
-                "command": "ping"
             })
             .to_string()
             .as_str(),
