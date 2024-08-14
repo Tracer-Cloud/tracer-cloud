@@ -12,6 +12,7 @@ use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
+use sysinfo::ProcessStatus;
 use sysinfo::{Pid, Process, System};
 
 pub struct ProcessWatcher {
@@ -52,6 +53,7 @@ pub struct ProcessProperties {
     pub process_disk_usage_write_last_interval: u64,
     pub process_disk_usage_read_total: u64,
     pub process_disk_usage_write_total: u64,
+    pub process_status: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -67,6 +69,23 @@ pub struct ProcessTreeNode {
     pub children: Vec<ProcessTreeNode>,
     pub parent_id: Option<Pid>,
     pub start_time: DateTime<Utc>,
+}
+
+fn process_status_to_string(status: &ProcessStatus) -> String {
+    match status {
+        ProcessStatus::Run => "Run".to_string(),
+        ProcessStatus::Sleep => "Sleep".to_string(),
+        ProcessStatus::Idle => "Idle".to_string(),
+        ProcessStatus::Zombie => "Zombie".to_string(),
+        ProcessStatus::Stop => "Stop".to_string(),
+        ProcessStatus::Parked => "Parked".to_string(),
+        ProcessStatus::Tracing => "Tracing".to_string(),
+        ProcessStatus::Dead => "Dead".to_string(),
+        ProcessStatus::UninterruptibleDiskSleep => "Uninterruptible Disk Sleep".to_string(),
+        ProcessStatus::Waking => "Waking".to_string(),
+        ProcessStatus::LockBlocked => "Lock Blocked".to_string(),
+        _ => "Unknown".to_string(),
+    }
 }
 
 impl ProcessWatcher {
@@ -309,6 +328,7 @@ impl ProcessWatcher {
             process_disk_usage_write_last_interval: proc.disk_usage().written_bytes,
             process_memory_usage: proc.memory(),
             process_memory_virtual: proc.virtual_memory(),
+            process_status: process_status_to_string(&proc.status()),
         }
     }
 
@@ -370,6 +390,7 @@ impl ProcessWatcher {
                     process_disk_usage_write_last_interval: 0,
                     process_disk_usage_read_total: 0,
                     process_disk_usage_write_total: 0,
+                    process_status: "Unknown".to_string(),
                 },
             }
         }
@@ -640,6 +661,7 @@ mod tests {
                 process_disk_usage_write_last_interval: 0,
                 process_disk_usage_read_total: 0,
                 process_disk_usage_write_total: 0,
+                process_status: "test".to_string(),
             };
 
             let node = ProcessTreeNode {

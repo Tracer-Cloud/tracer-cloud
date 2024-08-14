@@ -1,6 +1,5 @@
 use anyhow::{Ok, Result};
 use core::panic;
-use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{future::Future, pin::Pin, sync::Arc};
 use tokio::{
@@ -13,10 +12,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     config_manager::{Config, ConfigManager},
     debug_log::Logger,
-    events::{
-        send_alert_event, send_end_run_event, send_log_event, send_start_run_event,
-        send_update_tags_event,
-    },
+    events::{send_alert_event, send_log_event, send_update_tags_event},
     process_watcher::ShortLivedProcessLog,
     tracer_client::TracerClient,
     upload::upload_from_file_path,
@@ -52,43 +48,30 @@ pub fn process_alert_command<'a>(
 }
 
 pub fn process_start_run_command<'a>(
-    service_url: &'a str,
-    api_key: &'a str,
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
     stream: &'a mut UnixStream,
 ) -> ProcessOutput<'a> {
     async fn fun<'a>(
-        service_url: &'a str,
-        api_key: &'a str,
+        tracer_client: &'a Arc<Mutex<TracerClient>>,
         stream: &'a mut UnixStream,
     ) -> Result<String, anyhow::Error> {
-        let out = send_start_run_event(service_url, api_key).await?;
+        tracer_client.lock().await.start_new_run(None).await?;
 
-        #[derive(Deserialize)]
-        struct RunLogOutProperties {
-            run_name: String,
-        }
+        let info = tracer_client.lock().await.get_run_metadata();
 
-        #[derive(Deserialize)]
-        struct RunLogOut {
-            properties: RunLogOutProperties,
-        }
-
-        #[derive(Deserialize)]
-        struct RunLogResult {
-            result: Vec<RunLogOut>,
-        }
-
-        let value: RunLogResult = serde_json::from_str(&out).unwrap();
-
-        if value.result.len() != 1 {
-            return Err(anyhow::anyhow!("Invalid response from server"));
-        }
-
-        let run_name = &value.result[0].properties.run_name;
-
-        let output = json!({
-            "run_name": run_name
-        });
+        let output = if let Some(info) = info {
+            json!({
+                "run_name": info.name,
+                "run_id": info.id,
+                "service_name": info.service_name,
+            })
+        } else {
+            json!({
+                "run_name": "",
+                "run_id": "",
+                "service_name": "",
+            })
+        };
 
         stream
             .write_all(serde_json::to_string(&output)?.as_bytes())
@@ -99,11 +82,51 @@ pub fn process_start_run_command<'a>(
         Ok("".to_string())
     }
 
-    Some(Box::pin(fun(service_url, api_key, stream)))
+    Some(Box::pin(fun(tracer_client, stream)))
 }
 
-pub fn process_end_run_command<'a>(service_url: &'a str, api_key: &'a str) -> ProcessOutput<'a> {
-    Some(Box::pin(send_end_run_event(service_url, api_key)))
+pub fn process_info_command<'a>(
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
+    stream: &'a mut UnixStream,
+) -> ProcessOutput<'a> {
+    async fn fun<'a>(
+        tracer_client: &'a Arc<Mutex<TracerClient>>,
+        stream: &'a mut UnixStream,
+    ) -> Result<String, anyhow::Error> {
+        let out = tracer_client.lock().await.get_run_metadata();
+
+        let output = if let Some(out) = out {
+            json!({
+                "run_name": out.name,
+                "run_id": out.id,
+                "service_name": out.service_name,
+            })
+        } else {
+            json!({
+                "run_name": "",
+                "run_id": "",
+                "service_name": "",
+            })
+        };
+
+        stream
+            .write_all(serde_json::to_string(&output)?.as_bytes())
+            .await?;
+
+        stream.flush().await?;
+
+        Ok("".to_string())
+    }
+
+    Some(Box::pin(fun(tracer_client, stream)))
+}
+
+pub fn process_end_run_command(tracer_client: &Arc<Mutex<TracerClient>>) -> ProcessOutput<'_> {
+    Some(Box::pin(async move {
+        let mut tracer_client = tracer_client.lock().await;
+        tracer_client.stop_run().await?;
+        Ok("".to_string())
+    }))
 }
 
 pub fn process_refresh_config_command<'a>(
@@ -255,14 +278,14 @@ pub async fn run_server(
             }
             "log" => process_log_command(&service_url, &api_key, object),
             "alert" => process_alert_command(&service_url, &api_key, object),
-            "start" => process_start_run_command(&service_url, &api_key, &mut stream),
-            "end" => process_end_run_command(&service_url, &api_key),
+            "start" => process_start_run_command(&tracer_client, &mut stream),
+            "end" => process_end_run_command(&tracer_client),
             "refresh_config" => process_refresh_config_command(&tracer_client, &config),
             "tag" => process_tag_command(&service_url, &api_key, object),
             "log_short_lived_process" => {
                 process_log_short_lived_process_command(&tracer_client, object)
             }
-            "ping" => None,
+            "info" => process_info_command(&tracer_client, &mut stream),
             "upload" => process_upload_command(&service_url, &api_key, object),
             _ => {
                 eprintln!("Invalid command: {}", command);

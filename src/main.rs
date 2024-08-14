@@ -16,7 +16,6 @@ use anyhow::{Context, Ok, Result};
 use cli::process_cli;
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
-use events::send_start_run_event;
 use std::borrow::BorrowMut;
 use syslog::run_lines_read_thread;
 
@@ -89,9 +88,12 @@ pub async fn run(workflow_directory_path: String) -> Result<()> {
         tracer_client.lock().await.get_syslog_lines_buffer(),
     ));
 
-    // Automatically start a new run upon daemon start
-    let config_read = config.read().await;
-    send_start_run_event(&config_read.service_url, &config_read.api_key).await?;
+    tracer_client
+        .lock()
+        .await
+        .borrow_mut()
+        .start_new_run(None)
+        .await?;
 
     while !cancellation_token.is_cancelled() {
         let start_time = Instant::now();

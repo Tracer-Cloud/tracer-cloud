@@ -1,7 +1,8 @@
 // src/events/mod.rs
-use crate::http_client::send_http_event;
+use crate::{debug_log::Logger, http_client::send_http_event};
 use anyhow::{Context, Result};
 use chrono::Utc;
+use serde::Deserialize;
 use serde_json::json;
 use tracing::info;
 
@@ -51,8 +52,33 @@ pub async fn send_alert_event(service_url: &str, api_key: &str, message: String)
         .context("Failed to send HTTP event")
 }
 
-pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<String> {
+pub struct RunEventOut {
+    pub run_name: String,
+    pub run_id: String,
+    pub service_name: String,
+}
+
+pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<RunEventOut> {
     info!("Starting new pipeline...");
+
+    let logger = Logger::new();
+
+    #[derive(Deserialize)]
+    struct RunLogOutProperties {
+        run_name: String,
+        run_id: String,
+        service_name: String,
+    }
+
+    #[derive(Deserialize)]
+    struct RunLogOut {
+        properties: RunLogOutProperties,
+    }
+
+    #[derive(Deserialize)]
+    struct RunLogResult {
+        result: Vec<RunLogOut>,
+    }
 
     let init_entry = json!({
         "message": "[CLI] Starting new pipeline run",
@@ -62,10 +88,45 @@ pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<St
         "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
     });
 
-    let result = send_http_event(service_url, api_key, &init_entry).await;
+    let result = send_http_event(service_url, api_key, &init_entry).await?;
+
+    let value: RunLogResult = serde_json::from_str(&result).unwrap();
+
+    logger
+        .log(
+            format!("New pipeline run result: {}", result).as_str(),
+            None,
+        )
+        .await;
+
+    if value.result.len() != 1 {
+        return Err(anyhow::anyhow!("Invalid response from server"));
+    }
+
+    let run_name = &value.result[0].properties.run_name;
+
+    let run_id = &value.result[0].properties.run_id;
+
+    let service_name = &value.result[0].properties.service_name;
+
+    logger
+        .log(
+            format!(
+                "Run name: {}, run id: {}, service name: {}",
+                run_name, run_id, service_name
+            )
+            .as_str(),
+            None,
+        )
+        .await;
 
     info!("Started pipeline run successfully...");
-    result
+
+    Ok(RunEventOut {
+        run_name: run_name.clone(),
+        run_id: run_id.clone(),
+        service_name: service_name.clone(),
+    })
 }
 
 pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<String> {

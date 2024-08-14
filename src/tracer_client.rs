@@ -1,5 +1,6 @@
 // src/tracer_client.rs
 use crate::event_recorder::{EventRecorder, EventType};
+use crate::events::{send_end_run_event, send_start_run_event};
 use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
@@ -15,8 +16,12 @@ use std::time::{Duration, Instant};
 use sysinfo::{Pid, System};
 use tokio::sync::RwLock;
 
+#[derive(Clone)]
 pub struct RunMetadata {
     pub last_interaction: Instant,
+    pub name: String,
+    pub id: String,
+    pub service_name: String,
     pub parent_pid: Option<Pid>,
     pub start_time: DateTime<Utc>,
 }
@@ -114,6 +119,10 @@ impl TracerClient {
         .await
     }
 
+    pub fn get_run_metadata(&self) -> Option<RunMetadata> {
+        self.current_run.clone()
+    }
+
     pub async fn run_cleanup(&mut self) -> Result<()> {
         if let Some(run) = self.current_run.as_mut() {
             if !RUN_COMPLICATED_PROCESS_IDENTIFICATION {
@@ -154,36 +163,26 @@ impl TracerClient {
 
     pub async fn start_new_run(&mut self, timestamp: Option<DateTime<Utc>>) -> Result<()> {
         if self.current_run.is_some() {
-            self.logs.record_event(
-                EventType::FinishedRun,
-                "Run ended due to new run".to_string(),
-                None,
-                timestamp,
-            );
+            self.stop_run().await?;
         }
 
-        self.logs.record_event(
-            EventType::NewRun,
-            "[CLI] Starting new pipeline run".to_string(),
-            None,
-            timestamp,
-        );
+        let result = send_start_run_event(&self.service_url, &self.api_key).await?;
+
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),
             parent_pid: None,
             start_time: timestamp.unwrap_or_else(Utc::now),
+            name: result.run_name,
+            id: result.run_id,
+            service_name: result.service_name,
         });
+
         Ok(())
     }
 
     pub async fn stop_run(&mut self) -> Result<()> {
         if self.current_run.is_some() {
-            self.logs.record_event(
-                EventType::FinishedRun,
-                "Run ended due to user request".to_string(),
-                None,
-                None,
-            );
+            send_end_run_event(&self.service_url, &self.api_key).await?;
             self.current_run = None;
         }
         Ok(())
