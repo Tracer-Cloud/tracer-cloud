@@ -1,5 +1,6 @@
 // src/process_watcher.rs
 use crate::config_manager::target_process::Target;
+use crate::config_manager::target_process::TargetMatchable;
 use crate::event_recorder::EventRecorder;
 use crate::event_recorder::EventType;
 use crate::file_watcher::FileWatcher;

@@ -16,6 +16,11 @@ pub struct Target {
     pub display_name: Option<String>,
     pub merge_with_parents: bool,
     pub force_ancestor_to_match: bool,
+    pub filter_out: Option<Vec<TargetMatch>>,
+}
+
+pub trait TargetMatchable {
+    fn matches(&self, process_name: &str, command: &str, bin_path: &str) -> bool;
 }
 
 impl Target {
@@ -25,6 +30,7 @@ impl Target {
             display_name: None,
             merge_with_parents: true,
             force_ancestor_to_match: true,
+            filter_out: None,
         }
     }
 
@@ -49,8 +55,8 @@ impl Target {
         }
     }
 
-    pub fn matches(&self, process_name: &str, command: &str, bin_path: &str) -> bool {
-        matches_target(self, process_name, command, bin_path)
+    pub fn set_filter_out(self, filter_out: Option<Vec<TargetMatch>>) -> Target {
+        Target { filter_out, ..self }
     }
 
     pub fn should_be_merged_with_parents(&self) -> bool {
@@ -63,5 +69,24 @@ impl Target {
 
     pub fn get_display_name(&self) -> Option<String> {
         self.display_name.clone()
+    }
+}
+
+impl TargetMatchable for Target {
+    fn matches(&self, process_name: &str, command: &str, bin_path: &str) -> bool {
+        matches_target(&self.match_type, process_name, command, bin_path)
+            && (self.filter_out.is_none()
+                || !self
+                    .filter_out
+                    .as_ref()
+                    .unwrap()
+                    .matches(process_name, command, bin_path))
+    }
+}
+
+impl TargetMatchable for Vec<TargetMatch> {
+    fn matches(&self, process_name: &str, command: &str, bin_path: &str) -> bool {
+        self.iter()
+            .any(|target| matches_target(target, process_name, command, bin_path))
     }
 }
