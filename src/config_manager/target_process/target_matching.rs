@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use std::borrow::Cow;
 
-use super::Target;
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CommandContainsStruct {
     pub process_name: Option<String>,
@@ -44,16 +42,19 @@ pub fn bin_path_starts_with(expected_prefix: &str, bin_path: &str) -> bool {
     bin_path_lower.starts_with(expected_prefix_lower.as_ref())
 }
 
-pub fn matches_target(target: &Target, process_name: &str, command: &str, bin_path: &str) -> bool {
-    match &target.match_type {
+pub fn matches_target(
+    target: &TargetMatch,
+    process_name: &str,
+    command: &str,
+    bin_path: &str,
+) -> bool {
+    match target {
         TargetMatch::ProcessName(name) => process_name_matches(name, process_name),
         TargetMatch::BinPathStartsWith(prefix) => bin_path_starts_with(prefix, bin_path),
         TargetMatch::ShortLivedProcessExecutable(name) => command_contains(command, name),
         TargetMatch::CommandContains(inner) => {
-            let process_name_matches = inner.process_name.as_ref().map_or(true, |expected_name| {
-                process_name_matches(expected_name, process_name)
-            });
-
+            let process_name_matches = inner.process_name.is_none()
+                || process_name_matches(inner.process_name.as_ref().unwrap(), process_name);
             process_name_matches && command_contains(command, &inner.command_content)
         }
     }
@@ -62,7 +63,7 @@ pub fn matches_target(target: &Target, process_name: &str, command: &str, bin_pa
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config_manager::target_process::Target;
+    use crate::config_manager::target_process::{Target, TargetMatchable};
 
     #[test]
     fn test_plotpca_command() {
@@ -75,14 +76,13 @@ mod tests {
             "/opt/conda/bin/python3.12 /opt/conda/bin/plotPCA -in rnaseq.npz -o PCA_rnaseq_2.png";
         let bin_path = "/opt/conda/bin/python3.12";
 
-        assert!(matches_target(&target, process_name, command, bin_path));
+        assert!(target.matches(process_name, command, bin_path));
 
         // Test with incorrect process name
-        assert!(!matches_target(&target, "python3", command, bin_path));
+        assert!(!target.matches("python3", command, bin_path));
 
         // Test with incorrect command content
-        assert!(!matches_target(
-            &target,
+        assert!(!target.matches(
             process_name,
             "/opt/conda/bin/python3.12 /opt/conda/bin/differentCommand",
             bin_path
@@ -91,14 +91,9 @@ mod tests {
         // Test conda bin with BinPathStarts
         let conda_target =
             Target::new(TargetMatch::BinPathStartsWith("/opt/conda/bin".to_string()));
-        assert!(matches_target(
-            &conda_target,
-            "any_process",
-            "/opt/conda/bin/somecommand",
-            bin_path
-        ));
-        assert!(!matches_target(
-            &conda_target,
+
+        assert!(conda_target.matches("any_process", "/opt/conda/bin/somecommand", bin_path));
+        assert!(!conda_target.matches(
             "any_process",
             "/usr/bin/somecommand",
             "/usr/bin/somecommand"
@@ -114,14 +109,13 @@ mod tests {
         let process_name = "python3.12";
         let command = "/opt/conda/bin/python3.12 /opt/conda/bin/plotFingerprint -b control.sorted.bam test.sorted.bam --labels Control Test";
         let bin_path = "/opt/conda/bin/python3.12";
-        assert!(matches_target(&target, process_name, command, bin_path));
+        assert!(target.matches(process_name, command, bin_path));
 
         // Test with incorrect process name
-        assert!(!matches_target(&target, "python3", command, bin_path));
+        assert!(!target.matches("python3", command, bin_path));
 
         // Test with incorrect command content
-        assert!(!matches_target(
-            &target,
+        assert!(!target.matches(
             process_name,
             "/opt/conda/bin/python3.12 /opt/conda/bin/differentCommand",
             bin_path
@@ -139,19 +133,13 @@ mod tests {
             "kallisto quant -t 4 -i control_index -o ./control_quant_9 control1_1.fq control1_2.fq";
         let bin_path = "/usr/bin/kallisto";
 
-        assert!(matches_target(&target, process_name, command, bin_path));
+        assert!(target.matches(process_name, command, bin_path));
 
         // Test with incorrect process name
-        assert!(!matches_target(
-            &target,
-            "different_process",
-            command,
-            bin_path
-        ));
+        assert!(!target.matches("different_process", command, bin_path));
 
         // Test with incorrect command content
-        assert!(!matches_target(
-            &target,
+        assert!(!target.matches(
             process_name,
             "kallisto index -i transcripts.idx transcripts.fa.gz",
             bin_path
@@ -165,11 +153,10 @@ mod tests {
         let command = "/opt/conda/bin/somecommand";
         let bin_path = "/opt/conda/bin/somecommand";
 
-        assert!(matches_target(&target, process_name, command, bin_path));
+        assert!(target.matches(process_name, command, bin_path));
 
         // Even with a non-matching process name and different command, it should match due to "/opt/conda/bin"
-        assert!(matches_target(
-            &target,
+        assert!(target.matches(
             "different_process",
             "/opt/conda/bin/different_command",
             bin_path
@@ -182,16 +169,64 @@ mod tests {
         let command = "/opt/conda/bin/somecommand";
         let bin_path = "/opt/conda/bin/somecommand";
 
-        assert!(matches_target(
-            &target,
+        assert!(target.matches("specific_process", command, bin_path));
+        assert!(!target.matches("different_process", command, bin_path));
+    }
+
+    #[test]
+    fn test_filtering() {
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()))
+            .set_filter_out(Some(vec![TargetMatch::CommandContains(
+                CommandContainsStruct {
+                    process_name: Some("specific_process".to_string()),
+                    command_content: "filter_me".to_string(),
+                },
+            )]));
+
+        let command = "/opt/conda/bin/somecommand";
+        let bin_path = "/bin/specific_process";
+
+        assert!(target.matches("specific_process", command, bin_path));
+
+        let command = "/opt/conda/bin/somecommand filter_me";
+        let bin_path = "/bin/specific_process";
+
+        assert!(!target.matches("specific_process", command, bin_path));
+    }
+
+    #[test]
+    fn test_multiple_filtering() {
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()))
+            .set_filter_out(Some(vec![
+                TargetMatch::CommandContains(CommandContainsStruct {
+                    process_name: None,
+                    command_content: "filter_me_one".to_string(),
+                }),
+                TargetMatch::CommandContains(CommandContainsStruct {
+                    process_name: None,
+                    command_content: "filter_me_too".to_string(),
+                }),
+            ]));
+
+        let bin_path = "/bin/specific_process";
+
+        assert!(target.matches("specific_process", "/opt/conda/bin/somecommand", bin_path));
+
+        assert!(!target.matches(
             "specific_process",
-            command,
+            "/opt/conda/bin/somecommand filter_me_one",
             bin_path
         ));
-        assert!(!matches_target(
-            &target,
-            "different_process",
-            command,
+
+        assert!(!target.matches(
+            "specific_process",
+            "/opt/conda/bin/somecommand filter_me_too",
+            bin_path
+        ));
+
+        assert!(target.matches(
+            "specific_process",
+            "/opt/conda/bin/somecommand filter_me_three",
             bin_path
         ));
     }
