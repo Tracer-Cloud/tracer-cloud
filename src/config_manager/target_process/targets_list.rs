@@ -102,6 +102,7 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("derb".to_string()),
     TargetMatch::ProcessName("designer".to_string()),
     TargetMatch::ProcessName("distro".to_string()),
+    TargetMatch::ProcessName("dirname".to_string()),
     TargetMatch::ProcessName("djpeg".to_string()),
     TargetMatch::ProcessName("dltest".to_string()),
     TargetMatch::ProcessName("dmypy".to_string()),
