@@ -166,7 +166,7 @@ impl TracerClient {
             self.stop_run().await?;
         }
 
-        let result = send_start_run_event(&self.service_url, &self.api_key).await?;
+        let result = send_start_run_event(&self.service_url, &self.api_key, &self.system).await?;
 
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),

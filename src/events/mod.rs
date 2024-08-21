@@ -1,9 +1,14 @@
 // src/events/mod.rs
-use crate::{debug_log::Logger, http_client::send_http_event};
+use crate::{
+    debug_log::Logger,
+    http_client::{send_http_event, send_http_get},
+    metrics::SystemMetricsCollector,
+};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
+use sysinfo::System;
 use tracing::info;
 
 #[derive(Debug)]
@@ -58,7 +63,45 @@ pub struct RunEventOut {
     pub service_name: String,
 }
 
-pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<RunEventOut> {
+const AWS_METADATA_URL: &str = "http://169.254.169.254/latest/meta-data/";
+
+async fn get_aws_instance_metadata() -> Result<Value> {
+    let (status, response_text) = send_http_get(AWS_METADATA_URL, None).await?;
+
+    serde_json::from_str(&response_text).context(format!(
+        "Failed to get AWS instance metadata. Status: {}, Response: {}",
+        status, response_text
+    ))
+}
+
+async fn gather_system_properties(system: &System) -> Value {
+    let aws_metadata = get_aws_instance_metadata().await.unwrap_or(json!(null));
+
+    let disk_metadata = SystemMetricsCollector::gather_disk_data();
+
+    json!(
+        {
+            "os": System::name(),
+            "os_version": System::os_version(),
+            "kernel_version": System::kernel_version(),
+            "arch": System::cpu_arch(),
+            "num_cpus": system.cpus().len(),
+            "hostname": System::host_name(),
+            "total_memory": system.total_memory(),
+            "total_swap": system.total_swap(),
+            "uptime": System::uptime(),
+            "aws_metadata": aws_metadata,
+            "is_aws_instance": !aws_metadata.is_null(),
+            "system_disk_io": disk_metadata,
+        }
+    )
+}
+
+pub async fn send_start_run_event(
+    service_url: &str,
+    api_key: &str,
+    system: &System,
+) -> Result<RunEventOut> {
     info!("Starting new pipeline...");
 
     let logger = Logger::new();
@@ -80,12 +123,15 @@ pub async fn send_start_run_event(service_url: &str, api_key: &str) -> Result<Ru
         result: Vec<RunLogOut>,
     }
 
+    let system_properties = gather_system_properties(system).await;
+
     let init_entry = json!({
         "message": "[CLI] Starting new pipeline run",
         "process_type": "pipeline",
         "process_status": "new_run",
         "event_type": "process_status",
         "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
+        "attributes": system_properties,
     });
 
     let result = send_http_event(service_url, api_key, &init_entry).await?;
