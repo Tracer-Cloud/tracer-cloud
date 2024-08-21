@@ -20,6 +20,7 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("aomdec".to_string()),
     TargetMatch::ProcessName("aomenc".to_string()),
     TargetMatch::ProcessName("archspec".to_string()),
+    TargetMatch::ProcessName("as".to_string()),
     TargetMatch::ProcessName("assistant".to_string()),
     TargetMatch::ProcessName("automat-visualize".to_string()),
     TargetMatch::ProcessName("autopep8".to_string()),
@@ -103,6 +104,7 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("designer".to_string()),
     TargetMatch::ProcessName("distro".to_string()),
     TargetMatch::ProcessName("dirname".to_string()),
+    TargetMatch::ProcessName("dircolors".to_string()),
     TargetMatch::ProcessName("djpeg".to_string()),
     TargetMatch::ProcessName("dltest".to_string()),
     TargetMatch::ProcessName("dmypy".to_string()),
@@ -262,6 +264,7 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("ktutil".to_string()),
     TargetMatch::ProcessName("kvno".to_string()),
     TargetMatch::ProcessName("lconvert".to_string()),
+    TargetMatch::ProcessName("ld".to_string()),
     TargetMatch::ProcessName("libdeflate-gunzip".to_string()),
     TargetMatch::ProcessName("libdeflate-gzip".to_string()),
     TargetMatch::ProcessName("libpng16-config".to_string()),
@@ -290,6 +293,7 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("lzmainfo".to_string()),
     TargetMatch::ProcessName("lzmore".to_string()),
     TargetMatch::ProcessName("mailmail".to_string()),
+    TargetMatch::ProcessName("make".to_string()),
     TargetMatch::ProcessName("makeconv".to_string()),
     TargetMatch::ProcessName("mamba-package".to_string()),
     TargetMatch::ProcessName("markdown-it".to_string()),
@@ -470,6 +474,7 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("samp_hub".to_string()),
     TargetMatch::ProcessName("sclient".to_string()),
     TargetMatch::ProcessName("scrapy".to_string()),
+    TargetMatch::ProcessName("sed".to_string()),
     TargetMatch::ProcessName("send2trash".to_string()),
     TargetMatch::ProcessName("sha256_profile".to_string()),
     TargetMatch::ProcessName("showtable".to_string()),
@@ -499,8 +504,10 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("syncqt.pl".to_string()),
     TargetMatch::ProcessName("tabs".to_string()),
     TargetMatch::ProcessName("tabulate".to_string()),
+    TargetMatch::ProcessName("tail".to_string()),
     TargetMatch::ProcessName("tclsh".to_string()),
     TargetMatch::ProcessName("tclsh8.6".to_string()),
+    TargetMatch::ProcessName("tee".to_string()),
     TargetMatch::ProcessName("testsolv".to_string()),
     TargetMatch::ProcessName("tic".to_string()),
     TargetMatch::ProcessName("tiff2bw".to_string()),
@@ -586,7 +593,6 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     ].to_vec();
 
 pub static ref TARGETS: Vec<Target> = [
-    Target::new(TargetMatch::ProcessName("python".to_string())),
     Target::new(TargetMatch::CommandContains(CommandContainsStruct {
         process_name: Some("java".to_string()),
         command_content: "uk.ac.babraham.FastQC.FastQCApplication".to_string()
@@ -594,18 +600,22 @@ pub static ref TARGETS: Vec<Target> = [
     .set_display_name(Some("fastqc".to_string()))
     .set_merge_with_parents(true)
     .set_force_ancestor_to_match(false),
-    Target::new(TargetMatch::BinPathStartsWith("/opt/conda/bin".to_string()))
-        .set_filter_out(Some(OPT_CONDA_BIN_EXCEPTIONS.to_vec())),
-    Target::new(TargetMatch::CommandContains(CommandContainsStruct {
-        process_name: Some("bowtie2-build-s".to_string()),
-        command_content: "/opt/conda/bin/bowtie2-build-s".to_string()
-    }))
-    .set_display_name(Some("bowtie2-build-s (Conda)".to_string())),
+
     Target::new(TargetMatch::ProcessName("STAR".to_string())),
     // bowtie section
     Target::new(TargetMatch::ProcessName("bowtie2".to_string())),
     Target::new(TargetMatch::ProcessName("bowtie2-build-s".to_string())),
     Target::new(TargetMatch::ProcessName("bowtie2-align-s".to_string())),
+    Target::new(TargetMatch::CommandContains(CommandContainsStruct {
+        process_name: Some("bowtie2-build-s".to_string()),
+        command_content: "/opt/conda/bin/bowtie2-build-s".to_string()
+    }))
+    .set_display_name(Some("bowtie2-build-s (Conda)".to_string())),
+    Target::new(TargetMatch::CommandContains(CommandContainsStruct {
+        command_content: "/opt/conda/bin/bowtie2-build".to_string(),
+        process_name: None,
+    })).
+    set_display_name(Some("bowtie2-build (Conda)".to_string())),
     Target::new(TargetMatch::ProcessName("bwa".to_string())),
     Target::new(TargetMatch::ProcessName("salmon".to_string())),
     Target::new(TargetMatch::ProcessName("hisat2".to_string())).set_display_name(Some("HISAT2".to_string())),
@@ -689,6 +699,9 @@ pub static ref TARGETS: Vec<Target> = [
     Target::new(TargetMatch::ProcessName("libdeflate".to_string())),
     Target::new(TargetMatch::ProcessName("ncurses".to_string())),
     Target::new(TargetMatch::ProcessName("pthread".to_string())),
+    Target::new(TargetMatch::ProcessName("python".to_string())),
+    Target::new(TargetMatch::BinPathStartsWith("/opt/conda/bin".to_string()))
+        .set_filter_out(Some(OPT_CONDA_BIN_EXCEPTIONS.to_vec())),
 ]
 .to_vec();
 
