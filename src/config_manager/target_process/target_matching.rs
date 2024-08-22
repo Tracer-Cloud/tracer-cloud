@@ -279,9 +279,14 @@ mod tests {
             .set_display_name(DisplayName::UseFirstArgument());
 
         assert_eq!(
-            target
-                .get_display_name_object()
-                .get_display_name("command", &["test/test2".to_string(), "arg2".to_string()]),
+            target.get_display_name_object().get_display_name(
+                "command",
+                &[
+                    "command".to_string(),
+                    "test/test2".to_string(),
+                    "arg2".to_string()
+                ]
+            ),
             "test/test2"
         );
 
@@ -289,9 +294,10 @@ mod tests {
             .set_display_name(DisplayName::UseFirstArgumentBaseName());
 
         assert_eq!(
-            target
-                .get_display_name_object()
-                .get_display_name("command", &["test/test2".to_string()]),
+            target.get_display_name_object().get_display_name(
+                "command",
+                &["command".to_string(), "test/test2".to_string()]
+            ),
             "test2"
         );
     }

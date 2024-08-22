@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 // src/events/mod.rs
 use crate::{
     debug_log::Logger,
@@ -66,7 +68,8 @@ pub struct RunEventOut {
 const AWS_METADATA_URL: &str = "http://169.254.169.254/latest/meta-data/";
 
 async fn get_aws_instance_metadata() -> Result<Value> {
-    let (status, response_text) = send_http_get(AWS_METADATA_URL, None).await?;
+    let (status, response_text) =
+        send_http_get(AWS_METADATA_URL, None, Some(Duration::from_secs(2))).await?;
 
     serde_json::from_str(&response_text).context(format!(
         "Failed to get AWS instance metadata. Status: {}, Response: {}",

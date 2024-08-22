@@ -24,17 +24,23 @@ impl DisplayName {
             DisplayName::Name(name) => name.clone(),
             DisplayName::Default() => process_name.to_string(),
             DisplayName::UseFirstArgument() => commands
-                .first()
+                .get(1)
                 .unwrap_or(&process_name.to_string())
                 .to_string(),
             DisplayName::UseFirstArgumentBaseName() => {
                 if commands.is_empty() {
                     return process_name.to_string();
                 }
-                let first_command = commands.first().unwrap();
-                let base_name = std::path::Path::new(first_command).file_name();
+                let first_command = commands
+                    .iter()
+                    .skip(1)
+                    .find(|x| !x.is_empty() && !x.starts_with('-'));
+                if first_command.is_none() {
+                    return process_name.to_string();
+                }
+                let base_name = std::path::Path::new(first_command.unwrap()).file_name();
                 if base_name.is_none() {
-                    return first_command.to_string();
+                    return first_command.unwrap().to_string();
                 }
                 base_name.unwrap().to_str().unwrap().to_string()
             }

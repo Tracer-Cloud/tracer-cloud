@@ -189,7 +189,7 @@ impl TracerClient {
     }
 
     /// These functions require logs and the system
-    pub async fn poll_processes(&mut self) -> Result<()> {
+    pub fn poll_processes(&mut self) -> Result<()> {
         self.process_watcher.poll_processes(
             &mut self.system,
             &mut self.logs,
