@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use std::borrow::Cow;
+use std::{borrow::Cow, path::Path};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CommandContainsStruct {
@@ -14,6 +14,7 @@ pub enum TargetMatch {
     ShortLivedProcessExecutable(String),
     CommandContains(CommandContainsStruct),
     BinPathStartsWith(String),
+    BinPathLastComponent(String),
 }
 
 pub fn to_lowercase(s: &str) -> Cow<str> {
@@ -42,6 +43,13 @@ pub fn bin_path_starts_with(expected_prefix: &str, bin_path: &str) -> bool {
     bin_path_lower.starts_with(expected_prefix_lower.as_ref())
 }
 
+pub fn bin_path_last_component_matches(expected_name: &str, bin_path: &str) -> bool {
+    let last_component_lower =
+        to_lowercase(Path::new(bin_path).file_name().unwrap().to_str().unwrap());
+    let name_lower = to_lowercase(expected_name);
+    last_component_lower == name_lower
+}
+
 pub fn matches_target(
     target: &TargetMatch,
     process_name: &str,
@@ -56,6 +64,9 @@ pub fn matches_target(
             let process_name_matches = inner.process_name.is_none()
                 || process_name_matches(inner.process_name.as_ref().unwrap(), process_name);
             process_name_matches && command_contains(command, &inner.command_content)
+        }
+        TargetMatch::BinPathLastComponent(expected_name) => {
+            bin_path_last_component_matches(expected_name, bin_path)
         }
     }
 }
