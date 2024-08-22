@@ -1,6 +1,9 @@
 use lazy_static::lazy_static;
 
-use crate::config_manager::target_process::target_matching::{CommandContainsStruct, TargetMatch};
+use crate::config_manager::target_process::{
+    target_matching::{CommandContainsStruct, TargetMatch},
+    DisplayName,
+};
 
 use super::Target;
 
@@ -274,6 +277,7 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("lprodump".to_string()),
     TargetMatch::ProcessName("lrelease".to_string()),
     TargetMatch::ProcessName("lrelease-pro".to_string()),
+    TargetMatch::ProcessName("ls".to_string()),
     TargetMatch::ProcessName("lsm2bin".to_string()),
     TargetMatch::ProcessName("lupdate".to_string()),
     TargetMatch::ProcessName("lupdate-pro".to_string()),
@@ -458,6 +462,8 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("reset".to_string()),
     TargetMatch::ProcessName("resolveip".to_string()),
     TargetMatch::ProcessName("resolve_stack_dump".to_string()),
+    TargetMatch::ProcessName("rm".to_string()),
+    TargetMatch::ProcessName("rmdir".to_string()),
     TargetMatch::ProcessName("rst2html4.py".to_string()),
     TargetMatch::ProcessName("rst2html5.py".to_string()),
     TargetMatch::ProcessName("rst2html.py".to_string()),
@@ -541,6 +547,7 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("twist".to_string()),
     TargetMatch::ProcessName("twistd".to_string()),
     TargetMatch::ProcessName("uic".to_string()),
+    TargetMatch::ProcessName("uname".to_string()),
     TargetMatch::ProcessName("undill".to_string()),
     TargetMatch::ProcessName("unidecode".to_string()),
     TargetMatch::ProcessName("unlz4".to_string()),
@@ -597,7 +604,7 @@ pub static ref TARGETS: Vec<Target> = [
         process_name: Some("java".to_string()),
         command_content: "uk.ac.babraham.FastQC.FastQCApplication".to_string()
     }))
-    .set_display_name(Some("fastqc".to_string()))
+    .set_display_name(DisplayName::Name("fastqc".to_string()))
     .set_merge_with_parents(true)
     .set_force_ancestor_to_match(false),
 
@@ -610,16 +617,16 @@ pub static ref TARGETS: Vec<Target> = [
         process_name: Some("bowtie2-build-s".to_string()),
         command_content: "/opt/conda/bin/bowtie2-build-s".to_string()
     }))
-    .set_display_name(Some("bowtie2-build-s (Conda)".to_string())),
+    .set_display_name(DisplayName::Name("bowtie2-build-s (Conda)".to_string())),
     Target::new(TargetMatch::CommandContains(CommandContainsStruct {
         command_content: "/opt/conda/bin/bowtie2-build".to_string(),
         process_name: None,
     })).
-    set_display_name(Some("bowtie2-build (Conda)".to_string())),
+    set_display_name(DisplayName::Name("bowtie2-build (Conda)".to_string())),
     Target::new(TargetMatch::ProcessName("bwa".to_string())),
     Target::new(TargetMatch::ProcessName("salmon".to_string())),
-    Target::new(TargetMatch::ProcessName("hisat2".to_string())).set_display_name(Some("HISAT2".to_string())),
-    Target::new(TargetMatch::ProcessName("hisat2-build".to_string())).set_display_name(Some("HISAT2_BUILD".to_string())),
+    Target::new(TargetMatch::ProcessName("hisat2".to_string())).set_display_name(DisplayName::Name("HISAT2".to_string())),
+    Target::new(TargetMatch::ProcessName("hisat2-build".to_string())).set_display_name(DisplayName::Name("HISAT2_BUILD".to_string())),
     Target::new(TargetMatch::ProcessName("stringtie".to_string())),
     Target::new(TargetMatch::ProcessName("featureCounts".to_string())),
     Target::new(TargetMatch::ProcessName("HOMER".to_string())),
@@ -699,7 +706,14 @@ pub static ref TARGETS: Vec<Target> = [
     Target::new(TargetMatch::ProcessName("libdeflate".to_string())),
     Target::new(TargetMatch::ProcessName("ncurses".to_string())),
     Target::new(TargetMatch::ProcessName("pthread".to_string())),
-    Target::new(TargetMatch::ProcessName("python".to_string())),
+    Target::new(TargetMatch::ProcessName("python".to_string()))
+        .set_display_name(DisplayName::UseFirstArgumentBaseName()),
+    Target::new(TargetMatch::ProcessName("python2".to_string()))
+        .set_display_name(DisplayName::UseFirstArgumentBaseName()),
+    Target::new(TargetMatch::ProcessName("python3".to_string()))
+        .set_display_name(DisplayName::UseFirstArgumentBaseName()),
+    Target::new(TargetMatch::ProcessName("perl".to_string()))
+        .set_display_name(DisplayName::UseFirstArgumentBaseName()),
     Target::new(TargetMatch::BinPathStartsWith("/opt/conda/bin".to_string()))
         .set_filter_out(Some(OPT_CONDA_BIN_EXCEPTIONS.to_vec())),
 ]

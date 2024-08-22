@@ -11,9 +11,41 @@ pub struct CommandContainsStruct {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum DisplayName {
+    Name(String),
+    Default(),
+    UseFirstArgument(),
+    UseFirstArgumentBaseName(),
+}
+
+impl DisplayName {
+    pub fn get_display_name(&self, process_name: &str, commands: &[String]) -> String {
+        match self {
+            DisplayName::Name(name) => name.clone(),
+            DisplayName::Default() => process_name.to_string(),
+            DisplayName::UseFirstArgument() => commands
+                .first()
+                .unwrap_or(&process_name.to_string())
+                .to_string(),
+            DisplayName::UseFirstArgumentBaseName() => {
+                if commands.is_empty() {
+                    return process_name.to_string();
+                }
+                let first_command = commands.first().unwrap();
+                let base_name = std::path::Path::new(first_command).file_name();
+                if base_name.is_none() {
+                    return first_command.to_string();
+                }
+                base_name.unwrap().to_str().unwrap().to_string()
+            }
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Target {
     pub match_type: TargetMatch,
-    pub display_name: Option<String>,
+    pub display_name: DisplayName,
     pub merge_with_parents: bool,
     pub force_ancestor_to_match: bool,
     pub filter_out: Option<Vec<TargetMatch>>,
@@ -27,14 +59,14 @@ impl Target {
     pub fn new(match_type: TargetMatch) -> Target {
         Target {
             match_type,
-            display_name: None,
+            display_name: DisplayName::Default(),
             merge_with_parents: true,
             force_ancestor_to_match: true,
             filter_out: None,
         }
     }
 
-    pub fn set_display_name(self, display_name: Option<String>) -> Target {
+    pub fn set_display_name(self, display_name: DisplayName) -> Target {
         Target {
             display_name,
             ..self
@@ -67,7 +99,7 @@ impl Target {
         self.force_ancestor_to_match
     }
 
-    pub fn get_display_name(&self) -> Option<String> {
+    pub fn get_display_name_object(&self) -> DisplayName {
         self.display_name.clone()
     }
 }

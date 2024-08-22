@@ -442,11 +442,9 @@ impl ProcessWatcher {
         let start_time = Utc::now();
 
         let display_name = if let Some(target) = target {
-            if let Some(display_name) = target.get_display_name() {
-                display_name
-            } else {
-                proc.name().to_owned()
-            }
+            target
+                .get_display_name_object()
+                .get_display_name(proc.name(), proc.cmd())
         } else {
             proc.name().to_owned()
         };
@@ -512,11 +510,9 @@ impl ProcessWatcher {
         let start_time = Utc::now();
 
         let display_name = if let Some(target) = target {
-            if let Some(display_name) = target.get_display_name() {
-                display_name
-            } else {
-                proc.name().to_owned()
-            }
+            target
+                .get_display_name_object()
+                .get_display_name(proc.name(), proc.cmd())
         } else {
             proc.name().to_owned()
         };
