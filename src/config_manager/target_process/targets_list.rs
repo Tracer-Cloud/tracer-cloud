@@ -412,7 +412,6 @@ pub static ref OPT_CONDA_BIN_EXCEPTIONS : Vec<TargetMatch> = vec![
     TargetMatch::ProcessName("pysemver".to_string()),
     TargetMatch::ProcessName("py.test".to_string()),
     TargetMatch::ProcessName("pytest".to_string()),
-    TargetMatch::ProcessName("python".to_string()),
     TargetMatch::ProcessName("python3.12-config".to_string()),
     TargetMatch::ProcessName("python3-config".to_string()),
     TargetMatch::ProcessName("pyuic5".to_string()),

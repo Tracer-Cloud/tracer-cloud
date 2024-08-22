@@ -63,7 +63,7 @@ pub fn matches_target(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config_manager::target_process::{Target, TargetMatchable};
+    use crate::config_manager::target_process::{DisplayName, Target, TargetMatchable};
 
     #[test]
     fn test_plotpca_command() {
@@ -229,5 +229,70 @@ mod tests {
             "/opt/conda/bin/somecommand filter_me_three",
             bin_path
         ));
+    }
+
+    #[test]
+    fn test_process_name_case_insensitive() {
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()));
+
+        assert!(target.matches(
+            "specific_process",
+            "/opt/conda/bin/somecommand",
+            "/bin/specific_process"
+        ));
+        assert!(target.matches(
+            "Specific_Process",
+            "/opt/conda/bin/somecommand",
+            "/bin/specific_process"
+        ));
+        assert!(target.matches(
+            "SPECIFIC_PROCESS",
+            "/opt/conda/bin/somecommand",
+            "/bin/specific_process"
+        ));
+    }
+
+    #[test]
+    fn test_display_name() {
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()))
+            .set_display_name(DisplayName::Name("Custom Name".to_string()));
+
+        assert_eq!(
+            target
+                .get_display_name_object()
+                .get_display_name("command", &[]),
+            "Custom Name"
+        );
+
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()))
+            .set_display_name(DisplayName::Name("Custom Name".to_string()))
+            .set_display_name(DisplayName::Default());
+
+        assert_eq!(
+            target
+                .get_display_name_object()
+                .get_display_name("command", &[]),
+            "command"
+        );
+
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()))
+            .set_display_name(DisplayName::UseFirstArgument());
+
+        assert_eq!(
+            target
+                .get_display_name_object()
+                .get_display_name("command", &["test/test2".to_string(), "arg2".to_string()]),
+            "test/test2"
+        );
+
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()))
+            .set_display_name(DisplayName::UseFirstArgumentBaseName());
+
+        assert_eq!(
+            target
+                .get_display_name_object()
+                .get_display_name("command", &["test/test2".to_string()]),
+            "test2"
+        );
     }
 }

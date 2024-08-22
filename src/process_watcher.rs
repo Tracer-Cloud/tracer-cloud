@@ -611,7 +611,7 @@ impl ProcessWatcher {
         let duration = (Utc::now() - proc.start_time).to_std()?.as_millis();
 
         let properties = json!({
-            "tool_name": proc.name.clone(),
+            "tool_name": proc.name,
             "tool_pid": pid.to_string(),
             "duration": duration
         });
