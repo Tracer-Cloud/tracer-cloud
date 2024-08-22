@@ -22,10 +22,15 @@ pub struct ProcessWatcher {
     process_tree: HashMap<Pid, ProcessTreeNode>,
 }
 
+enum ProcLastUpdate {
+    Some(DateTime<Utc>),
+    RefreshesRemaining(u32),
+}
+
 pub struct Proc {
     name: String,
     start_time: DateTime<Utc>,
-    last_update: Option<DateTime<Utc>>,
+    last_update: ProcLastUpdate,
     just_started: bool,
 }
 
@@ -151,12 +156,25 @@ impl ProcessWatcher {
     ) -> Result<()> {
         for (pid, proc) in system.processes().iter() {
             if let Some(p) = self.seen.get(pid) {
-                if !p.just_started
-                    && (p.last_update.is_none()
-                        || Utc::now() - process_metrics_send_interval > p.last_update.unwrap())
-                {
-                    self.add_process_metrics(proc, event_logger, None)?;
-                    self.seen.get_mut(pid).unwrap().last_update = Some(Utc::now());
+                if !p.just_started {
+                    if let ProcLastUpdate::RefreshesRemaining(refresh_count) = p.last_update {
+                        if refresh_count != 0 {
+                            self.seen.get_mut(pid).unwrap().last_update =
+                                ProcLastUpdate::RefreshesRemaining(refresh_count - 1);
+                        } else {
+                            self.add_process_metrics(proc, event_logger, None)?;
+                            self.seen.get_mut(pid).unwrap().last_update =
+                                ProcLastUpdate::Some(Utc::now());
+                        }
+                        continue;
+                    }
+                    if let ProcLastUpdate::Some(last_update) = p.last_update {
+                        if last_update + process_metrics_send_interval < Utc::now() {
+                            self.add_process_metrics(proc, event_logger, None)?;
+                            self.seen.get_mut(pid).unwrap().last_update =
+                                ProcLastUpdate::Some(Utc::now());
+                        }
+                    }
                 }
             }
         }
@@ -356,7 +374,7 @@ impl ProcessWatcher {
             v.insert(Proc {
                 name: short_lived_process.command,
                 start_time: Utc::now(),
-                last_update: None,
+                last_update: ProcLastUpdate::RefreshesRemaining(2),
                 just_started: true,
             });
         }
@@ -411,7 +429,7 @@ impl ProcessWatcher {
             Proc {
                 name: proc.name().to_string(),
                 start_time: Utc::now(),
-                last_update: None,
+                last_update: ProcLastUpdate::RefreshesRemaining(2),
                 just_started: true,
             },
         );
@@ -424,11 +442,11 @@ impl ProcessWatcher {
         let start_time = Utc::now();
 
         let display_name = if let Some(target) = target {
-            if let Some(display_name) = target.get_display_name() {
-                display_name
-            } else {
-                proc.name().to_owned()
-            }
+            let name = target
+                .get_display_name_object()
+                .get_display_name(proc.name(), proc.cmd());
+
+            name
         } else {
             proc.name().to_owned()
         };
@@ -494,11 +512,9 @@ impl ProcessWatcher {
         let start_time = Utc::now();
 
         let display_name = if let Some(target) = target {
-            if let Some(display_name) = target.get_display_name() {
-                display_name
-            } else {
-                proc.name().to_owned()
-            }
+            target
+                .get_display_name_object()
+                .get_display_name(proc.name(), proc.cmd())
         } else {
             proc.name().to_owned()
         };
@@ -597,7 +613,7 @@ impl ProcessWatcher {
         let duration = (Utc::now() - proc.start_time).to_std()?.as_millis();
 
         let properties = json!({
-            "tool_name": proc.name.clone(),
+            "tool_name": proc.name,
             "tool_pid": pid.to_string(),
             "duration": duration
         });

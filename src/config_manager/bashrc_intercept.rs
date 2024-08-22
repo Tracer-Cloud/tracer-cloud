@@ -40,7 +40,7 @@ pub fn rewrite_interceptor_bashrc_file(
         .open(path.join(INTERCEPTOR_BASHRC_PATH))?;
 
     for command in targets.into_iter().map(|target| {
-        let name = target.get_display_name();
+        let name = target.get_display_name_object();
         let command_to_alias = match &target.match_type {
             TargetMatch::ShortLivedProcessExecutable(alias) => alias.clone(),
             _ => "unknown_command".to_string(),
@@ -50,7 +50,7 @@ pub fn rewrite_interceptor_bashrc_file(
             get_command_interceptor(
                 current_tracer_exe_path.clone(),
                 &command_to_alias,
-                &name.unwrap_or(command_to_alias.clone())
+                &name.get_display_name(&command_to_alias, &[])
             )
         )
     }) {

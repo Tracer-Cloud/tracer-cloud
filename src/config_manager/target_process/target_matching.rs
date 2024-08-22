@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use std::borrow::Cow;
+use std::{borrow::Cow, path::Path};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CommandContainsStruct {
@@ -14,6 +14,7 @@ pub enum TargetMatch {
     ShortLivedProcessExecutable(String),
     CommandContains(CommandContainsStruct),
     BinPathStartsWith(String),
+    BinPathLastComponent(String),
 }
 
 pub fn to_lowercase(s: &str) -> Cow<str> {
@@ -42,6 +43,13 @@ pub fn bin_path_starts_with(expected_prefix: &str, bin_path: &str) -> bool {
     bin_path_lower.starts_with(expected_prefix_lower.as_ref())
 }
 
+pub fn bin_path_last_component_matches(expected_name: &str, bin_path: &str) -> bool {
+    let last_component_lower =
+        to_lowercase(Path::new(bin_path).file_name().unwrap().to_str().unwrap());
+    let name_lower = to_lowercase(expected_name);
+    last_component_lower == name_lower
+}
+
 pub fn matches_target(
     target: &TargetMatch,
     process_name: &str,
@@ -57,13 +65,16 @@ pub fn matches_target(
                 || process_name_matches(inner.process_name.as_ref().unwrap(), process_name);
             process_name_matches && command_contains(command, &inner.command_content)
         }
+        TargetMatch::BinPathLastComponent(expected_name) => {
+            bin_path_last_component_matches(expected_name, bin_path)
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config_manager::target_process::{Target, TargetMatchable};
+    use crate::config_manager::target_process::{DisplayName, Target, TargetMatchable};
 
     #[test]
     fn test_plotpca_command() {
@@ -229,5 +240,76 @@ mod tests {
             "/opt/conda/bin/somecommand filter_me_three",
             bin_path
         ));
+    }
+
+    #[test]
+    fn test_process_name_case_insensitive() {
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()));
+
+        assert!(target.matches(
+            "specific_process",
+            "/opt/conda/bin/somecommand",
+            "/bin/specific_process"
+        ));
+        assert!(target.matches(
+            "Specific_Process",
+            "/opt/conda/bin/somecommand",
+            "/bin/specific_process"
+        ));
+        assert!(target.matches(
+            "SPECIFIC_PROCESS",
+            "/opt/conda/bin/somecommand",
+            "/bin/specific_process"
+        ));
+    }
+
+    #[test]
+    fn test_display_name() {
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()))
+            .set_display_name(DisplayName::Name("Custom Name".to_string()));
+
+        assert_eq!(
+            target
+                .get_display_name_object()
+                .get_display_name("command", &[]),
+            "Custom Name"
+        );
+
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()))
+            .set_display_name(DisplayName::Name("Custom Name".to_string()))
+            .set_display_name(DisplayName::Default());
+
+        assert_eq!(
+            target
+                .get_display_name_object()
+                .get_display_name("command", &[]),
+            "command"
+        );
+
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()))
+            .set_display_name(DisplayName::UseFirstArgument());
+
+        assert_eq!(
+            target.get_display_name_object().get_display_name(
+                "command",
+                &[
+                    "command".to_string(),
+                    "test/test2".to_string(),
+                    "arg2".to_string()
+                ]
+            ),
+            "test/test2"
+        );
+
+        let target = Target::new(TargetMatch::ProcessName("specific_process".to_string()))
+            .set_display_name(DisplayName::UseFirstArgumentBaseName());
+
+        assert_eq!(
+            target.get_display_name_object().get_display_name(
+                "command",
+                &["command".to_string(), "test/test2".to_string()]
+            ),
+            "test2"
+        );
     }
 }
