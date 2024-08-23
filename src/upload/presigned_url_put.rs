@@ -10,9 +10,8 @@ pub async fn request_presigned_url(
     file_name: &str,
 ) -> Result<String> {
     // Construct the full URL with the query parameter
-    let presigned_url = service_url.replace("data-collector-api", "upload/presigned-put");
+    let presigned_url = format!("{}/upload/presigned-put", service_url);
     let logger = Logger::new();
-    logger.log(&presigned_url, None).await;
     let mut url = Url::parse(&presigned_url).context("Failed to parse service URL")?;
     url.query_pairs_mut().append_pair("fileName", file_name);
 

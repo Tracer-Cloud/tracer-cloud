@@ -4,6 +4,7 @@ use crate::events::{send_end_run_event, send_start_run_event};
 use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
+use crate::stdout::StdoutWatcher;
 use crate::submit_batched_data::submit_batched_data;
 use crate::syslog::SyslogWatcher;
 use crate::FILE_CACHE_DIR;
@@ -39,6 +40,7 @@ pub struct TracerClient {
     pub logs: EventRecorder,
     process_watcher: ProcessWatcher,
     syslog_watcher: SyslogWatcher,
+    stdout_watcher: StdoutWatcher,
     metrics_collector: SystemMetricsCollector,
     file_watcher: FileWatcher,
     workflow_directory: String,
@@ -46,6 +48,7 @@ pub struct TracerClient {
     service_url: String,
     current_run: Option<RunMetadata>,
     syslog_lines_buffer: Arc<RwLock<Vec<String>>>,
+    stdout_lines_buffer: Arc<RwLock<Vec<String>>>,
 }
 
 impl TracerClient {
@@ -76,11 +79,13 @@ impl TracerClient {
             last_sent: None,
             current_run: None,
             syslog_watcher: SyslogWatcher::new(),
+            stdout_watcher: StdoutWatcher::new(),
             // Sub mannagers
             logs: EventRecorder::new(),
             file_watcher,
             workflow_directory,
             syslog_lines_buffer: Arc::new(RwLock::new(Vec::new())),
+            stdout_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
         })
@@ -104,6 +109,10 @@ impl TracerClient {
 
     pub fn get_syslog_lines_buffer(&self) -> Arc<RwLock<Vec<String>>> {
         self.syslog_lines_buffer.clone()
+    }
+
+    pub fn get_stdout_lines_buffer(&self) -> Arc<RwLock<Vec<String>>> {
+        self.stdout_lines_buffer.clone()
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
@@ -236,6 +245,16 @@ impl TracerClient {
                 self.get_syslog_lines_buffer(),
                 &mut self.system,
                 &mut self.logs,
+            )
+            .await
+    }
+
+    pub async fn poll_stdout(&mut self) -> Result<()> {
+        self.stdout_watcher
+            .poll_stdout(
+                &self.service_url,
+                &self.api_key,
+                self.get_stdout_lines_buffer(),
             )
             .await
     }
