@@ -251,7 +251,11 @@ impl TracerClient {
 
     pub async fn poll_stdout(&mut self) -> Result<()> {
         self.stdout_watcher
-            .poll_stdout(self.get_stdout_lines_buffer())
+            .poll_stdout(
+                &self.service_url,
+                &self.api_key,
+                self.get_stdout_lines_buffer(),
+            )
             .await
     }
 

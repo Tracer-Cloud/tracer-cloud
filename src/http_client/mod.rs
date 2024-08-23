@@ -67,13 +67,13 @@ pub async fn send_http_get(
 }
 
 pub async fn send_http_body(
-    service_url: &str,
+    url: &str,
     api_key: &str,
     request_body: &Value,
 ) -> Result<(u16, String)> {
     let client = Client::new();
     let response = client
-        .post(service_url)
+        .post(url)
         .header("x-api-key", api_key)
         .header("Content-Type", "application/json")
         .json(request_body)
@@ -99,8 +99,9 @@ pub async fn send_http_event(service_url: &str, api_key: &str, logs: &Value) -> 
     let request_body = json!({ "logs": logs_array });
     record_all_outgoing_http_calls(service_url, api_key, &request_body).await?;
 
+    let url = format!("{}/data-collector-api", service_url);
     // Send request
-    let (status, response_text) = send_http_body(service_url, api_key, &request_body).await?;
+    let (status, response_text) = send_http_body(&url, api_key, &request_body).await?;
 
     // Log response body
     info!(

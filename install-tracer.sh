@@ -158,7 +158,7 @@ function print_help() {
 function set_urls() {
     if [ "$ENVIRONMENT" = "develop" ]; then
         TRACER_VERSION=$TRACER_VERSION_DEVELOP
-        SERVICE_URL="https://develop.app.tracer.bio/api/data-collector-api"
+        SERVICE_URL="https://develop.app.tracer.bio/api/"
     fi
 
     TRACER_LINUX_URL="https://github.com/davincios/tracer-daemon/releases/download/${TRACER_VERSION}/tracer-x86_64-unknown-linux-gnu.tar.gz"

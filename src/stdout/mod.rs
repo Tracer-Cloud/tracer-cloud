@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use linemux::MuxedLines;
+use serde_json::json;
 use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
 
+use crate::{debug_log::Logger, http_client::send_http_body};
+
 // Todo: A lot of code is duplicated between this file and syslog. Maybe we could extract the file reading code into a separate module?
-pub struct StdoutWatcher {
-    pub last_lines: Vec<String>,
-}
+pub struct StdoutWatcher {}
 
 pub async fn run_stdout_lines_read_thread(
     file_path: &str,
@@ -37,20 +38,35 @@ pub async fn run_stdout_lines_read_thread(
 
 impl StdoutWatcher {
     pub fn new() -> StdoutWatcher {
-        StdoutWatcher {
-            last_lines: Vec::new(),
-        }
+        StdoutWatcher {}
     }
 
-    pub async fn poll_stdout(&mut self, pending_lines: Arc<RwLock<Vec<String>>>) -> Result<()> {
-        let mut lines = pending_lines.write().await;
+    pub async fn poll_stdout(
+        &mut self,
+        service_url: &str,
+        api_key: &str,
+        pending_lines: Arc<RwLock<Vec<String>>>,
+    ) -> Result<()> {
+        let logger = Logger::new();
 
-        for line in self.last_lines.iter() {
-            lines.push(line.clone());
+        if pending_lines.read().await.is_empty() {
+            logger.log("No lines from stdout to send", None).await;
+            return Ok(());
         }
-        // Todo: Stream lines to the webapp
 
-        lines.clear();
+        let url = format!("{}/stdout-capture", service_url);
+
+        let body = json!({
+            "lines": *pending_lines.as_ref().read().await
+        });
+
+        logger
+            .log(&format!("Sending stdout lines: {:?}", body), None)
+            .await;
+
+        pending_lines.write().await.clear();
+
+        send_http_body(&url, api_key, &body).await?;
 
         Ok(())
     }
