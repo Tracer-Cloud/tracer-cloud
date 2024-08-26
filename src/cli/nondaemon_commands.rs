@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use std::result::Result::Ok;
 
 use crate::{
-    config_manager::ConfigManager,
+    config_manager::{ConfigManager, INTERCEPTOR_STDOUT_FILE},
     daemon_communication::client::{send_info_request, send_refresh_config_request},
     FILE_CACHE_DIR, PID_FILE, REPO_NAME, REPO_OWNER, SOCKET_PATH, STDERR_FILE, STDOUT_FILE,
 };
@@ -13,6 +13,7 @@ pub fn clean_up_after_daemon() -> Result<()> {
     std::fs::remove_file(PID_FILE).context("Failed to remove pid file")?;
     std::fs::remove_file(STDOUT_FILE).context("Failed to remove stdout file")?;
     std::fs::remove_file(STDERR_FILE).context("Failed to remove stderr file")?;
+    let _ = std::fs::remove_file(INTERCEPTOR_STDOUT_FILE).context("Failed to remove stdout file");
     std::fs::remove_dir_all(FILE_CACHE_DIR).context("Failed to remove cache directory")?;
     Ok(())
 }

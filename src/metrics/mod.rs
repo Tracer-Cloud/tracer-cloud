@@ -15,13 +15,7 @@ impl SystemMetricsCollector {
         SystemMetricsCollector
     }
 
-    pub fn gather_metrics_object_attributes(system: &mut System) -> Value {
-        let used_memory = system.used_memory();
-        let total_memory = system.total_memory();
-        let memory_utilization = (used_memory as f64 / total_memory as f64) * 100.0;
-
-        let cpu_usage = system.global_cpu_info().cpu_usage();
-
+    pub fn gather_disk_data() -> HashMap<String, serde_json::Value> {
         let disks: Disks = Disks::new_with_refreshed_list();
 
         let mut d_stats: HashMap<String, serde_json::Value> = HashMap::new();
@@ -45,6 +39,18 @@ impl SystemMetricsCollector {
 
             d_stats.insert(d_name.to_string(), disk_data);
         }
+
+        d_stats
+    }
+
+    pub fn gather_metrics_object_attributes(system: &mut System) -> Value {
+        let used_memory = system.used_memory();
+        let total_memory = system.total_memory();
+        let memory_utilization = (used_memory as f64 / total_memory as f64) * 100.0;
+
+        let cpu_usage = system.global_cpu_info().cpu_usage();
+
+        let d_stats = Self::gather_disk_data();
 
         let attributes = json!({
             "events_name": "global_system_metrics",

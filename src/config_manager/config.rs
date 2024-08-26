@@ -17,7 +17,7 @@ use crate::config_manager::target_process::Target;
 use super::target_process::targets_list;
 
 const DEFAULT_API_KEY: &str = "EAjg7eHtsGnP3fTURcPz1";
-const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api/data-collector-api";
+const DEFAULT_SERVICE_URL: &str = "https://app.tracer.bio/api";
 const DEFAULT_CONFIG_FILE_LOCATION_FROM_HOME: &str = ".config/tracer/tracer.toml";
 const PROCESS_POLLING_INTERVAL_MS: u64 = 5;
 const BATCH_SUBMISSION_INTERVAL_MS: u64 = 10000;
@@ -127,6 +127,8 @@ impl ConfigManager {
         if let Ok(service_url) = std::env::var("TRACER_SERVICE_URL") {
             config.service_url = service_url;
         }
+
+        config.service_url = config.service_url.replace("data-collector-api", ""); // To support legacy (pre-2024/08/23) configs
 
         config
     }
