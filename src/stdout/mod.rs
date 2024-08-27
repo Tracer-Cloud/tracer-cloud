@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use anyhow::Result;
 use linemux::MuxedLines;
@@ -6,14 +6,15 @@ use serde_json::json;
 use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
 
-use crate::{debug_log::Logger, http_client::send_http_body};
+use crate::{debug_log::Logger, http_client::send_http_body, tracer_client::LinesBufferArc};
 
 // Todo: A lot of code is duplicated between this file and syslog. Maybe we could extract the file reading code into a separate module?
 pub struct StdoutWatcher {}
 
 pub async fn run_stdout_lines_read_thread(
-    file_path: &str,
-    pending_lines: Arc<RwLock<Vec<String>>>,
+    stdout_file_path: &str,
+    stderr_file_path: &str,
+    pending_stdout_stderr_lines: (LinesBufferArc, LinesBufferArc),
 ) {
     let line_reader = MuxedLines::new();
 
@@ -23,16 +24,32 @@ pub async fn run_stdout_lines_read_thread(
 
     let mut line_reader = line_reader.unwrap();
 
-    let result = line_reader.add_file(file_path).await;
+    let stdout_file_path = Path::new(stdout_file_path);
+    let stderr_file_path = Path::new(stderr_file_path);
+
+    let result = line_reader.add_file(stdout_file_path).await;
 
     if result.is_err() {
         return;
     }
 
+    let result = line_reader.add_file(stderr_file_path).await;
+    if result.is_err() {
+        return;
+    }
+
+    let (pending_stdout_lines, pending_stderr_lines) = pending_stdout_stderr_lines;
+
     while let Ok(Some(line)) = line_reader.try_next().await {
-        let mut vec = pending_lines.write().await;
-        let line = line.line();
-        vec.push(line.to_string());
+        if line.source() == stdout_file_path {
+            let line = line.line();
+            let mut vec = pending_stdout_lines.write().await;
+            vec.push(line.to_string());
+        } else if line.source() == stderr_file_path {
+            let line = line.line();
+            let mut vec = pending_stderr_lines.write().await;
+            vec.push(line.to_string());
+        }
     }
 }
 
@@ -46,6 +63,7 @@ impl StdoutWatcher {
         service_url: &str,
         api_key: &str,
         pending_lines: Arc<RwLock<Vec<String>>>,
+        is_error: bool,
     ) -> Result<()> {
         let logger = Logger::new();
 
@@ -57,7 +75,8 @@ impl StdoutWatcher {
         let url = format!("{}/stdout-capture", service_url);
 
         let body = json!({
-            "lines": *pending_lines.as_ref().read().await
+            "lines": *pending_lines.as_ref().read().await,
+            "isError": is_error
         });
 
         logger

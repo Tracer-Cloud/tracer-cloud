@@ -58,6 +58,8 @@ impl SystemMetricsCollector {
             "system_memory_used": used_memory,
             "system_memory_available": system.available_memory(),
             "system_memory_utilization": memory_utilization,
+            "system_memory_swap_total": system.total_swap(),
+            "system_memory_swap_used": system.used_swap(),
             "system_cpu_utilization": cpu_usage,
             "system_disk_io": d_stats,
         });
@@ -105,6 +107,8 @@ mod tests {
         assert!(attributes["system_memory_used"].is_number());
         assert!(attributes["system_memory_available"].is_number());
         assert!(attributes["system_memory_utilization"].is_number());
+        assert!(attributes["system_memory_swap_total"].is_number());
+        assert!(attributes["system_memory_swap_used"].is_number());
         assert!(attributes["system_cpu_utilization"].is_number());
         assert!(attributes["system_disk_io"].is_object());
     }
