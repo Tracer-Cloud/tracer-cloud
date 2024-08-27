@@ -31,7 +31,10 @@ pub struct SyslogWatcher {
     pub last_lines: Vec<String>,
 }
 
-pub async fn run_lines_read_thread(file_path: &str, pending_lines: Arc<RwLock<Vec<String>>>) {
+pub async fn run_syslog_lines_read_thread(
+    file_path: &str,
+    pending_lines: Arc<RwLock<Vec<String>>>,
+) {
     let line_reader = MuxedLines::new();
 
     if line_reader.is_err() {

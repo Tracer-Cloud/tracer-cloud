@@ -8,17 +8,18 @@ mod file_watcher;
 mod http_client;
 mod metrics;
 mod process_watcher;
+mod stdout;
 mod submit_batched_data;
 mod syslog;
 mod tracer_client;
 mod upload;
 use anyhow::{Context, Ok, Result};
 use cli::process_cli;
+use config_manager::INTERCEPTOR_STDOUT_FILE;
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
-use events::send_start_run_event;
 use std::borrow::BorrowMut;
-use syslog::run_lines_read_thread;
+use syslog::run_syslog_lines_read_thread;
 
 use std::fs::File;
 use std::sync::Arc;
@@ -84,14 +85,22 @@ pub async fn run(workflow_directory_path: String) -> Result<()> {
         config.clone(),
     ));
 
-    let lines_task = tokio::spawn(run_lines_read_thread(
+    let syslog_lines_task = tokio::spawn(run_syslog_lines_read_thread(
         SYSLOG_FILE,
         tracer_client.lock().await.get_syslog_lines_buffer(),
     ));
 
-    // Automatically start a new run upon daemon start
-    let config_read = config.read().await;
-    send_start_run_event(&config_read.service_url, &config_read.api_key).await?;
+    let stdout_lines_task = tokio::spawn(stdout::run_stdout_lines_read_thread(
+        INTERCEPTOR_STDOUT_FILE,
+        tracer_client.lock().await.get_stdout_lines_buffer(),
+    ));
+
+    tracer_client
+        .lock()
+        .await
+        .borrow_mut()
+        .start_new_run(None)
+        .await?;
 
     while !cancellation_token.is_cancelled() {
         let start_time = Instant::now();
@@ -118,17 +127,19 @@ pub async fn run(workflow_directory_path: String) -> Result<()> {
         tracer_client.lock().await.borrow_mut().poll_files().await?;
     }
 
-    lines_task.abort();
+    syslog_lines_task.abort();
+    stdout_lines_task.abort();
 
     Ok(())
 }
 
 pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
     tracer_client.remove_completed_processes().await?;
-    tracer_client.poll_processes().await?;
+    tracer_client.poll_processes()?;
     // tracer_client.run_cleanup().await?;
     tracer_client.poll_process_metrics().await?;
     tracer_client.poll_syslog().await?;
+    tracer_client.poll_stdout().await?;
     tracer_client.refresh_sysinfo();
     tracer_client.reset_just_started_process_flag();
     Ok(())

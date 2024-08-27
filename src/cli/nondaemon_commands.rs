@@ -1,10 +1,11 @@
 use std::process::Command;
 
-use anyhow::{Context, Ok, Result};
+use anyhow::{Context, Result};
+use std::result::Result::Ok;
 
 use crate::{
-    config_manager::ConfigManager,
-    daemon_communication::client::{send_ping_request, send_refresh_config_request},
+    config_manager::{ConfigManager, INTERCEPTOR_STDOUT_FILE},
+    daemon_communication::client::{send_info_request, send_refresh_config_request},
     FILE_CACHE_DIR, PID_FILE, REPO_NAME, REPO_OWNER, SOCKET_PATH, STDERR_FILE, STDOUT_FILE,
 };
 
@@ -12,6 +13,7 @@ pub fn clean_up_after_daemon() -> Result<()> {
     std::fs::remove_file(PID_FILE).context("Failed to remove pid file")?;
     std::fs::remove_file(STDOUT_FILE).context("Failed to remove stdout file")?;
     std::fs::remove_file(STDERR_FILE).context("Failed to remove stderr file")?;
+    let _ = std::fs::remove_file(INTERCEPTOR_STDOUT_FILE).context("Failed to remove stdout file");
     std::fs::remove_dir_all(FILE_CACHE_DIR).context("Failed to remove cache directory")?;
     Ok(())
 }
@@ -29,8 +31,13 @@ pub async fn print_config_info() -> Result<()> {
         config.batch_submission_interval_ms
     );
     println!("Daemon version: {}", env!("CARGO_PKG_VERSION"));
-    let daemon_status = send_ping_request(SOCKET_PATH).await;
-    if daemon_status.is_ok() {
+    let daemon_status = send_info_request(SOCKET_PATH).await;
+    if let Ok(info) = daemon_status {
+        if !info.run_name.is_empty() {
+            println!("Run name: {}", info.run_name);
+            println!("Run ID: {}", info.run_id);
+            println!("Service name: {}", info.service_name);
+        }
         println!("Daemon status: Running");
     } else {
         println!("Daemon status: Stopped");

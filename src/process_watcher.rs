@@ -1,7 +1,9 @@
 // src/process_watcher.rs
 use crate::config_manager::target_process::Target;
+use crate::config_manager::target_process::TargetMatchable;
 use crate::event_recorder::EventRecorder;
 use crate::event_recorder::EventType;
+use crate::file_watcher::FileWatcher;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -11,6 +13,7 @@ use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
+use sysinfo::ProcessStatus;
 use sysinfo::{Pid, Process, System};
 
 pub struct ProcessWatcher {
@@ -19,11 +22,25 @@ pub struct ProcessWatcher {
     process_tree: HashMap<Pid, ProcessTreeNode>,
 }
 
+enum ProcLastUpdate {
+    Some(DateTime<Utc>),
+    RefreshesRemaining(u32),
+}
+
 pub struct Proc {
     name: String,
     start_time: DateTime<Utc>,
-    last_update: Option<DateTime<Utc>>,
+    last_update: ProcLastUpdate,
     just_started: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct InputFile {
+    pub file_name: String,
+    pub file_size: u64,
+    pub file_path: String,
+    pub file_directory: String,
+    pub file_updated_at_timestamp: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -42,6 +59,7 @@ pub struct ProcessProperties {
     pub process_disk_usage_write_last_interval: u64,
     pub process_disk_usage_read_total: u64,
     pub process_disk_usage_write_total: u64,
+    pub process_status: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -59,6 +77,23 @@ pub struct ProcessTreeNode {
     pub start_time: DateTime<Utc>,
 }
 
+fn process_status_to_string(status: &ProcessStatus) -> String {
+    match status {
+        ProcessStatus::Run => "Run".to_string(),
+        ProcessStatus::Sleep => "Sleep".to_string(),
+        ProcessStatus::Idle => "Idle".to_string(),
+        ProcessStatus::Zombie => "Zombie".to_string(),
+        ProcessStatus::Stop => "Stop".to_string(),
+        ProcessStatus::Parked => "Parked".to_string(),
+        ProcessStatus::Tracing => "Tracing".to_string(),
+        ProcessStatus::Dead => "Dead".to_string(),
+        ProcessStatus::UninterruptibleDiskSleep => "Uninterruptible Disk Sleep".to_string(),
+        ProcessStatus::Waking => "Waking".to_string(),
+        ProcessStatus::LockBlocked => "Lock Blocked".to_string(),
+        _ => "Unknown".to_string(),
+    }
+}
+
 impl ProcessWatcher {
     pub fn new(targets: Vec<Target>) -> Self {
         ProcessWatcher {
@@ -72,6 +107,7 @@ impl ProcessWatcher {
         &mut self,
         system: &mut System,
         event_logger: &mut EventRecorder,
+        file_watcher: &FileWatcher,
     ) -> Result<()> {
         for (pid, proc) in system.processes().iter() {
             if !self.seen.contains_key(pid) {
@@ -86,7 +122,14 @@ impl ProcessWatcher {
                     )
                 });
                 if let Some(target) = target {
-                    self.add_new_process(*pid, proc, system, event_logger, Some(&target.clone()))?;
+                    self.add_new_process(
+                        *pid,
+                        proc,
+                        system,
+                        event_logger,
+                        Some(&target.clone()),
+                        file_watcher,
+                    )?;
                 }
             }
         }
@@ -99,6 +142,7 @@ impl ProcessWatcher {
                 .cloned()
                 .collect(),
             event_logger,
+            file_watcher,
         )?;
 
         Ok(())
@@ -112,12 +156,25 @@ impl ProcessWatcher {
     ) -> Result<()> {
         for (pid, proc) in system.processes().iter() {
             if let Some(p) = self.seen.get(pid) {
-                if !p.just_started
-                    && (p.last_update.is_none()
-                        || Utc::now() - process_metrics_send_interval > p.last_update.unwrap())
-                {
-                    self.add_process_metrics(proc, event_logger, None)?;
-                    self.seen.get_mut(pid).unwrap().last_update = Some(Utc::now());
+                if !p.just_started {
+                    if let ProcLastUpdate::RefreshesRemaining(refresh_count) = p.last_update {
+                        if refresh_count != 0 {
+                            self.seen.get_mut(pid).unwrap().last_update =
+                                ProcLastUpdate::RefreshesRemaining(refresh_count - 1);
+                        } else {
+                            self.add_process_metrics(proc, event_logger, None)?;
+                            self.seen.get_mut(pid).unwrap().last_update =
+                                ProcLastUpdate::Some(Utc::now());
+                        }
+                        continue;
+                    }
+                    if let ProcLastUpdate::Some(last_update) = p.last_update {
+                        if last_update + process_metrics_send_interval < Utc::now() {
+                            self.add_process_metrics(proc, event_logger, None)?;
+                            self.seen.get_mut(pid).unwrap().last_update =
+                                ProcLastUpdate::Some(Utc::now());
+                        }
+                    }
                 }
             }
         }
@@ -215,6 +272,7 @@ impl ProcessWatcher {
         system: &System,
         targets: Vec<Target>,
         event_logger: &mut EventRecorder,
+        file_watcher: &FileWatcher,
     ) -> Result<()> {
         self.build_process_trees(system.processes());
         let nodes: &HashMap<Pid, ProcessTreeNode> = &self.process_tree;
@@ -255,7 +313,7 @@ impl ProcessWatcher {
                     continue;
                 }
                 let proc = process.unwrap();
-                self.add_new_process(pid, proc, system, event_logger, Some(target))?;
+                self.add_new_process(pid, proc, system, event_logger, Some(target), file_watcher)?;
             }
         }
         Ok(())
@@ -289,6 +347,7 @@ impl ProcessWatcher {
             process_disk_usage_write_last_interval: proc.disk_usage().written_bytes,
             process_memory_usage: proc.memory(),
             process_memory_virtual: proc.virtual_memory(),
+            process_status: process_status_to_string(&proc.status()),
         }
     }
 
@@ -315,7 +374,7 @@ impl ProcessWatcher {
             v.insert(Proc {
                 name: short_lived_process.command,
                 start_time: Utc::now(),
-                last_update: None,
+                last_update: ProcLastUpdate::RefreshesRemaining(2),
                 just_started: true,
             });
         }
@@ -350,6 +409,7 @@ impl ProcessWatcher {
                     process_disk_usage_write_last_interval: 0,
                     process_disk_usage_read_total: 0,
                     process_disk_usage_write_total: 0,
+                    process_status: "Unknown".to_string(),
                 },
             }
         }
@@ -362,13 +422,14 @@ impl ProcessWatcher {
         system: &System,
         event_logger: &mut EventRecorder,
         target: Option<&Target>,
+        file_watcher: &FileWatcher,
     ) -> Result<()> {
         self.seen.insert(
             pid,
             Proc {
                 name: proc.name().to_string(),
                 start_time: Utc::now(),
-                last_update: None,
+                last_update: ProcLastUpdate::RefreshesRemaining(2),
                 just_started: true,
             },
         );
@@ -381,20 +442,55 @@ impl ProcessWatcher {
         let start_time = Utc::now();
 
         let display_name = if let Some(target) = target {
-            if let Some(display_name) = target.get_display_name() {
-                display_name
-            } else {
-                proc.name().to_owned()
-            }
+            let name = target
+                .get_display_name_object()
+                .get_display_name(proc.name(), proc.cmd());
+
+            name
         } else {
             proc.name().to_owned()
         };
 
-        let properties = json!(Self::gather_process_data(
+        let mut properties = json!(Self::gather_process_data(
             &pid,
             p,
             Some(display_name.clone())
         ));
+
+        let cmd_arguments = p.cmd();
+        let mut input_files = vec![];
+
+        let mut arguments_to_check = vec![];
+
+        for arg in cmd_arguments {
+            if arg.starts_with('-') {
+                continue;
+            }
+
+            if arg.contains('=') {
+                let split: Vec<&str> = arg.split('=').collect();
+                if split.len() > 1 {
+                    arguments_to_check.push(split[1]);
+                }
+            }
+
+            arguments_to_check.push(arg);
+        }
+
+        for arg in arguments_to_check {
+            let file = file_watcher.get_file_by_path_suffix(arg);
+            if let Some((path, file_info)) = file {
+                input_files.push(InputFile {
+                    file_name: file_info.name.clone(),
+                    file_size: file_info.size,
+                    file_path: path.clone(),
+                    file_directory: file_info.directory.clone(),
+                    file_updated_at_timestamp: file_info.last_update.to_rfc3339(),
+                });
+            }
+        }
+
+        properties["input_files"] = serde_json::to_value(input_files)?;
 
         event_logger.record_event(
             EventType::ToolExecution,
@@ -416,11 +512,9 @@ impl ProcessWatcher {
         let start_time = Utc::now();
 
         let display_name = if let Some(target) = target {
-            if let Some(display_name) = target.get_display_name() {
-                display_name
-            } else {
-                proc.name().to_owned()
-            }
+            target
+                .get_display_name_object()
+                .get_display_name(proc.name(), proc.cmd())
         } else {
             proc.name().to_owned()
         };
@@ -519,7 +613,7 @@ impl ProcessWatcher {
         let duration = (Utc::now() - proc.start_time).to_std()?.as_millis();
 
         let properties = json!({
-            "tool_name": proc.name.clone(),
+            "tool_name": proc.name,
             "tool_pid": pid.to_string(),
             "duration": duration
         });
@@ -584,6 +678,7 @@ mod tests {
                 process_disk_usage_write_last_interval: 0,
                 process_disk_usage_read_total: 0,
                 process_disk_usage_write_total: 0,
+                process_status: "test".to_string(),
             };
 
             let node = ProcessTreeNode {

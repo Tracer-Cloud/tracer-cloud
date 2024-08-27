@@ -1,8 +1,10 @@
 // src/tracer_client.rs
 use crate::event_recorder::{EventRecorder, EventType};
+use crate::events::{send_end_run_event, send_start_run_event};
 use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
+use crate::stdout::StdoutWatcher;
 use crate::submit_batched_data::submit_batched_data;
 use crate::syslog::SyslogWatcher;
 use crate::FILE_CACHE_DIR;
@@ -15,8 +17,12 @@ use std::time::{Duration, Instant};
 use sysinfo::{Pid, System};
 use tokio::sync::RwLock;
 
+#[derive(Clone)]
 pub struct RunMetadata {
     pub last_interaction: Instant,
+    pub name: String,
+    pub id: String,
+    pub service_name: String,
     pub parent_pid: Option<Pid>,
     pub start_time: DateTime<Utc>,
 }
@@ -34,6 +40,7 @@ pub struct TracerClient {
     pub logs: EventRecorder,
     process_watcher: ProcessWatcher,
     syslog_watcher: SyslogWatcher,
+    stdout_watcher: StdoutWatcher,
     metrics_collector: SystemMetricsCollector,
     file_watcher: FileWatcher,
     workflow_directory: String,
@@ -41,6 +48,7 @@ pub struct TracerClient {
     service_url: String,
     current_run: Option<RunMetadata>,
     syslog_lines_buffer: Arc<RwLock<Vec<String>>>,
+    stdout_lines_buffer: Arc<RwLock<Vec<String>>>,
 }
 
 impl TracerClient {
@@ -71,11 +79,13 @@ impl TracerClient {
             last_sent: None,
             current_run: None,
             syslog_watcher: SyslogWatcher::new(),
+            stdout_watcher: StdoutWatcher::new(),
             // Sub mannagers
             logs: EventRecorder::new(),
             file_watcher,
             workflow_directory,
             syslog_lines_buffer: Arc::new(RwLock::new(Vec::new())),
+            stdout_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
         })
@@ -101,6 +111,10 @@ impl TracerClient {
         self.syslog_lines_buffer.clone()
     }
 
+    pub fn get_stdout_lines_buffer(&self) -> Arc<RwLock<Vec<String>>> {
+        self.stdout_lines_buffer.clone()
+    }
+
     pub async fn submit_batched_data(&mut self) -> Result<()> {
         submit_batched_data(
             &self.api_key,
@@ -112,6 +126,10 @@ impl TracerClient {
             self.interval,
         )
         .await
+    }
+
+    pub fn get_run_metadata(&self) -> Option<RunMetadata> {
+        self.current_run.clone()
     }
 
     pub async fn run_cleanup(&mut self) -> Result<()> {
@@ -154,45 +172,38 @@ impl TracerClient {
 
     pub async fn start_new_run(&mut self, timestamp: Option<DateTime<Utc>>) -> Result<()> {
         if self.current_run.is_some() {
-            self.logs.record_event(
-                EventType::FinishedRun,
-                "Run ended due to new run".to_string(),
-                None,
-                timestamp,
-            );
+            self.stop_run().await?;
         }
 
-        self.logs.record_event(
-            EventType::NewRun,
-            "[CLI] Starting new pipeline run".to_string(),
-            None,
-            timestamp,
-        );
+        let result = send_start_run_event(&self.service_url, &self.api_key, &self.system).await?;
+
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),
             parent_pid: None,
             start_time: timestamp.unwrap_or_else(Utc::now),
+            name: result.run_name,
+            id: result.run_id,
+            service_name: result.service_name,
         });
+
         Ok(())
     }
 
     pub async fn stop_run(&mut self) -> Result<()> {
         if self.current_run.is_some() {
-            self.logs.record_event(
-                EventType::FinishedRun,
-                "Run ended due to user request".to_string(),
-                None,
-                None,
-            );
+            send_end_run_event(&self.service_url, &self.api_key).await?;
             self.current_run = None;
         }
         Ok(())
     }
 
     /// These functions require logs and the system
-    pub async fn poll_processes(&mut self) -> Result<()> {
-        self.process_watcher
-            .poll_processes(&mut self.system, &mut self.logs)?;
+    pub fn poll_processes(&mut self) -> Result<()> {
+        self.process_watcher.poll_processes(
+            &mut self.system,
+            &mut self.logs,
+            &self.file_watcher,
+        )?;
 
         if self.current_run.is_some() && !self.process_watcher.is_empty() {
             self.current_run.as_mut().unwrap().last_interaction = Instant::now();
@@ -234,6 +245,16 @@ impl TracerClient {
                 self.get_syslog_lines_buffer(),
                 &mut self.system,
                 &mut self.logs,
+            )
+            .await
+    }
+
+    pub async fn poll_stdout(&mut self) -> Result<()> {
+        self.stdout_watcher
+            .poll_stdout(
+                &self.service_url,
+                &self.api_key,
+                self.get_stdout_lines_buffer(),
             )
             .await
     }
