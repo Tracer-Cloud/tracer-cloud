@@ -15,7 +15,7 @@ mod tracer_client;
 mod upload;
 use anyhow::{Context, Ok, Result};
 use cli::process_cli;
-use config_manager::INTERCEPTOR_STDOUT_FILE;
+use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
 use std::borrow::BorrowMut;
@@ -92,7 +92,8 @@ pub async fn run(workflow_directory_path: String) -> Result<()> {
 
     let stdout_lines_task = tokio::spawn(stdout::run_stdout_lines_read_thread(
         INTERCEPTOR_STDOUT_FILE,
-        tracer_client.lock().await.get_stdout_lines_buffer(),
+        INTERCEPTOR_STDERR_FILE,
+        tracer_client.lock().await.get_stdout_stderr_lines_buffer(),
     ));
 
     tracer_client
@@ -139,7 +140,7 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
     // tracer_client.run_cleanup().await?;
     tracer_client.poll_process_metrics().await?;
     tracer_client.poll_syslog().await?;
-    tracer_client.poll_stdout().await?;
+    tracer_client.poll_stdout_stderr().await?;
     tracer_client.refresh_sysinfo();
     tracer_client.reset_just_started_process_flag();
     Ok(())

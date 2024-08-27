@@ -11,7 +11,9 @@ use crate::config_manager::target_process::Target;
 const INTERCEPTOR_BASHRC_PATH: &str = ".config/tracer/.bashrc";
 const INTERCEPTOR_SOURCE_COMMAND: &str = "source ~/.config/tracer/.bashrc";
 pub const INTERCEPTOR_STDOUT_FILE: &str = "/tmp/tracerd-stdout";
+pub const INTERCEPTOR_STDERR_FILE: &str = "/tmp/tracerd-stderr";
 const INTERCEPTOR_STDOUT_COMMAND: &str = "exec &> >(tee >(awk 'system(\"[ ! -f /tmp/tracerd.pid ]\") == 1' >> \"/tmp/tracerd-stdout\"))\n";
+const INTERCEPTOR_STDERR_COMMAND: &str = "exec 2> >(tee >(awk 'system(\"[ ! -f /tmp/tracerd.pid ]\") == 1' >> \"/tmp/tracerd-stderr\"))\n";
 
 pub fn get_command_interceptor(
     current_tracer_exe_path: PathBuf,
@@ -59,6 +61,10 @@ pub fn rewrite_interceptor_bashrc_file(
 
     bashrc_file
         .write_all(INTERCEPTOR_STDOUT_COMMAND.as_bytes())
+        .unwrap();
+
+    bashrc_file
+        .write_all(INTERCEPTOR_STDERR_COMMAND.as_bytes())
         .unwrap();
 
     Ok(())

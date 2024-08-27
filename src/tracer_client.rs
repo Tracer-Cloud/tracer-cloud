@@ -30,6 +30,8 @@ pub struct RunMetadata {
 const RUN_COMPLICATED_PROCESS_IDENTIFICATION: bool = false;
 const WAIT_FOR_PROCESS_BEFORE_NEW_RUN: bool = false;
 
+pub type LinesBufferArc = Arc<RwLock<Vec<String>>>;
+
 pub struct TracerClient {
     system: System,
     last_sent: Option<Instant>,
@@ -47,8 +49,9 @@ pub struct TracerClient {
     api_key: String,
     service_url: String,
     current_run: Option<RunMetadata>,
-    syslog_lines_buffer: Arc<RwLock<Vec<String>>>,
-    stdout_lines_buffer: Arc<RwLock<Vec<String>>>,
+    syslog_lines_buffer: LinesBufferArc,
+    stdout_lines_buffer: LinesBufferArc,
+    stderr_lines_buffer: LinesBufferArc,
 }
 
 impl TracerClient {
@@ -86,6 +89,7 @@ impl TracerClient {
             workflow_directory,
             syslog_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             stdout_lines_buffer: Arc::new(RwLock::new(Vec::new())),
+            stderr_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
         })
@@ -107,12 +111,15 @@ impl TracerClient {
         Ok(())
     }
 
-    pub fn get_syslog_lines_buffer(&self) -> Arc<RwLock<Vec<String>>> {
+    pub fn get_syslog_lines_buffer(&self) -> LinesBufferArc {
         self.syslog_lines_buffer.clone()
     }
 
-    pub fn get_stdout_lines_buffer(&self) -> Arc<RwLock<Vec<String>>> {
-        self.stdout_lines_buffer.clone()
+    pub fn get_stdout_stderr_lines_buffer(&self) -> (LinesBufferArc, LinesBufferArc) {
+        (
+            self.stdout_lines_buffer.clone(),
+            self.stderr_lines_buffer.clone(),
+        )
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
@@ -249,13 +256,15 @@ impl TracerClient {
             .await
     }
 
-    pub async fn poll_stdout(&mut self) -> Result<()> {
+    pub async fn poll_stdout_stderr(&mut self) -> Result<()> {
+        let (stdout_lines_buffer, stderr_lines_buffer) = self.get_stdout_stderr_lines_buffer();
+
         self.stdout_watcher
-            .poll_stdout(
-                &self.service_url,
-                &self.api_key,
-                self.get_stdout_lines_buffer(),
-            )
+            .poll_stdout(&self.service_url, &self.api_key, stdout_lines_buffer, false)
+            .await?;
+
+        self.stdout_watcher
+            .poll_stdout(&self.service_url, &self.api_key, stderr_lines_buffer, true)
             .await
     }
 
