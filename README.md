@@ -10,9 +10,5 @@ $ps -e | grep tracer
 
 ```rust
 
-/// featureCounts
-/// bamCompare
-/// multiBamSummary
-/// plotPCA 
 
 ```
