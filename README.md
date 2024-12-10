@@ -5,10 +5,3 @@
 ```bash
 $ps -e | grep tracer
 ```
-
-## Individual process consumption
-
-```rust
-
-
-```
