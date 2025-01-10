@@ -12,6 +12,7 @@ mod stdout;
 mod submit_batched_data;
 mod syslog;
 mod tracer_client;
+mod types;
 mod upload;
 use anyhow::{Context, Ok, Result};
 use cli::process_cli;

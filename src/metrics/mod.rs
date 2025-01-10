@@ -3,10 +3,12 @@ use std::collections::HashMap;
 /// src/system_metrics.rs
 use anyhow::Result;
 use chrono::Utc;
-use serde_json::{json, Value};
 use sysinfo::{Disks, System};
 
-use crate::event_recorder::{EventRecorder, EventType};
+use crate::{
+    event_recorder::{EventRecorder, EventType},
+    types::metrics::{DiskStatistic, SystemMetric},
+};
 
 pub struct SystemMetricsCollector;
 
@@ -15,10 +17,10 @@ impl SystemMetricsCollector {
         SystemMetricsCollector
     }
 
-    pub fn gather_disk_data() -> HashMap<String, serde_json::Value> {
+    pub fn gather_disk_data() -> HashMap<String, DiskStatistic> {
         let disks: Disks = Disks::new_with_refreshed_list();
 
-        let mut d_stats: HashMap<String, serde_json::Value> = HashMap::new();
+        let mut d_stats: HashMap<String, DiskStatistic> = HashMap::new();
 
         for d in disks.iter() {
             let Some(d_name) = d.name().to_str() else {
@@ -30,12 +32,12 @@ impl SystemMetricsCollector {
             let used_space = total_space - available_space;
             let disk_utilization = (used_space as f64 / total_space as f64) * 100.0;
 
-            let disk_data = json!({
-                  "disk_total_space": total_space,
-                  "disk_used_space": used_space,
-                  "disk_available_space": available_space,
-                  "disk_utilization": disk_utilization,
-            });
+            let disk_data = DiskStatistic {
+                disk_total_space: total_space,
+                disk_used_space: used_space,
+                disk_available_space: available_space,
+                disk_utilization,
+            };
 
             d_stats.insert(d_name.to_string(), disk_data);
         }
@@ -43,7 +45,7 @@ impl SystemMetricsCollector {
         d_stats
     }
 
-    pub fn gather_metrics_object_attributes(system: &mut System) -> Value {
+    pub fn gather_metrics_object_attributes(system: &mut System) -> SystemMetric {
         let used_memory = system.used_memory();
         let total_memory = system.total_memory();
         let memory_utilization = (used_memory as f64 / total_memory as f64) * 100.0;
@@ -52,23 +54,22 @@ impl SystemMetricsCollector {
 
         let d_stats = Self::gather_disk_data();
 
-        let attributes = json!({
-            "events_name": "global_system_metrics",
-            "system_memory_total": total_memory,
-            "system_memory_used": used_memory,
-            "system_memory_available": system.available_memory(),
-            "system_memory_utilization": memory_utilization,
-            "system_memory_swap_total": system.total_swap(),
-            "system_memory_swap_used": system.used_swap(),
-            "system_cpu_utilization": cpu_usage,
-            "system_disk_io": d_stats,
-        });
-
-        attributes
+        SystemMetric {
+            events_name: "global_system_metrics".to_string(),
+            system_memory_total: total_memory,
+            system_memory_used: used_memory,
+            system_memory_available: system.available_memory(),
+            system_memory_utilization: memory_utilization,
+            system_memory_swap_total: system.total_swap(),
+            system_memory_swap_used: system.used_swap(),
+            system_cpu_utilization: cpu_usage,
+            system_disk_io: d_stats,
+        }
     }
 
     pub fn collect_metrics(&self, system: &mut System, logs: &mut EventRecorder) -> Result<()> {
-        let attributes = Self::gather_metrics_object_attributes(system);
+        let attributes = serde_json::to_value(Self::gather_metrics_object_attributes(system))
+            .expect("Failed to get system metric");
 
         logs.record_event(
             EventType::MetricEvent,
@@ -83,6 +84,7 @@ impl SystemMetricsCollector {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use crate::event_recorder::EventRecorder;
 
@@ -101,15 +103,10 @@ mod tests {
 
         assert!(event.attributes.is_some());
 
-        let attributes = event.attributes.as_ref().unwrap();
-        assert_eq!(attributes["events_name"], "global_system_metrics");
-        assert!(attributes["system_memory_total"].is_number());
-        assert!(attributes["system_memory_used"].is_number());
-        assert!(attributes["system_memory_available"].is_number());
-        assert!(attributes["system_memory_utilization"].is_number());
-        assert!(attributes["system_memory_swap_total"].is_number());
-        assert!(attributes["system_memory_swap_used"].is_number());
-        assert!(attributes["system_cpu_utilization"].is_number());
-        assert!(attributes["system_disk_io"].is_object());
+        let attribute = event.attributes.clone().unwrap();
+        let system_metric: SystemMetric =
+            serde_json::from_value(attribute).expect("Failed to convert to system metric");
+
+        assert_eq!(system_metric.events_name, "global_system_metrics");
     }
 }
