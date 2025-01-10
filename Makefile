@@ -21,7 +21,11 @@ clippy: ## cargo clippy
 check: ## cargo check 
 	cargo check
 
-test: ## cargo test
+# Ensure cargo-nextest is installed
+setup_nextest:
+	@which cargo-nextest >/dev/null || cargo install cargo-nextest
+
+test: setup_nextest ## Run cargo nextest
 	cargo nextest run --no-capture
 
 all: format check test clippy  ## format, check, test, clippy.

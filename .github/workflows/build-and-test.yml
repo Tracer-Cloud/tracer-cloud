@@ -23,13 +23,13 @@ jobs:
 
       - name: Setup Rust toolchain
         run: rustup toolchain install stable --profile minimal
-      
-      - name: Set up cargo Nextest
-        run: |
-          which cargo-nextest || cargo install cargo-nextest
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Set up cargo Nextest
+        run: |
+          which cargo-nextest || cargo install cargo-nextest
 
       - name: Build
         run: cargo build --release --verbose
