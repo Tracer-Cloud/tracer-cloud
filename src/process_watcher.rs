@@ -4,11 +4,14 @@ use crate::config_manager::target_process::TargetMatchable;
 use crate::event_recorder::EventRecorder;
 use crate::event_recorder::EventType;
 use crate::file_watcher::FileWatcher;
+use crate::types::event::attributes::process::CompletedProcess;
+use crate::types::event::attributes::process::InputFile;
+use crate::types::event::attributes::process::ProcessProperties;
+use crate::types::event::attributes::EventAttributes;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::json;
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
 use std::path::Path;
@@ -32,34 +35,6 @@ pub struct Proc {
     start_time: DateTime<Utc>,
     last_update: ProcLastUpdate,
     just_started: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct InputFile {
-    pub file_name: String,
-    pub file_size: u64,
-    pub file_path: String,
-    pub file_directory: String,
-    pub file_updated_at_timestamp: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ProcessProperties {
-    pub tool_name: String,
-    pub tool_pid: String,
-    pub tool_parent_pid: String,
-    pub tool_binary_path: String,
-    pub tool_cmd: String,
-    pub start_timestamp: String,
-    pub process_cpu_utilization: f32,
-    pub process_memory_usage: u64,
-    pub process_memory_virtual: u64,
-    pub process_run_time: u64,
-    pub process_disk_usage_read_last_interval: u64,
-    pub process_disk_usage_write_last_interval: u64,
-    pub process_disk_usage_read_total: u64,
-    pub process_disk_usage_write_total: u64,
-    pub process_status: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -348,6 +323,7 @@ impl ProcessWatcher {
             process_memory_usage: proc.memory(),
             process_memory_virtual: proc.virtual_memory(),
             process_status: process_status_to_string(&proc.status()),
+            input_files: None,
         }
     }
 
@@ -356,7 +332,7 @@ impl ProcessWatcher {
         short_lived_process: ShortLivedProcessLog,
         event_logger: &mut EventRecorder,
     ) -> Result<()> {
-        let properties = json!(short_lived_process.properties);
+        let properties = EventAttributes::Process(short_lived_process.properties.clone());
         event_logger.record_event(
             EventType::ToolExecution,
             format!(
@@ -410,6 +386,7 @@ impl ProcessWatcher {
                     process_disk_usage_read_total: 0,
                     process_disk_usage_write_total: 0,
                     process_status: "Unknown".to_string(),
+                    input_files: None,
                 },
             }
         }
@@ -451,11 +428,7 @@ impl ProcessWatcher {
             proc.name().to_owned()
         };
 
-        let mut properties = json!(Self::gather_process_data(
-            &pid,
-            p,
-            Some(display_name.clone())
-        ));
+        let mut properties = Self::gather_process_data(&pid, p, Some(display_name.clone()));
 
         let cmd_arguments = p.cmd();
         let mut input_files = vec![];
@@ -490,12 +463,12 @@ impl ProcessWatcher {
             }
         }
 
-        properties["input_files"] = serde_json::to_value(input_files)?;
+        properties.input_files = Some(input_files);
 
         event_logger.record_event(
             EventType::ToolExecution,
             format!("[{}] Tool process: {}", start_time, &display_name),
-            Some(properties),
+            Some(EventAttributes::Process(properties)),
             None,
         );
 
@@ -519,10 +492,10 @@ impl ProcessWatcher {
             proc.name().to_owned()
         };
 
-        let properties = json!(Self::gather_process_data(
+        let properties = EventAttributes::Process(Self::gather_process_data(
             &pid,
             proc,
-            Some(display_name.clone())
+            Some(display_name.clone()),
         ));
 
         event_logger.record_event(
@@ -610,18 +583,19 @@ impl ProcessWatcher {
         proc: &Proc,
         event_logger: &mut EventRecorder,
     ) -> Result<()> {
-        let duration = (Utc::now() - proc.start_time).to_std()?.as_millis();
+        // NOTE: to avoid handling casting from u128 to u64, moving to as_secs from as_millis
+        let duration_sec = (Utc::now() - proc.start_time).to_std()?.as_secs();
 
-        let properties = json!({
-            "tool_name": proc.name,
-            "tool_pid": pid.to_string(),
-            "duration": duration
-        });
+        let properties = CompletedProcess {
+            tool_name: proc.name.clone(),
+            tool_pid: pid.to_string(),
+            duration_sec,
+        };
 
         event_logger.record_event(
             EventType::FinishedToolExecution,
             format!("[{}] {} exited", Utc::now(), &proc.name),
-            Some(properties),
+            Some(EventAttributes::CompletedProcess(properties)),
             None,
         );
 
@@ -679,6 +653,7 @@ mod tests {
                 process_disk_usage_read_total: 0,
                 process_disk_usage_write_total: 0,
                 process_status: "test".to_string(),
+                input_files: None,
             };
 
             let node = ProcessTreeNode {

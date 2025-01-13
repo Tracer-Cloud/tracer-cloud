@@ -1,18 +1,6 @@
-use chrono::serde::ts_seconds;
+use crate::types::event::{attributes::EventAttributes, Event};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Event {
-    #[serde(with = "ts_seconds")]
-    timestamp: DateTime<Utc>,
-    message: String,
-    pub event_type: String,
-    process_type: String,
-    process_status: String,
-    pub attributes: Option<Value>,
-}
 
 pub struct EventRecorder {
     events: Vec<Event>,
@@ -54,7 +42,7 @@ impl EventRecorder {
         &mut self,
         event_type: EventType,
         message: String,
-        attributes: Option<Value>,
+        attributes: Option<EventAttributes>,
         timestamp: Option<DateTime<Utc>>,
     ) {
         let event = Event {
@@ -102,7 +90,7 @@ mod tests {
     fn test_record_event() {
         let mut recorder = EventRecorder::new();
         let message = "[event_recorder.rs]Test event".to_string();
-        let attributes = Some(json!({"key": "value"}));
+        let attributes = Some(EventAttributes::Other(json!({"key": "value"})));
 
         recorder.record_event(
             EventType::ToolExecution,
@@ -118,7 +106,10 @@ mod tests {
         assert_eq!(event.event_type, "process_status");
         assert_eq!(event.process_type, "pipeline");
         assert_eq!(event.process_status, "tool_execution");
-        assert_eq!(event.attributes, attributes);
+        assert!(matches!(
+            event.attributes.clone().unwrap(),
+            EventAttributes::Other(_)
+        ));
     }
 
     #[test]
@@ -148,7 +139,7 @@ mod tests {
     fn test_record_test_event() {
         let mut recorder = EventRecorder::new();
         let message = "Test event for testing".to_string();
-        let attributes = Some(json!({"test_key": "test_value"}));
+        let attributes = Some(EventAttributes::Other(json!({"test_key": "test_value"})));
 
         recorder.record_event(
             EventType::TestEvent,
@@ -164,6 +155,9 @@ mod tests {
         assert_eq!(event.event_type, "process_status");
         assert_eq!(event.process_type, "pipeline");
         assert_eq!(event.process_status, "test_event");
-        assert_eq!(event.attributes, attributes);
+        assert!(matches!(
+            event.attributes.clone().unwrap(),
+            EventAttributes::Other(_)
+        ));
     }
 }

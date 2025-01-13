@@ -7,7 +7,10 @@ use sysinfo::{Disks, System};
 
 use crate::{
     event_recorder::{EventRecorder, EventType},
-    types::metrics::{DiskStatistic, SystemMetric},
+    types::event::{
+        attributes::system_metrics::{DiskStatistic, SystemMetric},
+        attributes::EventAttributes,
+    },
 };
 
 pub struct SystemMetricsCollector;
@@ -68,8 +71,8 @@ impl SystemMetricsCollector {
     }
 
     pub fn collect_metrics(&self, system: &mut System, logs: &mut EventRecorder) -> Result<()> {
-        let attributes = serde_json::to_value(Self::gather_metrics_object_attributes(system))
-            .expect("Failed to get system metric");
+        let attributes =
+            EventAttributes::SystemMetric(Self::gather_metrics_object_attributes(system));
 
         logs.record_event(
             EventType::MetricEvent,
@@ -104,9 +107,11 @@ mod tests {
         assert!(event.attributes.is_some());
 
         let attribute = event.attributes.clone().unwrap();
-        let system_metric: SystemMetric =
-            serde_json::from_value(attribute).expect("Failed to convert to system metric");
-
-        assert_eq!(system_metric.events_name, "global_system_metrics");
+        if let EventAttributes::SystemMetric(system_metric) = attribute {
+            assert_eq!(system_metric.events_name, "global_system_metrics");
+        } else {
+            // fail test
+            assert!(false)
+        }
     }
 }

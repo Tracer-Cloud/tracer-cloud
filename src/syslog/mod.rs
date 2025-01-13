@@ -14,6 +14,7 @@ use crate::{
     debug_log::Logger,
     event_recorder::{EventRecorder, EventType},
     metrics::SystemMetricsCollector,
+    types::event::attributes::syslog::SyslogProperties,
 };
 
 const LINES_BEFORE: usize = 2;
@@ -84,19 +85,21 @@ impl SyslogWatcher {
             let system_properties =
                 SystemMetricsCollector::gather_metrics_object_attributes(system);
             for error in errors {
-                let attributes = serde_json::json!({
-                    "system_metrics": system_properties,
-                    "error_display_name": error.display_name,
-                    "error_id": error.id,
-                    "error_line": error.line,
-                    "file_line_number": error.line_number,
-                    "file_previous_logs": error.lines_before
-                });
+                let attributes = SyslogProperties {
+                    system_metrics: system_properties.clone(),
+                    error_display_name: error.display_name,
+                    error_id: error.id,
+                    error_line: error.line.clone(),
+                    file_line_number: error.line_number,
+                    file_previous_logs: error.lines_before,
+                };
 
                 logs.record_event(
                     EventType::SyslogEvent,
                     error.line.clone(),
-                    Some(attributes),
+                    Some(crate::types::event::attributes::EventAttributes::Syslog(
+                        attributes,
+                    )),
                     None,
                 );
             }
