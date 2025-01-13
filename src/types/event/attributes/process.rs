@@ -3,6 +3,8 @@ use std::sync::Arc;
 use arrow::datatypes::{DataType, Field, Schema};
 use serde::{Deserialize, Serialize};
 
+use crate::types::ParquetSchema;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct InputFile {
     pub file_name: String,
@@ -11,8 +13,8 @@ pub struct InputFile {
     pub file_directory: String,
     pub file_updated_at_timestamp: String,
 }
-impl InputFile {
-    pub fn schema() -> Schema {
+impl ParquetSchema for InputFile {
+    fn schema() -> Schema {
         let fields = vec![
             Field::new("file_name", DataType::Utf8, false),
             Field::new("file_size", DataType::UInt64, false),
@@ -88,8 +90,8 @@ pub struct CompletedProcess {
     pub duration_sec: u64,
 }
 
-impl CompletedProcess {
-    pub fn schema() -> Schema {
+impl ParquetSchema for CompletedProcess {
+    fn schema() -> Schema {
         let fields = vec![
             Field::new("file_name", DataType::Utf8, false),
             Field::new("file_path", DataType::Utf8, false),

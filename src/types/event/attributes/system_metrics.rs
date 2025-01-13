@@ -2,6 +2,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, Schema};
 
+use crate::types::ParquetSchema;
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct DiskStatistic {
     pub disk_total_space: u64,
@@ -10,8 +12,8 @@ pub struct DiskStatistic {
     pub disk_utilization: f64,
 }
 
-impl DiskStatistic {
-    pub fn schema() -> Schema {
+impl ParquetSchema for DiskStatistic {
+    fn schema() -> Schema {
         let fields = vec![
             Field::new("disk_total_space", DataType::UInt64, false),
             Field::new("disk_used_space", DataType::UInt64, false),
@@ -35,8 +37,8 @@ pub struct SystemMetric {
     pub system_disk_io: HashMap<String, DiskStatistic>,
 }
 
-impl SystemMetric {
-    pub fn schema() -> Schema {
+impl ParquetSchema for SystemMetric {
+    fn schema() -> Schema {
         let disk_stat_data_type = DataType::Struct(DiskStatistic::schema().fields);
         let fields = vec![
             Field::new("events_name", DataType::Utf8, false),

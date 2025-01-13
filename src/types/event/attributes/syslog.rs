@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::types::ParquetSchema;
+
 use super::system_metrics::SystemMetric;
 use arrow::datatypes::{DataType, Field, Schema};
 
@@ -13,8 +15,8 @@ pub struct SyslogProperties {
     pub file_previous_logs: Vec<String>,
 }
 
-impl SyslogProperties {
-    pub fn schema() -> Schema {
+impl ParquetSchema for SyslogProperties {
+    fn schema() -> Schema {
         let system_metrics_dt = DataType::Struct(SystemMetric::schema().fields);
         let fields = vec![
             Field::new("system_metrics", system_metrics_dt, false),

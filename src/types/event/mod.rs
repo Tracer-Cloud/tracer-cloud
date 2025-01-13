@@ -9,6 +9,8 @@ use chrono::{DateTime, Utc};
 
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 
+use super::ParquetSchema;
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct Event {
     #[serde(with = "ts_seconds")]
@@ -20,13 +22,13 @@ pub struct Event {
     pub attributes: Option<EventAttributes>,
 }
 
-impl Event {
-    // two approaches for is the following:
+impl ParquetSchema for Event {
+    // two approaches was considered for the following, for now i choose the second approach:
     // Use a union field to represent all possible variants, but this inturn increases the query
     // complexity
     // Second approach is to have nullable struct fields for all variants, while this maintains a
     // somewhat flat structure, we'd have nullable entries on each columns
-    pub fn schema() -> Schema {
+    fn schema() -> Schema {
         // get all variant structs
         let process_dt = ProcessProperties::schema().fields;
         let completed_process_dt = CompletedProcess::schema().fields;
