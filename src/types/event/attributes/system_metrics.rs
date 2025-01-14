@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::datatypes::{DataType, Field, Fields, Schema};
 
 use crate::types::ParquetSchema;
 
@@ -40,6 +40,12 @@ pub struct SystemMetric {
 impl ParquetSchema for SystemMetric {
     fn schema() -> Schema {
         let disk_stat_data_type = DataType::Struct(DiskStatistic::schema().fields);
+
+        let mapped = DataType::Struct(Fields::from(vec![
+            Field::new("key", DataType::Utf8, false),
+            Field::new("value", disk_stat_data_type, false),
+        ]));
+
         let fields = vec![
             Field::new("events_name", DataType::Utf8, false),
             Field::new("system_memory_total", DataType::UInt64, false),
@@ -51,10 +57,7 @@ impl ParquetSchema for SystemMetric {
             Field::new("system_cpu_utilization", DataType::Float32, false),
             Field::new(
                 "system_disk_io",
-                DataType::Map(
-                    Arc::new(Field::new("key_value", disk_stat_data_type, false)),
-                    false,
-                ),
+                DataType::Map(Arc::new(Field::new("entries", mapped, false)), false),
                 false,
             ),
         ];
