@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use arrow::datatypes::{DataType, Field, Fields, Schema};
 
-use crate::types::ParquetSchema;
+use crate::types::{event::aws_metadata::AwsInstanceMetaData, ParquetSchema};
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct DiskStatistic {
@@ -63,4 +63,20 @@ impl ParquetSchema for SystemMetric {
         ];
         Schema::new(fields)
     }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SystemProperties {
+    pub os: Option<String>,
+    pub os_version: Option<String>,
+    pub kernel_version: Option<String>,
+    pub arch: Option<String>,
+    pub num_cpus: usize,
+    pub hostname: Option<String>,
+    pub total_memory: u64,
+    pub total_swap: u64,
+    pub uptime: u64,
+    pub aws_metadata: Option<AwsInstanceMetaData>,
+    pub is_aws_instance: bool,
+    pub system_disk_io: HashMap<String, DiskStatistic>,
 }

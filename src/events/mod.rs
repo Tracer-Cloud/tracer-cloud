@@ -1,15 +1,16 @@
-use std::time::Duration;
-
 // src/events/mod.rs
 use crate::{
     debug_log::Logger,
-    http_client::{send_http_event, send_http_get},
+    http_client::send_http_event,
     metrics::SystemMetricsCollector,
+    types::event::{
+        attributes::system_metrics::SystemProperties, aws_metadata::AwsInstanceMetaData,
+    },
 };
 use anyhow::{Context, Result};
 use chrono::Utc;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use sysinfo::System;
 use tracing::info;
 
@@ -63,43 +64,44 @@ pub struct RunEventOut {
     pub run_name: String,
     pub run_id: String,
     pub service_name: String,
+    pub system_properties: SystemProperties,
 }
 
-const AWS_METADATA_URL: &str = "http://169.254.169.254/latest/meta-data/";
-
-async fn get_aws_instance_metadata() -> Result<Value> {
-    let (status, response_text) =
-        send_http_get(AWS_METADATA_URL, None, Some(Duration::from_secs(2))).await?;
-
-    serde_json::from_str(&response_text).context(format!(
-        "Failed to get AWS instance metadata. Status: {}, Response: {}",
-        status, response_text
-    ))
-}
-
-async fn gather_system_properties(system: &System) -> Value {
-    let aws_metadata = get_aws_instance_metadata().await.unwrap_or(json!(null));
-
-    let disk_metadata = SystemMetricsCollector::gather_disk_data();
-
-    json!(
-        {
-            "os": System::name(),
-            "os_version": System::os_version(),
-            "kernel_version": System::kernel_version(),
-            "arch": System::cpu_arch(),
-            "num_cpus": system.cpus().len(),
-            "hostname": System::host_name(),
-            "total_memory": system.total_memory(),
-            "total_swap": system.total_swap(),
-            "uptime": System::uptime(),
-            "aws_metadata": aws_metadata,
-            "is_aws_instance": !aws_metadata.is_null(),
-            "system_disk_io": disk_metadata,
+async fn get_aws_instance_metadata() -> Option<AwsInstanceMetaData> {
+    let client = ec2_instance_metadata::InstanceMetadataClient::new();
+    match client.get() {
+        Ok(metadata) => Some(metadata.into()),
+        Err(err) => {
+            println!("error getting metadata: {err}");
+            None
         }
-    )
+    }
 }
 
+async fn gather_system_properties(system: &System) -> SystemProperties {
+    let aws_metadata = get_aws_instance_metadata().await;
+    let is_aws_instance = aws_metadata.is_some();
+
+    let system_disk_io = SystemMetricsCollector::gather_disk_data();
+
+    SystemProperties {
+        os: System::name(),
+        os_version: System::os_version(),
+        kernel_version: System::kernel_version(),
+        arch: System::cpu_arch(),
+        num_cpus: system.cpus().len(),
+        hostname: System::host_name(),
+        total_memory: system.total_memory(),
+        total_swap: system.total_swap(),
+        uptime: System::uptime(),
+        aws_metadata,
+        is_aws_instance,
+        system_disk_io,
+    }
+}
+
+// TODO: Can we remove dependencies from this or Do we refactor to just get (service_name, run_id
+// and run name) without sending any event?
 pub async fn send_start_run_event(
     service_url: &str,
     api_key: &str,
@@ -134,7 +136,7 @@ pub async fn send_start_run_event(
         "process_status": "new_run",
         "event_type": "process_status",
         "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
-        "attributes": system_properties,
+        "attributes": &system_properties,
     });
 
     let result = send_http_event(service_url, api_key, &init_entry).await?;
@@ -175,6 +177,7 @@ pub async fn send_start_run_event(
         run_name: run_name.clone(),
         run_id: run_id.clone(),
         service_name: service_name.clone(),
+        system_properties,
     })
 }
 

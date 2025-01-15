@@ -1,6 +1,6 @@
 use process::{CompletedProcess, ProcessProperties};
 use syslog::SyslogProperties;
-use system_metrics::SystemMetric;
+use system_metrics::{SystemMetric, SystemProperties};
 
 pub mod process;
 pub mod syslog;
@@ -13,5 +13,6 @@ pub enum EventAttributes {
     CompletedProcess(CompletedProcess),
     SystemMetric(SystemMetric),
     Syslog(SyslogProperties),
+    SystemProperties(SystemProperties),
     Other(serde_json::Value),
 }

@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn test_collect_metrics() {
         let mut system = System::new_all();
-        let mut logs = EventRecorder::new();
+        let mut logs = EventRecorder::default();
         let collector = SystemMetricsCollector::new();
 
         collector.collect_metrics(&mut system, &mut logs).unwrap();

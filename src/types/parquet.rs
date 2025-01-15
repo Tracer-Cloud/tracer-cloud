@@ -1,3 +1,4 @@
+use super::event::attributes::system_metrics::SystemProperties;
 use super::ParquetSchema;
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use chrono::serde::ts_seconds;
@@ -29,6 +30,11 @@ pub struct FlattenedTracerEvent {
     pub process_type: String,
     pub process_status: String,
 
+    pub run_name: Option<String>,
+    pub run_id: Option<String>,
+
+    pub system_properties: Option<SystemProperties>,
+
     pub process_attributes: Option<ProcessProperties>,
     pub system_metric_attributes: Option<SystemMetric>,
     pub completed_process_attributes: Option<CompletedProcess>,
@@ -43,6 +49,8 @@ impl From<Event> for FlattenedTracerEvent {
             event_type: value.event_type,
             process_type: value.process_type,
             process_status: value.process_status,
+            run_name: value.run_name,
+            run_id: value.run_id,
             ..Default::default()
         };
 
@@ -56,6 +64,9 @@ impl From<Event> for FlattenedTracerEvent {
                     tracer_event.system_metric_attributes = Some(inner)
                 }
                 EventAttributes::Syslog(inner) => tracer_event.syslog_attributes = Some(inner),
+                EventAttributes::SystemProperties(inner) => {
+                    tracer_event.system_properties = Some(inner)
+                }
                 // would take out the other or handle it by converting it into a str
                 EventAttributes::Other(_inner) => (),
             }
@@ -80,6 +91,8 @@ impl ParquetSchema for FlattenedTracerEvent {
             Field::new("event_type", DataType::Utf8, false),
             Field::new("process_type", DataType::Utf8, false),
             Field::new("process_status", DataType::Utf8, false),
+            Field::new("run_name", DataType::Utf8, true),
+            Field::new("run_id", DataType::Utf8, true),
             Field::new("process_attributes", DataType::Struct(process_dt), true),
             Field::new(
                 "completed_process_attributes",

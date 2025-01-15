@@ -7,6 +7,7 @@ use crate::process_watcher::ProcessWatcher;
 use crate::stdout::StdoutWatcher;
 use crate::submit_batched_data::submit_batched_data;
 use crate::syslog::SyslogWatcher;
+use crate::types::event::attributes::EventAttributes;
 use crate::FILE_CACHE_DIR;
 use crate::{config_manager::Config, process_watcher::ShortLivedProcessLog};
 use anyhow::Result;
@@ -84,7 +85,7 @@ impl TracerClient {
             syslog_watcher: SyslogWatcher::new(),
             stdout_watcher: StdoutWatcher::new(),
             // Sub mannagers
-            logs: EventRecorder::new(),
+            logs: EventRecorder::default(),
             file_watcher,
             workflow_directory,
             syslog_lines_buffer: Arc::new(RwLock::new(Vec::new())),
@@ -183,15 +184,24 @@ impl TracerClient {
         }
 
         let result = send_start_run_event(&self.service_url, &self.api_key, &self.system).await?;
-
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),
             parent_pid: None,
             start_time: timestamp.unwrap_or_else(Utc::now),
-            name: result.run_name,
-            id: result.run_id,
+            name: result.run_name.clone(),
+            id: result.run_id.clone(),
             service_name: result.service_name,
         });
+
+        self.logs
+            .update_run_details(Some(result.run_name), Some(result.run_id));
+
+        self.logs.record_event(
+            EventType::NewRun,
+            "[CLI] Starting new pipeline run".to_owned(),
+            Some(EventAttributes::SystemProperties(result.system_properties)),
+            timestamp,
+        );
 
         Ok(())
     }

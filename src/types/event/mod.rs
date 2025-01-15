@@ -1,4 +1,5 @@
 pub mod attributes;
+pub mod aws_metadata;
 
 use attributes::EventAttributes;
 use chrono::serde::ts_seconds;
@@ -12,5 +13,7 @@ pub struct Event {
     pub event_type: String,
     pub process_type: String,
     pub process_status: String,
+    pub run_name: Option<String>,
+    pub run_id: Option<String>,
     pub attributes: Option<EventAttributes>,
 }

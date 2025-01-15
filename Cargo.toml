@@ -35,5 +35,7 @@ futures-util = "0.3.30"
 parquet = "53.3.0"
 arrow = "53.3.0"
 
+ec2_instance_metadata = "0.3.0"
+
 [dev-dependencies]
 env_logger = "0.9"

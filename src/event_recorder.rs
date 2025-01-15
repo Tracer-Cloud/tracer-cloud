@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 pub struct EventRecorder {
     events: Vec<Event>,
+    run_name: Option<String>,
+    run_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
@@ -34,8 +36,17 @@ impl EventType {
 }
 
 impl EventRecorder {
-    pub fn new() -> Self {
-        EventRecorder { events: Vec::new() }
+    pub fn new(run_name: Option<String>, run_id: Option<String>) -> Self {
+        EventRecorder {
+            events: Vec::new(),
+            run_id,
+            run_name,
+        }
+    }
+
+    pub(crate) fn update_run_details(&mut self, run_name: Option<String>, run_id: Option<String>) {
+        self.run_name = run_name;
+        self.run_id = run_id
     }
 
     pub fn record_event(
@@ -52,6 +63,9 @@ impl EventRecorder {
             process_type: "pipeline".to_owned(),
             process_status: event_type.as_str().to_owned(),
             attributes,
+            // NOTE: not a fan of constant cloning so would look for an alt
+            run_name: self.run_name.clone(),
+            run_id: self.run_id.clone(),
         };
         self.events.push(event);
     }
@@ -77,7 +91,7 @@ impl EventRecorder {
 
 impl Default for EventRecorder {
     fn default() -> Self {
-        Self::new()
+        Self::new(None, None)
     }
 }
 
@@ -88,7 +102,7 @@ mod tests {
 
     #[test]
     fn test_record_event() {
-        let mut recorder = EventRecorder::new();
+        let mut recorder = EventRecorder::default();
         let message = "[event_recorder.rs]Test event".to_string();
         let attributes = Some(EventAttributes::Other(json!({"key": "value"})));
 
@@ -114,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_clear_events() {
-        let mut recorder = EventRecorder::new();
+        let mut recorder = EventRecorder::default();
         recorder.record_event(
             EventType::ToolExecution,
             "Test event".to_string(),
@@ -137,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_record_test_event() {
-        let mut recorder = EventRecorder::new();
+        let mut recorder = EventRecorder::default();
         let message = "Test event for testing".to_string();
         let attributes = Some(EventAttributes::Other(json!({"test_key": "test_value"})));
 
