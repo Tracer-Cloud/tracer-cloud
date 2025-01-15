@@ -36,6 +36,8 @@ parquet = "53.3.0"
 arrow = "53.3.0"
 
 ec2_instance_metadata = "0.3.0"
+uuid = { version = "1.11.1", features = [ "v4", "fast-rng", "macro-diagnostics"] }
 
 [dev-dependencies]
 env_logger = "0.9"
+tempdir = "0.3.7"

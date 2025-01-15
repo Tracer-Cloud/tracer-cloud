@@ -1,6 +1,7 @@
 // src/tracer_client.rs
 use crate::event_recorder::{EventRecorder, EventType};
 use crate::events::{send_end_run_event, send_start_run_event};
+use crate::exporter::ExportManager;
 use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
@@ -53,6 +54,7 @@ pub struct TracerClient {
     syslog_lines_buffer: LinesBufferArc,
     stdout_lines_buffer: LinesBufferArc,
     stderr_lines_buffer: LinesBufferArc,
+    pub exporter: ExportManager,
 }
 
 impl TracerClient {
@@ -63,6 +65,12 @@ impl TracerClient {
         println!("Service URL: {}", service_url);
 
         let file_watcher = FileWatcher::new();
+
+        // TODO: Might have to move this
+        let mut base_dir = homedir::get_my_home()?.expect("Failed to get home dir");
+        base_dir.push("exports");
+
+        let exporter = ExportManager::new(base_dir, None);
 
         file_watcher.prepare_cache_directory(FILE_CACHE_DIR)?;
 
@@ -93,6 +101,7 @@ impl TracerClient {
             stderr_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
+            exporter,
         })
     }
 
@@ -124,6 +133,19 @@ impl TracerClient {
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
+        let data = self.logs.get_events();
+        let run_name = if let Some(run) = &self.current_run {
+            &run.name
+        } else {
+            "annoymous"
+        };
+        match self.exporter.output(data, run_name).await {
+            Ok(_path) => {
+                // upload to s3
+                println!("Successfully outputed, uploading to s3");
+            }
+            Err(err) => println!("error outputing parquet file: {err}"),
+        };
         submit_batched_data(
             &self.api_key,
             &self.service_url,
