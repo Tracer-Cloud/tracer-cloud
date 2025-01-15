@@ -230,9 +230,23 @@ impl TracerClient {
 
     pub async fn stop_run(&mut self) -> Result<()> {
         if self.current_run.is_some() {
+            self.logs.record_event(
+                EventType::FinishedRun,
+                "[CLI] Finishing pipeline run".to_owned(),
+                None,
+                Some(Utc::now()),
+            );
+            // clear events containing this run
+            let run_metadata = self.current_run.as_ref().unwrap();
+
+            let data = self.logs.get_events();
+            if let Err(err) = self.exporter.output(data, &run_metadata.name).await {
+                println!("Error outputing end run logs: {err}")
+            };
             send_end_run_event(&self.service_url, &self.api_key).await?;
             self.current_run = None;
         }
+        self.logs.clear();
         Ok(())
     }
 
