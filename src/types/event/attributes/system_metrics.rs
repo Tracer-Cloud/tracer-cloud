@@ -80,3 +80,35 @@ pub struct SystemProperties {
     pub is_aws_instance: bool,
     pub system_disk_io: HashMap<String, DiskStatistic>,
 }
+
+impl ParquetSchema for SystemProperties {
+    fn schema() -> Schema {
+        let disk_stat_data_type = DataType::Struct(DiskStatistic::schema().fields);
+        let aws_metadata = DataType::Struct(AwsInstanceMetaData::schema().fields);
+
+        let mapped = DataType::Struct(Fields::from(vec![
+            Field::new("key", DataType::Utf8, false),
+            Field::new("value", disk_stat_data_type, false),
+        ]));
+
+        let fields = vec![
+            Field::new("os", DataType::Utf8, true),
+            Field::new("os_version", DataType::Utf8, true),
+            Field::new("kernel_version", DataType::Utf8, true),
+            Field::new("arch", DataType::Utf8, true),
+            Field::new("num_cpus", DataType::UInt64, false),
+            Field::new("hostname", DataType::Utf8, true),
+            Field::new("total_memory", DataType::UInt64, false),
+            Field::new("total_swap", DataType::UInt64, false),
+            Field::new("uptime", DataType::UInt64, false),
+            Field::new("aws_metadata", aws_metadata, true),
+            Field::new("is_aws_instance", DataType::Boolean, false),
+            Field::new(
+                "system_disk_io",
+                DataType::Map(Arc::new(Field::new("entries", mapped, false)), false),
+                false,
+            ),
+        ];
+        Schema::new(fields)
+    }
+}
