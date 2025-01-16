@@ -11,7 +11,7 @@ pub struct SyslogProperties {
     pub error_display_name: String,
     pub error_id: String,
     pub error_line: String,
-    pub file_line_number: usize,
+    pub file_line_number: u64,
     pub file_previous_logs: Vec<String>,
 }
 
@@ -23,7 +23,6 @@ impl ParquetSchema for SyslogProperties {
             Field::new("error_display_name", DataType::Utf8, false),
             Field::new("error_id", DataType::Utf8, false),
             Field::new("error_line", DataType::Utf8, false),
-            // TODO: find usize repr
             Field::new("file_line_number", DataType::UInt64, false),
             Field::new(
                 "file_previous_logs",

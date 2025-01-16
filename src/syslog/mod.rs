@@ -23,7 +23,7 @@ const LINES_BEFORE: usize = 2;
 pub struct ErrorDefinition {
     pub id: String,
     pub display_name: String,
-    pub line_number: usize,
+    pub line_number: u64,
     pub lines_before: Vec<String>,
     pub line: String,
 }
