@@ -1,4 +1,5 @@
 mod cli;
+mod cloud_providers;
 mod config_manager;
 mod daemon_communication;
 mod debug_log;
