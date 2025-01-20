@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 // src/events/mod.rs
 use crate::{
     debug_log::Logger,
@@ -7,8 +9,10 @@ use crate::{
         attributes::system_metrics::SystemProperties, aws_metadata::AwsInstanceMetaData,
     },
 };
+mod run_details;
 use anyhow::{Context, Result};
 use chrono::Utc;
+use run_details::{generate_run_id, generate_run_name};
 use serde::Deserialize;
 use serde_json::json;
 use sysinfo::System;
@@ -100,6 +104,7 @@ async fn gather_system_properties(system: &System) -> SystemProperties {
     }
 }
 
+#[allow(dead_code)]
 // TODO: Can we remove dependencies from this or Do we refactor to just get (service_name, run_id
 // and run name) without sending any event?
 pub async fn send_start_run_event(
@@ -113,9 +118,9 @@ pub async fn send_start_run_event(
 
     #[derive(Deserialize)]
     struct RunLogOutProperties {
-        run_name: String,
-        run_id: String,
         service_name: String,
+        #[serde(flatten)]
+        extra: HashMap<String, serde_json::Value>, // not used any more
     }
 
     #[derive(Deserialize)]
@@ -139,6 +144,7 @@ pub async fn send_start_run_event(
         "attributes": &system_properties,
     });
 
+    // TODO: remove !. We need to get the service name else where
     let result = send_http_event(service_url, api_key, &init_entry).await?;
 
     let value: RunLogResult = serde_json::from_str(&result).unwrap();
@@ -154,9 +160,9 @@ pub async fn send_start_run_event(
         return Err(anyhow::anyhow!("Invalid response from server"));
     }
 
-    let run_name = &value.result[0].properties.run_name;
+    let run_name = generate_run_name();
 
-    let run_id = &value.result[0].properties.run_id;
+    let run_id = generate_run_id();
 
     let service_name = &value.result[0].properties.service_name;
 
