@@ -181,6 +181,7 @@ pub async fn send_start_run_event(
     })
 }
 
+// TODO: remove
 pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<String> {
     info!("Finishing pipeline run...");
 
@@ -210,6 +211,7 @@ pub async fn send_daemon_start_event(service_url: &str, api_key: &str) -> Result
     send_http_event(service_url, api_key, &daemon_start_entry).await
 }
 
+// TODO: Should tag updates be parts of events?
 pub async fn send_update_tags_event(
     service_url: &str,
     api_key: &str,

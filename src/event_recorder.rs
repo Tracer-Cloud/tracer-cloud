@@ -17,6 +17,8 @@ pub enum EventType {
     ToolMetricEvent,
     MetricEvent,
     SyslogEvent,
+    RunStatusMessage,
+    Alert,
     TestEvent, // Added TestEvent variant
 }
 
@@ -31,6 +33,8 @@ impl EventType {
             EventType::SyslogEvent => "syslog_event",
             EventType::ToolMetricEvent => "tool_metric_event",
             EventType::TestEvent => "test_event", // Handle TestEvent
+            EventType::RunStatusMessage => "run_status_message",
+            EventType::Alert => "alert",
         }
     }
 }
