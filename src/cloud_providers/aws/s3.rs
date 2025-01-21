@@ -33,7 +33,7 @@ impl S3Handler {
 
                 config_loader.credentials_provider(assumed_credentials_provider)
             }
-            (None, None) => config_loader,
+            (None, None) => aws_config::from_env(),
         }
         .region(region)
         .load()
