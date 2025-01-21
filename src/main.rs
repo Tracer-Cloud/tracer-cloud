@@ -24,6 +24,7 @@ use daemonize::Daemonize;
 use std::borrow::BorrowMut;
 use syslog::run_syslog_lines_read_thread;
 
+use crate::exporters::{FsExportHandler, S3ExportHandler};
 use std::fs::File;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
@@ -73,7 +74,15 @@ pub fn main() -> Result<()> {
 #[tokio::main]
 pub async fn run(workflow_directory_path: String) -> Result<()> {
     let raw_config = ConfigManager::load_config();
-    let client = TracerClient::new(raw_config.clone(), workflow_directory_path)
+
+    // TODO: Might have to move this into config
+    let mut base_dir = homedir::get_my_home()?.expect("Failed to get home dir");
+    base_dir.push("exports");
+
+    let fs_handler = FsExportHandler::new(base_dir, None);
+    //TODO: move entries to Config
+    let s3_handler = S3ExportHandler::new(fs_handler, Some("me"), None, "us-east-2").await;
+    let client = TracerClient::new(raw_config.clone(), workflow_directory_path, s3_handler)
         .await
         .context("Failed to create TracerClient")?;
     let tracer_client = Arc::new(Mutex::new(client));
@@ -153,6 +162,7 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
 mod tests {
     use super::*;
     use crate::config_manager::ConfigManager;
+    use aws_config::BehaviorVersion;
     use config_manager::Config;
 
     fn load_test_config() -> Config {
@@ -163,9 +173,32 @@ mod tests {
     async fn test_monitor_processes_with_tracer_client() {
         let config = load_test_config();
         let pwd = std::env::current_dir().unwrap();
-        let mut tracer_client = TracerClient::new(config, pwd.to_str().unwrap().to_string())
-            .await
-            .unwrap();
+
+        let region = "us-east-2";
+        crate::cloud_providers::aws::setup_env_vars("us-east-2");
+
+        // TODO: Might have to move this into config
+        let mut base_dir = homedir::get_my_home()
+            .unwrap()
+            .expect("Failed to get home dir");
+        base_dir.push("exports");
+
+        let fs_handler = FsExportHandler::new(base_dir, None);
+
+        let endpoint_url = std::env::var("S3_ENDPOINT_URL").unwrap();
+
+        let aws_config = aws_config::defaults(BehaviorVersion::latest())
+            .region(region)
+            .endpoint_url(endpoint_url.clone())
+            .load()
+            .await;
+
+        let s3_handler = S3ExportHandler::new_with_config(fs_handler, aws_config).await;
+
+        let mut tracer_client =
+            TracerClient::new(config, pwd.to_str().unwrap().to_string(), s3_handler)
+                .await
+                .unwrap();
         let result = monitor_processes_with_tracer_client(&mut tracer_client).await;
         assert!(result.is_ok());
     }

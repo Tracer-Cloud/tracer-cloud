@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use aws_config::SdkConfig;
+
 use crate::{cloud_providers::aws::S3Client, types::parquet::FlattenedTracerEvent};
 
 use super::{FsExportHandler, ParquetExport};
@@ -20,6 +22,18 @@ impl S3ExportHandler {
         region: &'static str,
     ) -> Self {
         let s3_client = S3Client::new(profile, role_arn, region).await;
+        let export_bucket_name = String::from("tracer-client-events");
+
+        Self {
+            fs_handler,
+            s3_client,
+            export_bucket_name,
+        }
+    }
+
+    pub async fn new_with_config(fs_handler: FsExportHandler, config: SdkConfig) -> Self {
+        let region = config.region().expect("Failed to get region").to_string();
+        let s3_client = S3Client::new_with_config(config, &region).await;
         let export_bucket_name = String::from("tracer-client-events");
 
         Self {

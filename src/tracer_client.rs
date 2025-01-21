@@ -1,7 +1,7 @@
 // src/tracer_client.rs
 use crate::event_recorder::{EventRecorder, EventType};
 use crate::events::{send_end_run_event, send_start_run_event};
-use crate::exporters::{FsExportHandler, ParquetExport, S3ExportHandler};
+use crate::exporters::{ParquetExport, S3ExportHandler};
 use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
@@ -58,20 +58,17 @@ pub struct TracerClient {
 }
 
 impl TracerClient {
-    pub async fn new(config: Config, workflow_directory: String) -> Result<TracerClient> {
+    pub async fn new(
+        config: Config,
+        workflow_directory: String,
+        exporter: S3ExportHandler,
+    ) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
         println!("Initializing TracerClient with API Key: {}", config.api_key);
         println!("Service URL: {}", service_url);
 
         let file_watcher = FileWatcher::new();
-
-        // TODO: Might have to move this
-        let mut base_dir = homedir::get_my_home()?.expect("Failed to get home dir");
-        base_dir.push("exports");
-
-        let fs_handler = FsExportHandler::new(base_dir, None);
-        let s3_handler = S3ExportHandler::new(fs_handler, Some("me"), None, "us-east-2").await;
 
         file_watcher.prepare_cache_directory(FILE_CACHE_DIR)?;
 
@@ -102,7 +99,7 @@ impl TracerClient {
             stderr_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
-            exporter: s3_handler,
+            exporter,
         })
     }
 

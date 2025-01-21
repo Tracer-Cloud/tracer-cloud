@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use aws_config::BehaviorVersion;
+use aws_config::{BehaviorVersion, SdkConfig};
 use aws_sdk_s3::{
     config::ProvideCredentials,
     types::{BucketLocationConstraint, CreateBucketConfiguration},
@@ -39,6 +39,19 @@ impl S3Client {
         .load()
         .await;
 
+        let credentials_provider = config.credentials_provider().unwrap();
+        let _ = credentials_provider
+            .provide_credentials()
+            .await
+            .expect("No Credentials Loaded");
+
+        Self {
+            client: aws_sdk_s3::Client::new(&config),
+            region: region.to_string(),
+        }
+    }
+
+    pub async fn new_with_config(config: SdkConfig, region: &str) -> Self {
         let credentials_provider = config.credentials_provider().unwrap();
         let _ = credentials_provider
             .provide_credentials()
@@ -210,12 +223,11 @@ impl S3Client {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 
     use super::*;
     use std::env;
-
-    fn setup_env_vars(region: &str) {
+    pub fn setup_env_vars(region: &str) {
         // Set S3 configuration
         env::set_var("S3_ENDPOINT_URL", "http://0.0.0.0:4566/");
         env::set_var("AWS_ACCESS_KEY_ID", "000000");
