@@ -7,7 +7,7 @@ use aws_sdk_s3::{
 };
 
 pub struct S3Client {
-    client: aws_sdk_s3::Client,
+    pub client: aws_sdk_s3::Client,
     region: String,
 }
 

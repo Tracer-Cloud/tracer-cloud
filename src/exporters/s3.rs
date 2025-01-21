@@ -1,6 +1,10 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use aws_config::SdkConfig;
+use aws_sdk_s3::types::{BucketLocationConstraint, CreateBucketConfiguration};
 
 use crate::{cloud_providers::aws::S3Client, types::parquet::FlattenedTracerEvent};
 
@@ -24,6 +28,15 @@ impl S3ExportHandler {
         let s3_client = S3Client::new(profile, role_arn, region).await;
         let export_bucket_name = String::from("tracer-client-events");
 
+        let bucket_config = CreateBucketConfiguration::builder()
+            .location_constraint(
+                BucketLocationConstraint::from_str(region)
+                    .expect("Failed to create BucketLocationConstraint"),
+            )
+            .build();
+
+        Self::initialize_bucket(&s3_client, &export_bucket_name, bucket_config).await;
+
         Self {
             fs_handler,
             s3_client,
@@ -36,11 +49,28 @@ impl S3ExportHandler {
         let s3_client = S3Client::new_with_config(config, &region).await;
         let export_bucket_name = String::from("tracer-client-events");
 
+        let bucket_config = CreateBucketConfiguration::builder()
+            .location_constraint(BucketLocationConstraint::from(region.as_str()))
+            .build();
+
+        Self::initialize_bucket(&s3_client, &export_bucket_name, bucket_config).await;
+
         Self {
             fs_handler,
             s3_client,
             export_bucket_name,
         }
+    }
+
+    async fn initialize_bucket(
+        client: &S3Client,
+        bucket_name: &str,
+        bucket_config: CreateBucketConfiguration,
+    ) {
+        client
+            .create_bucket(bucket_name, Some(bucket_config))
+            .await
+            .expect("Failed to initialize_bucket");
     }
 
     fn extract_key(&self, file_path: &Path) -> Option<String> {
@@ -83,5 +113,114 @@ impl ParquetExport for S3ExportHandler {
             }
             Err(err) => Err(err),
         }
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+
+    use super::*;
+    use crate::cloud_providers::aws::setup_env_vars;
+    use crate::event_recorder::{EventRecorder, EventType};
+    use crate::metrics::SystemMetricsCollector;
+    use aws_config::BehaviorVersion;
+    use sysinfo::System;
+    use tempdir::TempDir;
+
+    #[tokio::test]
+    async fn test_s3_exporter_initializes_export_bucket_on_start() {
+        let region = "us-east-2";
+        setup_env_vars(region);
+        let tracer_bucket_name = "tracer-client-events".to_string();
+        let temp_dir = TempDir::new(&tracer_bucket_name).expect("failed to create tempdir");
+        let base_dir = temp_dir.path().join("./exports");
+
+        let endpoint_url = std::env::var("S3_ENDPOINT_URL").unwrap();
+        let config = aws_config::defaults(BehaviorVersion::latest())
+            .region(region)
+            .endpoint_url(endpoint_url.clone())
+            .load()
+            .await;
+
+        let s3_config = aws_sdk_s3::config::Builder::from(&config)
+            .force_path_style(true)
+            .build();
+        let s3_client = S3Client::new_with_s3_config(s3_config.clone(), &region).await;
+
+        let fs_handler = FsExportHandler::new(base_dir, None);
+        let _exporter = S3ExportHandler::new_with_config(fs_handler, config).await;
+        let buckets = s3_client
+            .list_buckets()
+            .await
+            .expect("Failed to list buckets");
+
+        assert_eq!(buckets.len(), 1);
+        assert!(buckets.contains(&tracer_bucket_name));
+    }
+
+    #[tokio::test]
+    async fn test_s3_exporter_output_to_parquet_succeeds() {
+        let region = "us-east-2";
+        setup_env_vars(region);
+        let mut system = System::new();
+        let mut logs = EventRecorder::default();
+        let metrics_collector = SystemMetricsCollector::new();
+        let temp_dir = TempDir::new("tracer-client-events").expect("failed to create tempdir");
+
+        let base_dir = temp_dir.path().join("./exports");
+
+        let endpoint_url = std::env::var("S3_ENDPOINT_URL").unwrap();
+        let config = aws_config::defaults(BehaviorVersion::latest())
+            .region(region)
+            .endpoint_url(endpoint_url.clone())
+            .load()
+            .await;
+
+        let s3_config = aws_sdk_s3::config::Builder::from(&config)
+            .force_path_style(true)
+            .build();
+        let s3_client = S3Client::new_with_s3_config(s3_config.clone(), &region).await;
+        let tracer_bucket_name = "tracer-client-events".to_string();
+
+        let fs_handler = FsExportHandler::new(base_dir, None);
+        let exporter = S3ExportHandler::new_with_config(fs_handler, config).await;
+
+        metrics_collector
+            .collect_metrics(&mut system, &mut logs)
+            .expect("Failed to collect metrics");
+
+        // Record a test event
+        logs.record_event(
+            EventType::TestEvent,
+            "[submit_batched_data.rs] Test event".to_string(),
+            None,
+            None,
+        );
+        let data = logs.get_events();
+        let file_path = exporter
+            .output(data, "annoymous")
+            .await
+            .expect("failed to export output");
+        logs.clear();
+
+        let key = exporter.extract_key(&file_path.as_path()).unwrap();
+
+        println!("Key: {key}");
+
+        // list objects
+        let objects = s3_client
+            .client
+            .list_objects()
+            .bucket(&tracer_bucket_name)
+            .max_keys(1)
+            .send()
+            .await
+            .expect("Failed to list objects")
+            .contents
+            .unwrap();
+
+        let object = objects.first();
+
+        assert_eq!(object.unwrap().key, Some(key));
     }
 }
