@@ -1,1 +1,1 @@
-mod aws;
+pub mod aws;

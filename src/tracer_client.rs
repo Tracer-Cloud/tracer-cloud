@@ -1,7 +1,7 @@
 // src/tracer_client.rs
 use crate::event_recorder::{EventRecorder, EventType};
 use crate::events::{send_end_run_event, send_start_run_event};
-use crate::exporter::ExportManager;
+use crate::exporters::{FsExportHandler, ParquetExport, S3ExportHandler};
 use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
@@ -54,7 +54,7 @@ pub struct TracerClient {
     syslog_lines_buffer: LinesBufferArc,
     stdout_lines_buffer: LinesBufferArc,
     stderr_lines_buffer: LinesBufferArc,
-    pub exporter: ExportManager,
+    pub exporter: S3ExportHandler,
 }
 
 impl TracerClient {
@@ -70,7 +70,8 @@ impl TracerClient {
         let mut base_dir = homedir::get_my_home()?.expect("Failed to get home dir");
         base_dir.push("exports");
 
-        let exporter = ExportManager::new(base_dir, None);
+        let fs_handler = FsExportHandler::new(base_dir, None);
+        let s3_handler = S3ExportHandler::new(fs_handler, Some("me"), None, "us-east-2").await;
 
         file_watcher.prepare_cache_directory(FILE_CACHE_DIR)?;
 
@@ -101,7 +102,7 @@ impl TracerClient {
             stderr_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
-            exporter,
+            exporter: s3_handler,
         })
     }
 

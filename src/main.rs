@@ -5,7 +5,7 @@ mod daemon_communication;
 mod debug_log;
 mod event_recorder;
 mod events;
-mod exporter;
+mod exporters;
 mod file_watcher;
 mod http_client;
 mod metrics;
