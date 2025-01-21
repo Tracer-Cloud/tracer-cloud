@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::{cloud_providers::aws::S3Handler, types::parquet::FlattenedTracerEvent};
+use crate::{cloud_providers::aws::S3Client, types::parquet::FlattenedTracerEvent};
 
 use super::{FsExportHandler, ParquetExport};
 
@@ -8,7 +8,7 @@ use super::{FsExportHandler, ParquetExport};
 /// first before it is exported to s3, after that, cleanup can take place
 pub struct S3ExportHandler {
     fs_handler: FsExportHandler,
-    s3_client: S3Handler,
+    s3_client: S3Client,
     export_bucket_name: String,
 }
 
@@ -19,7 +19,7 @@ impl S3ExportHandler {
         role_arn: Option<&str>,
         region: &'static str,
     ) -> Self {
-        let s3_client = S3Handler::new(profile, role_arn, region).await;
+        let s3_client = S3Client::new(profile, role_arn, region).await;
         let export_bucket_name = String::from("tracer-client-events");
 
         Self {
