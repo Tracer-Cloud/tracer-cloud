@@ -75,13 +75,16 @@ pub fn main() -> Result<()> {
 pub async fn run(workflow_directory_path: String) -> Result<()> {
     let raw_config = ConfigManager::load_config();
 
-    // TODO: Might have to move this into config
-    let mut base_dir = homedir::get_my_home()?.expect("Failed to get home dir");
-    base_dir.push("exports");
+    let export_dir = ConfigManager::get_tracer_parquet_export_dir()?;
 
-    let fs_handler = FsExportHandler::new(base_dir, None);
-    //TODO: move entries to Config
-    let s3_handler = S3ExportHandler::new(fs_handler, Some("me"), None, "us-east-2").await;
+    let fs_handler = FsExportHandler::new(export_dir, None);
+    let s3_handler = S3ExportHandler::new(
+        fs_handler,
+        raw_config.aws_init_type.clone(),
+        raw_config.aws_region.as_str(),
+    )
+    .await;
+
     let client = TracerClient::new(raw_config.clone(), workflow_directory_path, s3_handler)
         .await
         .context("Failed to create TracerClient")?;

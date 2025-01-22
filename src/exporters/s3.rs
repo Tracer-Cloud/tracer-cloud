@@ -6,7 +6,10 @@ use std::{
 use aws_config::SdkConfig;
 use aws_sdk_s3::types::{BucketLocationConstraint, CreateBucketConfiguration};
 
-use crate::{cloud_providers::aws::S3Client, types::parquet::FlattenedTracerEvent};
+use crate::{
+    cloud_providers::aws::S3Client,
+    types::{config::AwsConfig, parquet::FlattenedTracerEvent},
+};
 
 use super::{FsExportHandler, ParquetExport};
 
@@ -21,11 +24,10 @@ pub struct S3ExportHandler {
 impl S3ExportHandler {
     pub async fn new(
         fs_handler: FsExportHandler,
-        profile: Option<&str>,
-        role_arn: Option<&str>,
+        initializer: AwsConfig,
         region: &'static str,
     ) -> Self {
-        let s3_client = S3Client::new(profile, role_arn, region).await;
+        let s3_client = S3Client::new(initializer, region).await;
         let export_bucket_name = String::from("tracer-client-events");
 
         let bucket_config = CreateBucketConfiguration::builder()

@@ -6,6 +6,8 @@ use aws_sdk_s3::{
     types::{BucketLocationConstraint, CreateBucketConfiguration},
 };
 
+use crate::types::config::AwsConfig;
+
 pub struct S3Client {
     pub client: aws_sdk_s3::Client,
     region: String,
@@ -13,14 +15,11 @@ pub struct S3Client {
 
 #[allow(dead_code)]
 impl S3Client {
-    pub async fn new(profile: Option<&str>, role_arn: Option<&str>, region: &'static str) -> Self {
+    pub async fn new(initialization_conf: AwsConfig, region: &'static str) -> Self {
         let config_loader = aws_config::defaults(BehaviorVersion::latest());
-        let config = match (profile, role_arn) {
-            (Some(_), Some(_)) => {
-                panic!("Cannot set both profile and role_arn")
-            }
-            (Some(profile), None) => config_loader.profile_name(profile),
-            (None, Some(arn)) => {
+        let config = match initialization_conf {
+            AwsConfig::Profile(profile) => config_loader.profile_name(profile),
+            AwsConfig::RoleArn(arn) => {
                 let assumed_role_provider = aws_config::sts::AssumeRoleProvider::builder(arn)
                     .session_name("tracer-client-session")
                     .build()
@@ -33,13 +32,15 @@ impl S3Client {
 
                 config_loader.credentials_provider(assumed_credentials_provider)
             }
-            (None, None) => aws_config::from_env(),
+            AwsConfig::Env => aws_config::from_env(),
         }
         .region(region)
         .load()
         .await;
 
-        let credentials_provider = config.credentials_provider().unwrap();
+        let credentials_provider = config
+            .credentials_provider()
+            .expect("Failed to get credentials_provider");
         let _ = credentials_provider
             .provide_credentials()
             .await

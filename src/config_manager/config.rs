@@ -10,6 +10,7 @@ use crate::{
         target_process::target_matching::TargetMatch,
     },
     events::send_daemon_start_event,
+    types::{aws_region::AwsRegion, config::AwsConfig},
 };
 
 use crate::config_manager::target_process::Target;
@@ -35,6 +36,9 @@ pub struct ConfigFile {
     pub file_size_not_changing_period_ms: Option<u64>,
     pub process_metrics_send_interval_ms: Option<u64>,
     pub targets: Option<Vec<Target>>,
+    pub aws_region: Option<String>,
+    pub aws_role_arn: Option<String>,
+    pub aws_profile: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -47,6 +51,8 @@ pub struct Config {
     pub service_url: String,
     pub new_run_pause_ms: u64,
     pub targets: Vec<Target>,
+    pub aws_init_type: AwsConfig,
+    pub aws_region: AwsRegion,
 }
 
 pub struct ConfigManager;
@@ -67,6 +73,14 @@ impl ConfigManager {
     fn load_config_from_file(path: &PathBuf) -> Result<Config> {
         let config = std::fs::read_to_string(path)?;
         let config: ConfigFile = toml::from_str(&config)?;
+
+        let aws_init_type = match (config.aws_role_arn, config.aws_profile) {
+            (Some(role), None) => AwsConfig::RoleArn(role),
+            (None, Some(profile)) => AwsConfig::Profile(profile),
+            (Some(role), Some(_profie)) => AwsConfig::RoleArn(role),
+            (None, None) => AwsConfig::Env,
+        };
+
         Ok(Config {
             api_key: config.api_key,
             process_polling_interval_ms: config
@@ -88,6 +102,8 @@ impl ConfigManager {
             targets: config
                 .targets
                 .unwrap_or_else(|| targets_list::TARGETS.to_vec()),
+            aws_init_type,
+            aws_region: AwsRegion::UsEast2,
         })
     }
 
@@ -101,6 +117,8 @@ impl ConfigManager {
             service_url: DEFAULT_SERVICE_URL.to_string(),
             targets: targets_list::TARGETS.to_vec(),
             process_metrics_send_interval_ms: PROCESS_METRICS_SEND_INTERVAL_MS,
+            aws_init_type: AwsConfig::Profile("me".to_string()),
+            aws_region: "us-east-2".into(),
         }
     }
 
@@ -157,6 +175,16 @@ impl ConfigManager {
 
     pub fn save_config(config: &Config) -> Result<()> {
         let config_file_location = ConfigManager::get_config_path().unwrap();
+        let aws_profile = if let AwsConfig::Profile(profile) = &config.aws_init_type {
+            Some(profile.clone())
+        } else {
+            None
+        };
+        let aws_role_arn = if let AwsConfig::RoleArn(role) = &config.aws_init_type {
+            Some(role.clone())
+        } else {
+            None
+        };
         let config_out = ConfigFile {
             api_key: config.api_key.clone(),
             service_url: Some(config.service_url.clone()),
@@ -166,6 +194,9 @@ impl ConfigManager {
             batch_submission_interval_ms: Some(config.batch_submission_interval_ms),
             targets: Some(config.targets.clone()),
             process_metrics_send_interval_ms: Some(config.process_metrics_send_interval_ms),
+            aws_role_arn,
+            aws_profile,
+            aws_region: Some(config.aws_region.as_str().to_string()),
         };
         let config = toml::to_string(&config_out)?;
         std::fs::write(config_file_location, config)?;
@@ -212,6 +243,12 @@ impl ConfigManager {
     pub fn test_service_config_sync() -> Result<()> {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         runtime.block_on(ConfigManager::test_service_config())
+    }
+
+    pub fn get_tracer_parquet_export_dir() -> Result<PathBuf> {
+        let mut export_dir = homedir::get_my_home()?.expect("Failed to get home dir");
+        export_dir.push("exports");
+        Ok(export_dir)
     }
 }
 
