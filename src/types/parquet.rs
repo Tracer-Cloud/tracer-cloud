@@ -1,4 +1,5 @@
 use super::event::attributes::system_metrics::SystemProperties;
+use super::event::OtelJsonEvent;
 use super::ParquetSchema;
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use chrono::serde::ts_seconds;
@@ -45,7 +46,8 @@ pub struct FlattenedTracerEvent {
 
 impl From<Event> for FlattenedTracerEvent {
     fn from(value: Event) -> Self {
-        let json_event = serde_json::to_string(&value).expect("Failed to create event str");
+        let otel_event: OtelJsonEvent = value.clone().into();
+        let json_event = serde_json::to_string(&otel_event).expect("Failed to create event str");
         let mut tracer_event = Self {
             timestamp: value.timestamp,
             message: value.message,
