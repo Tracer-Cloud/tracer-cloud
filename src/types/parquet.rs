@@ -39,10 +39,13 @@ pub struct FlattenedTracerEvent {
     pub system_metric_attributes: Option<SystemMetric>,
     pub completed_process_attributes: Option<CompletedProcess>,
     pub syslog_attributes: Option<SyslogProperties>,
+
+    pub json_event: String,
 }
 
 impl From<Event> for FlattenedTracerEvent {
     fn from(value: Event) -> Self {
+        let json_event = serde_json::to_string(&value).expect("Failed to create event str");
         let mut tracer_event = Self {
             timestamp: value.timestamp,
             message: value.message,
@@ -51,6 +54,7 @@ impl From<Event> for FlattenedTracerEvent {
             process_status: value.process_status,
             run_name: value.run_name,
             run_id: value.run_id,
+            json_event,
             ..Default::default()
         };
 
@@ -105,6 +109,7 @@ impl ParquetSchema for FlattenedTracerEvent {
                 true,
             ),
             Field::new("syslog_attributes", DataType::Struct(syslog_dt), true),
+            Field::new("json_event", DataType::Utf8, false),
         ];
         Schema::new(fields)
     }
