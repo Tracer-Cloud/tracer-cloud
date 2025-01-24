@@ -1,13 +1,17 @@
 use reqwest::Client;
 use serde_json::json;
 use serde_json::Value;
+use tracer::config_manager::ConfigManager;
+use tracer::exporters::FsExportHandler;
+use tracer::exporters::S3ExportHandler;
+use tracer::monitor_processes_with_tracer_client;
+use tracer::tracer_client::TracerClient;
 use tracer::tracing::init_tracing;
 
+use tracer::types::config::AwsConfig;
 use tracer::types::event::Event;
 
 use sysinfo::System;
-use tracer::event_recorder::EventRecorder;
-use tracer::metrics::SystemMetricsCollector;
 
 #[tokio::main]
 async fn main() {
@@ -15,21 +19,45 @@ async fn main() {
 
     tokio::spawn(loki_task);
 
-    let collector = SystemMetricsCollector::new();
     let run_name = format!("local_otel_compliance");
-    let mut recorder = EventRecorder::new(Some(run_name.clone()), Some(format!("test_id")));
     let mut system = System::new();
+    let raw_config = ConfigManager::load_config();
+
+    let export_dir =
+        ConfigManager::get_tracer_parquet_export_dir().expect("Failed to get export dir");
+
+    let fs_handler = FsExportHandler::new(export_dir, None);
+    let s3_handler = S3ExportHandler::new(
+        fs_handler,
+        //AwsConfig::Profile("me".to_string()),
+        raw_config.aws_init_type.clone(),
+        raw_config.aws_region.as_str(),
+    )
+    .await;
+
+    let current_working_directory =
+        std::env::current_dir().expect("Failed to get current working dir");
+
+    let mut client = TracerClient::new(
+        raw_config.clone(),
+        current_working_directory.to_str().unwrap().to_string(),
+        s3_handler,
+    )
+    .await
+    .expect("failed to create client");
 
     let mut count = 5;
 
     while count > 0 {
-        let _ = collector.collect_metrics(&mut system, &mut recorder);
+        monitor_processes_with_tracer_client(&mut client)
+            .await
+            .expect("Failed to monitor_processes_with_tracer_client");
         count -= 1;
         std::thread::sleep(std::time::Duration::from_millis(100));
-        system.refresh_all();
+        // system.refresh_all();
     }
 
-    let data = recorder.get_events();
+    let data = client.logs.get_events();
 
     for event in data.iter() {
         push_to_loki(event).await.expect("Failed to push to loki")
