@@ -14,6 +14,7 @@ use super::event::{
     },
     Event,
 };
+
 ///
 /// This struct would serve as an intermediary between the events types tracer exports
 ///

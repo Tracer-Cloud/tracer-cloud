@@ -1,14 +1,53 @@
 
 services:
-  localstack:
-    restart: "no"
-    image: localstack/localstack:4.0.3
+  #localstack:
+  #  restart: "no"
+  #  image: localstack/localstack:4.0.3
+  #  ports:
+  #    - "4566:4566"
+  #  environment:
+  #    - SERVICES=s3,
+  #    - AWS_REGION=us-east-2
+  #    - AWS_ACCESS_KEY_ID=000000
+  #    - AWS_SECRET_ACCESS_KEY=000000000000
+  #    - DEBUG=1
+
+
+
+  loki:
+    image: grafana/loki:3.3.0
     ports:
-      - "4566:4566"
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    profiles: [observe]
+
+  grafana:
     environment:
-      - SERVICES=s3,
-      - AWS_REGION=us-east-2
-      - AWS_ACCESS_KEY_ID=000000
-      - AWS_SECRET_ACCESS_KEY=000000000000
-      - DEBUG=1
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_FEATURE_TOGGLES_ENABLE=alertingSimplifiedRouting,alertingQueryAndExpressionsStepMode
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+        - name: Loki
+          type: loki
+          access: proxy 
+          orgId: 1
+          url: http://loki:3100
+          basicAuth: false
+          isDefault: true
+          version: 1
+          editable: false
+        EOF
+        /run.sh
+    image: grafana/grafana:11.3.1
+    ports:
+      - "3000:3000"
+    profiles: [observe]
 

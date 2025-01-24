@@ -14,6 +14,7 @@ pub mod stdout;
 pub mod submit_batched_data;
 pub mod syslog;
 pub mod tracer_client;
+pub mod tracing;
 pub mod types;
 pub mod upload;
 
