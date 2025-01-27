@@ -7,7 +7,7 @@ on:
 
 jobs:
   create-release:
-    runs-on: ubuntu-latest
+    runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
     # runs-on: 16gb-runner
     permissions: write-all
     steps:
@@ -46,7 +46,7 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-latest
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
+            os: linux-arm64-16c-64r-600ssd-ubuntu24
           - target: x86_64-apple-darwin
             os: macos-latest
           - target: universal-apple-darwin

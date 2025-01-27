@@ -13,7 +13,7 @@ env:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
     # runs-on: 16gb-runner
 
     services:
@@ -65,7 +65,7 @@ jobs:
 
   # upload-test-results:
   #     if: always()
-  #     runs-on: ubuntu-latest
+  #     runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
   #     needs: ["build-and-test"]
 
   #     steps:

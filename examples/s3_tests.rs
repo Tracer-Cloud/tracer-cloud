@@ -10,7 +10,7 @@ use tracer::metrics::SystemMetricsCollector;
 #[tokio::main]
 async fn main() {
     let collector = SystemMetricsCollector::new();
-    let run_name = "test_run_two".to_string();
+    let run_name = "test_run_two_22".to_string();
     let mut recorder = EventRecorder::new(Some(run_name.clone()), Some("test_id".to_string()));
     let mut system = System::new();
 
