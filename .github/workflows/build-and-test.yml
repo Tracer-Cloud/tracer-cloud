@@ -13,9 +13,11 @@ env:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on:
-      group: org-default-group
-      labels: org-16c-64r-arm64-ubuntu22
+    runs-on: org-16c-64r-arm64-ubuntu22
+
+    # runs-on:
+    #   group: org-default-group
+    #   labels: org-16c-64r-arm64-ubuntu22
 
     services:
       localstack:

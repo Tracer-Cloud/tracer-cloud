@@ -7,9 +7,11 @@ on:
 
 jobs:
   create-release:
-    runs-on:
-      group: org-default-group
-      labels: org-16c-64r-arm64-ubuntu22
+    runs-on: org-16c-64r-arm64-ubuntu22
+    # runs-on:
+    #   group: org-default-group
+    #   labels: org-16c-64r-arm64-ubuntu22
+
 
     permissions: write-all
     steps:
