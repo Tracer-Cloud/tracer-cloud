@@ -1,10 +1,9 @@
+use aws_config::SdkConfig;
+use aws_sdk_s3::types::{BucketLocationConstraint, CreateBucketConfiguration};
 use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-
-use aws_config::SdkConfig;
-use aws_sdk_s3::types::{BucketLocationConstraint, CreateBucketConfiguration};
 
 use crate::{
     cloud_providers::aws::S3Client,
@@ -37,6 +36,8 @@ impl S3ExportHandler {
             )
             .build();
 
+        // Add a small delay and retry for LocalStack's eventual consistency
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         Self::initialize_bucket(&s3_client, &export_bucket_name, bucket_config).await;
 
         Self {
@@ -69,10 +70,36 @@ impl S3ExportHandler {
         bucket_name: &str,
         bucket_config: CreateBucketConfiguration,
     ) {
-        client
-            .create_bucket(bucket_name, Some(bucket_config))
-            .await
-            .expect("Failed to initialize_bucket");
+        // First try to create the bucket
+        match client.create_bucket(bucket_name, Some(bucket_config)).await {
+            Ok(_) => log::info!("Successfully created bucket {}", bucket_name),
+            Err(e) => {
+                if e.to_string().contains("BucketAlreadyOwnedByYou") {
+                    log::info!("Bucket {} already exists", bucket_name);
+                } else {
+                    log::error!("Error creating bucket: {}", e);
+                }
+            }
+        }
+
+        // Wait for bucket to be available (LocalStack sometimes needs this)
+        for _ in 0..3 {
+            match client.client.head_bucket().bucket(bucket_name).send().await {
+                Ok(_) => {
+                    log::info!("Bucket {} is ready", bucket_name);
+                    return;
+                }
+                Err(_) => {
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    continue;
+                }
+            }
+        }
+
+        panic!(
+            "Failed to verify bucket {} exists after multiple attempts",
+            bucket_name
+        );
     }
 
     fn extract_key(&self, file_path: &Path) -> Option<String> {
@@ -123,6 +150,8 @@ pub mod tests {
 
     use super::*;
     use crate::cloud_providers::aws::setup_env_vars;
+    use serial_test::serial;
+
     use crate::event_recorder::{EventRecorder, EventType};
     use crate::metrics::SystemMetricsCollector;
     use aws_config::BehaviorVersion;
@@ -130,9 +159,11 @@ pub mod tests {
     use tempdir::TempDir;
 
     #[tokio::test]
+    #[serial]
     async fn test_s3_exporter_initializes_export_bucket_on_start() {
         let region = "us-east-2";
         setup_env_vars(region);
+
         let tracer_bucket_name = "tracer-client-events".to_string();
         let temp_dir = TempDir::new(&tracer_bucket_name).expect("failed to create tempdir");
         let base_dir = temp_dir.path().join("./exports");
@@ -147,7 +178,7 @@ pub mod tests {
         let s3_config = aws_sdk_s3::config::Builder::from(&config)
             .force_path_style(true)
             .build();
-        let s3_client = S3Client::new_with_s3_config(s3_config.clone(), &region).await;
+        let s3_client = S3Client::new_with_s3_config(s3_config.clone(), region).await;
 
         let fs_handler = FsExportHandler::new(base_dir, None);
         let _exporter = S3ExportHandler::new_with_config(fs_handler, config).await;
@@ -161,7 +192,8 @@ pub mod tests {
     }
 
     #[tokio::test]
-    async fn test_s3_exporter_output_to_parquet_succeeds() {
+    #[serial]
+    async fn test_s3_exporter_output_to_parquet_succeeds() -> Result<(), String> {
         let region = "us-east-2";
         setup_env_vars(region);
         let mut system = System::new();
@@ -181,7 +213,7 @@ pub mod tests {
         let s3_config = aws_sdk_s3::config::Builder::from(&config)
             .force_path_style(true)
             .build();
-        let s3_client = S3Client::new_with_s3_config(s3_config.clone(), &region).await;
+        let s3_client = S3Client::new_with_s3_config(s3_config.clone(), region).await;
         let tracer_bucket_name = "tracer-client-events".to_string();
 
         let fs_handler = FsExportHandler::new(base_dir, None);
@@ -205,7 +237,7 @@ pub mod tests {
             .expect("failed to export output");
         logs.clear();
 
-        let key = exporter.extract_key(&file_path.as_path()).unwrap();
+        let key = exporter.extract_key(file_path.as_path()).unwrap();
 
         println!("Key: {key}");
 
@@ -224,5 +256,7 @@ pub mod tests {
         let object = objects.first();
 
         assert_eq!(object.unwrap().key, Some(key));
+
+        Ok(())
     }
 }

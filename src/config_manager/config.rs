@@ -117,7 +117,18 @@ impl ConfigManager {
             service_url: DEFAULT_SERVICE_URL.to_string(),
             targets: targets_list::TARGETS.to_vec(),
             process_metrics_send_interval_ms: PROCESS_METRICS_SEND_INTERVAL_MS,
-            aws_init_type: AwsConfig::Profile("me".to_string()),
+            // aws_init_type: AwsConfig::Profile("me".to_string()),
+            aws_init_type: AwsConfig::Profile(
+                if std::fs::read_to_string(dirs::home_dir().unwrap().join(".aws/credentials"))
+                    .unwrap_or_default()
+                    .contains("[me]")
+                {
+                    "me"
+                } else {
+                    "default"
+                }
+                .to_string(),
+            ),
             aws_region: "us-east-2".into(),
         }
     }

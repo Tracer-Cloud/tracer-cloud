@@ -1,18 +1,17 @@
 
 services:
-  #localstack:
-  #  restart: "no"
-  #  image: localstack/localstack:4.0.3
-  #  ports:
-  #    - "4566:4566"
-  #  environment:
-  #    - SERVICES=s3,
-  #    - AWS_REGION=us-east-2
-  #    - AWS_ACCESS_KEY_ID=000000
-  #    - AWS_SECRET_ACCESS_KEY=000000000000
-  #    - DEBUG=1
-
-
+  # Temporary comment: uncommenting because we need both Grafana and Local Stack 
+  localstack:
+   restart: "no"
+   image: localstack/localstack:4.0.3
+   ports:
+     - "4566:4566"
+   environment:
+     - SERVICES=s3,
+     - AWS_REGION=us-east-2
+     - AWS_ACCESS_KEY_ID=000000
+     - AWS_SECRET_ACCESS_KEY=000000000000
+     - DEBUG=1
 
   loki:
     image: grafana/loki:3.3.0

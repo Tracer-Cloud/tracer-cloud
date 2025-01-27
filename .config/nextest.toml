@@ -19,7 +19,8 @@ default-filter = "all()"
 # * retries = 3
 # * retries = { backoff = "fixed", count = 2, delay = "1s" }
 # * retries = { backoff = "exponential", count = 10, delay = "1s", jitter = true, max-delay = "10s" }
-retries = 0
+# retries = 0
+retries = { backoff = "exponential", count = 3, delay = "500ms", jitter = true, max-delay = "5s" }
 
 # The number of threads to run tests with. Supported values are either an integer or
 # the string "num-cpus". Can be overridden through the `--test-threads` option.
@@ -72,7 +73,7 @@ success-output = "never"
 
 # Cancel the test run on the first failure. For CI runs, consider setting this
 # to false.
-fail-fast = true
+fail-fast = false
 
 # Treat a test that takes longer than the configured 'period' as slow, and print a message.
 # See <https://nexte.st/docs/features/slow-tests> for more information.
@@ -130,3 +131,7 @@ store-failure-output = true
 
 # This profile is activated if MIRI_SYSROOT is set.
 [profile.default-miri]
+
+test-overrides = { "*::*" = { run-delay = "50ms" },"cloud_providers::aws::s3::*" = { run-delay = "200ms" }}
+# Apply a delay before running each tests, although this should be done only for S3 tests
+

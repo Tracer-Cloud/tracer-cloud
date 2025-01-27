@@ -36,7 +36,7 @@ all: format check test clippy  ## format, check, test, clippy.
 .EXPORT_ALL_VARIABLES: ; # send all vars to shell
 
 .PHONY: docs all # All targets are accessible for user
-	.DEFAULT: help # Running Make will run the help target
+	.DEFAULT: help # Running Make will run the help target 
 
 MAKEFLAGS += --no-print-directory # dont add message about entering and leaving the working directory
 

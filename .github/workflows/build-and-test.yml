@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - "main"
+      - "staging"
   pull_request:
     branches:
       - "**"
@@ -17,6 +18,7 @@ jobs:
     #   matrix:
     #     os: [ubuntu-latest]
     #   fail-fast: false
+    # runs-on: 16gb-runner
 
     services:
       localstack:

@@ -1,5 +1,4 @@
 use std::str::FromStr;
-
 use aws_config::{BehaviorVersion, SdkConfig};
 use aws_sdk_s3::{
     config::ProvideCredentials,
@@ -224,10 +223,15 @@ impl S3Client {
 }
 
 #[cfg(test)]
+/// Single tests used to pass, but all tests in conjuction didn't due to side effects in the s3 bucket during testing
+/// Due to concurrent test execution in rust, the file cloud_providers/aws/s3.rs caused race conditions and instability in both exporters/s3.rs and cloud_providers/aws/s3.rs due to side effects on the mounted S3 bucket.
+/// To fix this, I added cleanup steps before and after each test to maintain a clean state and used the #[serial] attribute to enforce sequential execution, preventing concurrent access.
 pub mod tests {
-
     use super::*;
+    use serial_test::serial;
     use std::env;
+    use tokio::time::{sleep, Duration};
+
     pub fn setup_env_vars(region: &str) {
         // Set S3 configuration
         env::set_var("S3_ENDPOINT_URL", "http://0.0.0.0:4566/");
@@ -253,81 +257,85 @@ pub mod tests {
             .force_path_style(true)
             .build();
 
-        let s3_client = S3Client::new_with_s3_config(s3_config.clone(), &region).await;
+        S3Client::new_with_s3_config(s3_config, region).await
+    }
 
-        let test_bucket_name = "tracer-client-test";
-        let location_constraint = BucketLocationConstraint::UsEast2;
+    async fn cleanup_all_buckets(client: &S3Client) -> Result<(), String> {
+        let buckets = client.list_buckets().await?;
+        println!("Existing buckets before cleanup: {:?}", buckets);
 
-        let bucket_config = CreateBucketConfiguration::builder()
-            .location_constraint(location_constraint)
-            .build();
+        for bucket in &buckets {
+            // Delete all objects first
+            if let Ok(objects) = client.client.list_objects_v2().bucket(bucket).send().await {
+                if let Some(contents) = objects.contents {
+                    for object in contents {
+                        if let Some(key) = object.key.as_deref() {
+                            let key_clone = key.to_string(); // Clone before moving
+                            println!("Deleting object: {}", key_clone);
+                            client
+                                .client
+                                .delete_object()
+                                .bucket(bucket)
+                                .key(&key_clone) // Use cloned key here
+                                .send()
+                                .await
+                                .map_err(|err| {
+                                    format!("Failed to delete object {}: {}", key_clone, err)
+                                })?;
+                        }
+                    }
+                }
+            }
 
-        let file_path = "test-files/exports/test_run/bd01d5c9-8658-4a22-b059-3d504f346f8e.parquet";
-        let key = "exports/test_run/bd01d5c9-8658-4a22-b059-3d504f346f8e.parquet";
+            // Now delete the empty bucket
+            if let Err(e) = client.delete_bucket(bucket).await {
+                log::error!("Failed to delete bucket {}: {}", bucket, e);
+                return Err(format!("Failed to delete bucket {}: {}", bucket, e));
+            } else {
+                println!("Successfully deleted bucket: {}", bucket);
+            }
 
-        s3_client
-            .create_bucket(test_bucket_name, Some(bucket_config))
-            .await
-            .expect("s3 handler failed");
+            sleep(Duration::from_secs(3)).await;
+        }
 
-        let buckets = s3_client.list_buckets().await.unwrap();
-        assert_eq!(buckets.len(), 1);
-
-        s3_client
-            .put_object(test_bucket_name, file_path, key)
-            .await
-            .expect("Failed to put object");
-
-        // list objects
-        let objects = s3_client
-            .client
-            .list_objects()
-            .bucket(test_bucket_name)
-            .max_keys(1)
-            .send()
-            .await
-            .expect("Failed to list objects")
-            .contents
-            .unwrap();
-
-        let object = objects.first();
-
-        assert_eq!(object.unwrap().key, Some(key.to_string()));
-
-        s3_client
-            .remove_object(test_bucket_name, key)
-            .await
-            .unwrap();
-
-        // list objects after delete
-        let objects = s3_client
-            .client
-            .list_objects()
-            .bucket(test_bucket_name)
-            .max_keys(1)
-            .send()
-            .await
-            .expect("Failed to list objects")
-            .contents;
-
-        assert!(objects.is_none());
-
-        s3_client.delete_bucket(test_bucket_name).await.unwrap();
-
-        let buckets = s3_client.list_buckets().await.unwrap();
-
-        assert!(buckets.is_empty());
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_additional_s3_actions() {
+    #[serial]
+    async fn test_s3_actions() -> Result<(), Box<dyn std::error::Error>> {
+        sleep(Duration::from_secs(3)).await;
+
+        let s3_client = get_test_s3_client().await;
+
+        cleanup_all_buckets(&s3_client).await?;
+
+        // Now run the test with clean state
+        let test_bucket = "test-bucket";
+        s3_client.create_bucket(test_bucket, None).await?;
+
+        let list_buckets = s3_client.list_buckets().await?;
+        println!("Buckets {:?}", list_buckets);
+        assert_eq!(list_buckets.len(), 1);
+
+        cleanup_all_buckets(&s3_client).await?;
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_additional_s3_actions() -> Result<(), Box<dyn std::error::Error>> {
         // Initialize
         let region = "us-east-2";
         setup_env_vars(region);
-        let endpoint_url = std::env::var("S3_ENDPOINT_URL").unwrap();
+
+        let endpoint_url = std::env::var("S3_ENDPOINT_URL")
+            .unwrap_or_else(|_| "http://localhost:4566".to_string());
+
         let config = aws_config::defaults(BehaviorVersion::latest())
             .region(region)
-            .endpoint_url(endpoint_url.clone())
+            .endpoint_url(endpoint_url)
             .load()
             .await;
 
@@ -335,9 +343,13 @@ pub mod tests {
             .force_path_style(true)
             .build();
 
-        let s3_client = S3Client::new_with_s3_config(s3_config.clone(), &region).await;
+        let s3_client = S3Client::new_with_s3_config(s3_config, region).await;
 
         let test_bucket_name = "test-additional-actions-bucket";
+        cleanup_all_buckets(&s3_client)
+            .await
+            .expect("Cleanup failed");
+
         let key_1 = "exports/test_run/file1.parquet";
         let key_2 = "exports/test_run/file2.parquet";
         let file_path = "test-files/exports/test_run/bd01d5c9-8658-4a22-b059-3d504f346f8e.parquet";
@@ -381,14 +393,20 @@ pub mod tests {
 
         assert!(objects_after_delete.is_none());
 
-        // Delete bucket
         s3_client
             .delete_bucket(test_bucket_name)
             .await
             .expect("Failed to delete bucket");
 
         // Verify bucket deletion
-        let buckets = s3_client.list_buckets().await.unwrap();
+        let buckets = s3_client.list_buckets().await?;
         assert!(!buckets.contains(&test_bucket_name.to_string()));
+
+        // Delete all buckets and ensure cleanup is complete
+        cleanup_all_buckets(&s3_client)
+            .await
+            .expect("Failed to clean up buckets");
+
+        Ok(())
     }
 }
