@@ -13,8 +13,9 @@ env:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
-    # runs-on: 16gb-runner
+     runs-on: 
+        labels:
+            - org-16c-64r-arm64-ubuntu22
 
     services:
       localstack:

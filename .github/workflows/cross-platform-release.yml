@@ -7,7 +7,9 @@ on:
 
 jobs:
   create-release:
-    runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
+     runs-on: 
+        labels:
+            - org-16c-64r-arm64-ubuntu22
     # runs-on: 16gb-runner
     permissions: write-all
     steps:
