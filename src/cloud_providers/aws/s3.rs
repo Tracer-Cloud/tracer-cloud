@@ -1,9 +1,9 @@
-use std::str::FromStr;
 use aws_config::{BehaviorVersion, SdkConfig};
 use aws_sdk_s3::{
     config::ProvideCredentials,
     types::{BucketLocationConstraint, CreateBucketConfiguration},
 };
+use std::str::FromStr;
 
 use crate::types::config::AwsConfig;
 
@@ -299,7 +299,6 @@ pub mod tests {
 
         S3Client::new_with_s3_config(s3_config, region).await
     }
-
 
     #[tokio::test]
     #[serial]

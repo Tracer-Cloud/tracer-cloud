@@ -1,3 +1,4 @@
+pub mod cli;
 /// lib.rs
 pub mod cloud_providers;
 pub mod config_manager;
@@ -17,7 +18,6 @@ pub mod tracer_client;
 pub mod tracing;
 pub mod types;
 pub mod upload;
-pub mod cli;
 
 use anyhow::{Context, Ok, Result};
 use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};

@@ -47,7 +47,6 @@ const SYSLOG_FILE: &str = "/var/log/syslog";
 pub const REPO_OWNER: &str = "davincios";
 pub const REPO_NAME: &str = "tracer-daemon";
 
-
 pub fn start_daemon() -> Result<()> {
     ConfigManager::test_service_config_sync()?;
 

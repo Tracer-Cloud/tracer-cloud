@@ -20,7 +20,6 @@ use std::{env, fs::canonicalize};
 use sysinfo::System;
 pub mod nondaemon_commands;
 
-
 #[derive(Parser)]
 #[clap(
     name = "tracer",
