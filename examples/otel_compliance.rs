@@ -80,7 +80,7 @@ async fn push_to_loki(event: &Event) -> Result<(), Box<dyn std::error::Error>> {
                     "host": "localhost-2" },
                 "values": [
             (
-                &event.timestamp.timestamp_nanos().to_string(),
+                &event.timestamp.timestamp_nanos_opt().unwrap_or(0).to_string(),
                 message.clone(),
                 json!({"message_type": "json"})
             )
@@ -117,28 +117,28 @@ async fn push_to_loki(event: &Event) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn flatten_and_log_two(
-    value: &serde_json::Value,
-    prefix: Option<String>,
-    log_message: &mut String,
-) {
-    match value {
-        serde_json::Value::Object(fields) => {
-            for (key, val) in fields {
-                let full_key = if let Some(prefix) = &prefix {
-                    format!("{}_{}", prefix, key)
-                } else {
-                    key.clone()
-                };
-                flatten_and_log_two(val, Some(full_key), log_message);
-            }
-        }
-        _ => {
-            let key = prefix.unwrap_or_else(|| "unknown".to_string());
-            log_message.push_str(&format!("{}={:?} ", key, value));
-        }
-    }
-}
+// fn flatten_and_log_two(
+//     value: &serde_json::Value,
+//     prefix: Option<String>,
+//     log_message: &mut String,
+// ) {
+//     match value {
+//         serde_json::Value::Object(fields) => {
+//             for (key, val) in fields {
+//                 let full_key = if let Some(prefix) = &prefix {
+//                     format!("{}_{}", prefix, key)
+//                 } else {
+//                     key.clone()
+//                 };
+//                 flatten_and_log_two(val, Some(full_key), log_message);
+//             }
+//         }
+//         _ => {
+//             let key = prefix.unwrap_or_else(|| "unknown".to_string());
+//             log_message.push_str(&format!("{}={:?} ", key, value));
+//         }
+//     }
+// }
 
 fn flatten_and_log(value: &Value, prefix: Option<String>, log_message: &mut String) {
     fn sanitize_key(key: &str) -> String {

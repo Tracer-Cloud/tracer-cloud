@@ -1,4 +1,5 @@
 // src/cli/mod.rs
+#![allow(dead_code)]
 use crate::{
     config_manager::ConfigManager,
     daemon_communication::client::{
@@ -17,7 +18,8 @@ use nondaemon_commands::{
 
 use std::{env, fs::canonicalize};
 use sysinfo::System;
-mod nondaemon_commands;
+pub mod nondaemon_commands;
+
 
 #[derive(Parser)]
 #[clap(

@@ -2,7 +2,6 @@ use tracing::subscriber::set_global_default;
 use tracing_log::LogTracer;
 
 use tracing_loki::{BackgroundTask, BackgroundTaskController};
-use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::EnvFilter;
 use url::Url;

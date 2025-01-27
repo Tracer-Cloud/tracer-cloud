@@ -18,8 +18,7 @@ mod syslog;
 mod tracer_client;
 mod types;
 mod upload;
-use anyhow::{Context, Ok, Result};
-use cli::process_cli;
+use anyhow::{Context, Ok};
 use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
@@ -45,8 +44,9 @@ const FILE_CACHE_DIR: &str = "/tmp/tracerd_cache";
 
 const SYSLOG_FILE: &str = "/var/log/syslog";
 
-const REPO_OWNER: &str = "davincios";
-const REPO_NAME: &str = "tracer-daemon";
+pub const REPO_OWNER: &str = "davincios";
+pub const REPO_NAME: &str = "tracer-daemon";
+
 
 pub fn start_daemon() -> Result<()> {
     ConfigManager::test_service_config_sync()?;

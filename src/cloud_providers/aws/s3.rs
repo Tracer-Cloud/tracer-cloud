@@ -241,25 +241,6 @@ pub mod tests {
         env::set_var("AWS_LOG_LEVEL", "debug");
     }
 
-    #[tokio::test]
-    async fn test_s3_actions() {
-        // initialize
-        let region = "us-east-2";
-        setup_env_vars(region);
-        let endpoint_url = std::env::var("S3_ENDPOINT_URL").unwrap();
-        let config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region)
-            .endpoint_url(endpoint_url.clone())
-            .load()
-            .await;
-
-        let s3_config = aws_sdk_s3::config::Builder::from(&config)
-            .force_path_style(true)
-            .build();
-
-        S3Client::new_with_s3_config(s3_config, region).await
-    }
-
     async fn cleanup_all_buckets(client: &S3Client) -> Result<(), String> {
         let buckets = client.list_buckets().await?;
         println!("Existing buckets before cleanup: {:?}", buckets);
@@ -300,6 +281,25 @@ pub mod tests {
 
         Ok(())
     }
+
+    async fn get_test_s3_client() -> S3Client {
+        let region = "us-east-2";
+        setup_env_vars(region);
+        let endpoint_url = std::env::var("S3_ENDPOINT_URL")
+            .unwrap_or_else(|_| "http://localhost:4566".to_string());
+        let config = aws_config::defaults(BehaviorVersion::latest())
+            .region(region)
+            .endpoint_url(endpoint_url)
+            .load()
+            .await;
+
+        let s3_config = aws_sdk_s3::config::Builder::from(&config)
+            .force_path_style(true)
+            .build();
+
+        S3Client::new_with_s3_config(s3_config, region).await
+    }
+
 
     #[tokio::test]
     #[serial]
