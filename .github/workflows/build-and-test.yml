@@ -2,19 +2,20 @@ name: Rust CI
 on:
   push:
     branches:
-      - "main"
-      - "staging"
+    - "main"
+    - "staging"
   pull_request:
     branches:
-      - "**"
+    - "**"
 env:
   CARGO_TERM_COLOR: always # Ensures colored output in GitHub Actions logs
 
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: 
-        labels: org-16c-64r-arm64-ubuntu22
+    runs-on:
+      group: org-default-group
+      labels: org-16c-64r-arm64-ubuntu22
 
     services:
       localstack:
@@ -22,47 +23,45 @@ jobs:
         env:
           SERVICES: s3,
           AWS_REGION: us-east-2
-          AWS_ACCESS_KEY_ID: 000000
-          AWS_SECRET_ACCESS_KEY: 000000000000
+          AWS_ACCESS_KEY_ID: 0
+          AWS_SECRET_ACCESS_KEY: 0
           DEBUG: 1
         ports:
-          - 4566:4566
+        - 4566:4566
     steps:
-      - uses: actions/checkout@v4.1.4
+    - uses: actions/checkout@v4.1.4
 
-      - name: Setup Rust toolchain
-        run: rustup toolchain install stable --profile minimal
+    - name: Setup Rust toolchain
+      run: rustup toolchain install stable --profile minimal
 
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.7.3
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2.7.3
 
-      - name: Set up cargo Nextest
-        run: |
-          which cargo-nextest || cargo install cargo-nextest
+    - name: Set up cargo Nextest
+      run: |
+        which cargo-nextest || cargo install cargo-nextest
 
-      - name: Build
-        run: cargo build --verbose
+    - name: Build
+      run: cargo build --verbose
 
-      # - name: Copy config
-      #   run: mkdir -p $HOME/.config/tracer && cp tracer.toml $HOME/.config/tracer/tracer.toml
+    # - name: Copy config
+    #   run: mkdir -p $HOME/.config/tracer && cp tracer.toml $HOME/.config/tracer/tracer.toml
 
-      - name: Check Formatting
-        run: cargo fmt -- --check
+    - name: Check Formatting
+      run: cargo fmt -- --check
 
-      - name: Lint with Clippy
-        run: make clippy
+    - name: Lint with Clippy
+      run: make clippy
 
-      - name: Run tests
-        run: make test
+    - name: Run tests
+      run: make test
 
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: rust
-          path: target/nextest/default/junit.xml
-
-
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: rust
+        path: target/nextest/default/junit.xml
   # upload-test-results:
   #     if: always()
   #     runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
