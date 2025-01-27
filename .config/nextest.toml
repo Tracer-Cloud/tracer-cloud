@@ -24,7 +24,8 @@ retries = { backoff = "exponential", count = 3, delay = "500ms", jitter = true, 
 
 # The number of threads to run tests with. Supported values are either an integer or
 # the string "num-cpus". Can be overridden through the `--test-threads` option.
-test-threads = "num-cpus"
+# test-threads = "num-cpus"
+test-threads = 16
 
 # The number of threads required for each test. This is generally used in overrides to
 # mark certain tests as heavier than others. However, it can also be set as a global parameter.
@@ -128,10 +129,3 @@ store-success-output = true
 # Note that if a description can be extracted from the output, it is always stored in the
 # <description> element.
 store-failure-output = true
-
-# This profile is activated if MIRI_SYSROOT is set.
-[profile.default-miri]
-
-test-overrides = { "*::*" = { run-delay = "50ms" },"cloud_providers::aws::s3::*" = { run-delay = "200ms" }}
-# Apply a delay before running each tests, although this should be done only for S3 tests
-
