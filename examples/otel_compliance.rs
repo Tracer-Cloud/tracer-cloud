@@ -67,7 +67,9 @@ async fn push_to_loki(event: &Event) -> Result<(), Box<dyn std::error::Error>> {
 
     // JSON payload for Loki
 
-    let message = serde_json::to_string(&event).expect("failed to get messsage").to_string();
+    let message = serde_json::to_string(&event)
+        .expect("failed to get messsage")
+        .to_string();
 
     let payload = json!({
         "streams": [
