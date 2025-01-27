@@ -75,7 +75,8 @@ pub fn main() -> Result<()> {
 pub async fn run(workflow_directory_path: String) -> Result<()> {
     let raw_config = ConfigManager::load_config();
 
-    let export_dir = ConfigManager::get_tracer_parquet_export_dir()?;
+    let export_dir =
+        ConfigManager::get_tracer_parquet_export_dir().expect("Failed to get export directory");
 
     let fs_handler = FsExportHandler::new(export_dir, None);
     let s3_handler = S3ExportHandler::new(
