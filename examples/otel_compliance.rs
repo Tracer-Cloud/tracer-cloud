@@ -16,7 +16,7 @@ async fn main() {
     tokio::spawn(loki_task);
 
     let collector = SystemMetricsCollector::new();
-    let run_name = format!("local_otel_compliance");
+    let run_name = "local_otel_compliance".to_string();
     let mut recorder = EventRecorder::new(Some(run_name.clone()), Some(run_name));
     let mut system = System::new();
 
@@ -67,10 +67,7 @@ async fn push_to_loki(event: &Event) -> Result<(), Box<dyn std::error::Error>> {
 
     // JSON payload for Loki
 
-    let message = format!(
-        "{}",
-        serde_json::to_string(&event).expect("failed to get messsage")
-    );
+    let message = serde_json::to_string(&event).expect("failed to get messsage").to_string();
 
     let payload = json!({
         "streams": [
@@ -107,7 +104,7 @@ async fn push_to_loki(event: &Event) -> Result<(), Box<dyn std::error::Error>> {
     let mut log_message = String::new();
 
     flatten_and_log(
-        &serde_json::to_value(&event).expect("Failed"),
+        &serde_json::to_value(event).expect("Failed"),
         None,
         &mut log_message,
     );

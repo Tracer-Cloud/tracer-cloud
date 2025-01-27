@@ -53,6 +53,12 @@ pub async fn run_stdout_lines_read_thread(
     }
 }
 
+impl Default for StdoutWatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StdoutWatcher {
     pub fn new() -> StdoutWatcher {
         StdoutWatcher {}

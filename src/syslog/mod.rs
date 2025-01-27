@@ -64,6 +64,12 @@ pub async fn run_syslog_lines_read_thread(
     }
 }
 
+impl Default for SyslogWatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SyslogWatcher {
     pub fn new() -> SyslogWatcher {
         SyslogWatcher {
