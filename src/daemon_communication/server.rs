@@ -1,4 +1,5 @@
 use anyhow::{Ok, Result};
+use chrono::Utc;
 use core::panic;
 use serde_json::{json, Value};
 use std::{future::Future, pin::Pin, sync::Arc};
@@ -12,6 +13,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     config_manager::{Config, ConfigManager},
     debug_log::Logger,
+    event_recorder::EventType,
     events::{send_alert_event, send_log_event, send_update_tags_event},
     process_watcher::ShortLivedProcessLog,
     tracer_client::TracerClient,
@@ -25,26 +27,60 @@ pub fn process_log_command<'a>(
     service_url: &'a str,
     api_key: &'a str,
     object: &serde_json::Map<String, serde_json::Value>,
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
 ) -> ProcessOutput<'a> {
     if !object.contains_key("message") {
         return None;
     };
-
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
-    Some(Box::pin(send_log_event(service_url, api_key, message)))
+
+    async fn fun<'a>(
+        tracer_client: &'a Arc<Mutex<TracerClient>>,
+        service_url: &'a str,
+        api_key: &'a str,
+        message: String,
+    ) -> Result<String, anyhow::Error> {
+        let event_recorder = &mut tracer_client.lock().await.logs;
+
+        event_recorder.record_event(
+            EventType::RunStatusMessage,
+            message.clone(),
+            None,
+            Some(Utc::now()),
+        );
+
+        // TODO: remove
+        send_log_event(service_url, api_key, message).await
+    }
+
+    Some(Box::pin(fun(tracer_client, api_key, service_url, message)))
 }
 
 pub fn process_alert_command<'a>(
     service_url: &'a str,
     api_key: &'a str,
     object: &serde_json::Map<String, serde_json::Value>,
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
 ) -> ProcessOutput<'a> {
     if !object.contains_key("message") {
         return None;
     };
 
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
-    Some(Box::pin(send_alert_event(service_url, api_key, message)))
+
+    async fn fun<'a>(
+        tracer_client: &'a Arc<Mutex<TracerClient>>,
+        service_url: &'a str,
+        api_key: &'a str,
+        message: String,
+    ) -> Result<String, anyhow::Error> {
+        let event_recorder = &mut tracer_client.lock().await.logs;
+
+        event_recorder.record_event(EventType::Alert, message.clone(), None, Some(Utc::now()));
+        // TODO: remove
+        send_alert_event(service_url, api_key, message).await
+    }
+    Some(Box::pin(fun(tracer_client, service_url, api_key, message)))
 }
 
 pub fn process_start_run_command<'a>(
@@ -121,6 +157,7 @@ pub fn process_info_command<'a>(
     Some(Box::pin(fun(tracer_client, stream)))
 }
 
+// NOTE: outputs data
 pub fn process_end_run_command(tracer_client: &Arc<Mutex<TracerClient>>) -> ProcessOutput<'_> {
     Some(Box::pin(async move {
         let mut tracer_client = tracer_client.lock().await;
@@ -148,6 +185,7 @@ pub fn process_refresh_config_command<'a>(
     Some(Box::pin(fun(tracer_client, config, config_file)))
 }
 
+// TODO: should this be an event ?
 pub fn process_tag_command<'a>(
     service_url: &'a str,
     api_key: &'a str,
@@ -276,8 +314,8 @@ pub async fn run_server(
                 cancellation_token.cancel();
                 return Ok(());
             }
-            "log" => process_log_command(&service_url, &api_key, object),
-            "alert" => process_alert_command(&service_url, &api_key, object),
+            "log" => process_log_command(&service_url, &api_key, object, &tracer_client),
+            "alert" => process_alert_command(&service_url, &api_key, object, &tracer_client),
             "start" => process_start_run_command(&tracer_client, &mut stream),
             "end" => process_end_run_command(&tracer_client),
             "refresh_config" => process_refresh_config_command(&tracer_client, &config),

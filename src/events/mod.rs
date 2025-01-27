@@ -1,15 +1,20 @@
-use std::time::Duration;
+use std::collections::HashMap;
 
 // src/events/mod.rs
 use crate::{
     debug_log::Logger,
-    http_client::{send_http_event, send_http_get},
+    http_client::send_http_event,
     metrics::SystemMetricsCollector,
+    types::event::{
+        attributes::system_metrics::SystemProperties, aws_metadata::AwsInstanceMetaData,
+    },
 };
+mod run_details;
 use anyhow::{Context, Result};
 use chrono::Utc;
+use run_details::{generate_run_id, generate_run_name};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use sysinfo::System;
 use tracing::info;
 
@@ -63,43 +68,45 @@ pub struct RunEventOut {
     pub run_name: String,
     pub run_id: String,
     pub service_name: String,
+    pub system_properties: SystemProperties,
 }
 
-const AWS_METADATA_URL: &str = "http://169.254.169.254/latest/meta-data/";
-
-async fn get_aws_instance_metadata() -> Result<Value> {
-    let (status, response_text) =
-        send_http_get(AWS_METADATA_URL, None, Some(Duration::from_secs(2))).await?;
-
-    serde_json::from_str(&response_text).context(format!(
-        "Failed to get AWS instance metadata. Status: {}, Response: {}",
-        status, response_text
-    ))
-}
-
-async fn gather_system_properties(system: &System) -> Value {
-    let aws_metadata = get_aws_instance_metadata().await.unwrap_or(json!(null));
-
-    let disk_metadata = SystemMetricsCollector::gather_disk_data();
-
-    json!(
-        {
-            "os": System::name(),
-            "os_version": System::os_version(),
-            "kernel_version": System::kernel_version(),
-            "arch": System::cpu_arch(),
-            "num_cpus": system.cpus().len(),
-            "hostname": System::host_name(),
-            "total_memory": system.total_memory(),
-            "total_swap": system.total_swap(),
-            "uptime": System::uptime(),
-            "aws_metadata": aws_metadata,
-            "is_aws_instance": !aws_metadata.is_null(),
-            "system_disk_io": disk_metadata,
+async fn get_aws_instance_metadata() -> Option<AwsInstanceMetaData> {
+    let client = ec2_instance_metadata::InstanceMetadataClient::new();
+    match client.get() {
+        Ok(metadata) => Some(metadata.into()),
+        Err(err) => {
+            println!("error getting metadata: {err}");
+            None
         }
-    )
+    }
 }
 
+async fn gather_system_properties(system: &System) -> SystemProperties {
+    let aws_metadata = get_aws_instance_metadata().await;
+    let is_aws_instance = aws_metadata.is_some();
+
+    let system_disk_io = SystemMetricsCollector::gather_disk_data();
+
+    SystemProperties {
+        os: System::name(),
+        os_version: System::os_version(),
+        kernel_version: System::kernel_version(),
+        arch: System::cpu_arch(),
+        num_cpus: system.cpus().len(),
+        hostname: System::host_name(),
+        total_memory: system.total_memory(),
+        total_swap: system.total_swap(),
+        uptime: System::uptime(),
+        aws_metadata,
+        is_aws_instance,
+        system_disk_io,
+    }
+}
+
+#[allow(dead_code)]
+// TODO: Can we remove dependencies from this or Do we refactor to just get (service_name, run_id
+// and run name) without sending any event?
 pub async fn send_start_run_event(
     service_url: &str,
     api_key: &str,
@@ -111,9 +118,9 @@ pub async fn send_start_run_event(
 
     #[derive(Deserialize)]
     struct RunLogOutProperties {
-        run_name: String,
-        run_id: String,
         service_name: String,
+        #[serde(flatten)]
+        extra: HashMap<String, serde_json::Value>, // not used any more
     }
 
     #[derive(Deserialize)]
@@ -134,9 +141,10 @@ pub async fn send_start_run_event(
         "process_status": "new_run",
         "event_type": "process_status",
         "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
-        "attributes": system_properties,
+        "attributes": &system_properties,
     });
 
+    // TODO: remove !. We need to get the service name else where
     let result = send_http_event(service_url, api_key, &init_entry).await?;
 
     let value: RunLogResult = serde_json::from_str(&result).unwrap();
@@ -152,9 +160,9 @@ pub async fn send_start_run_event(
         return Err(anyhow::anyhow!("Invalid response from server"));
     }
 
-    let run_name = &value.result[0].properties.run_name;
+    let run_name = generate_run_name();
 
-    let run_id = &value.result[0].properties.run_id;
+    let run_id = generate_run_id();
 
     let service_name = &value.result[0].properties.service_name;
 
@@ -175,9 +183,11 @@ pub async fn send_start_run_event(
         run_name: run_name.clone(),
         run_id: run_id.clone(),
         service_name: service_name.clone(),
+        system_properties,
     })
 }
 
+// TODO: remove
 pub async fn send_end_run_event(service_url: &str, api_key: &str) -> Result<String> {
     info!("Finishing pipeline run...");
 
@@ -207,6 +217,7 @@ pub async fn send_daemon_start_event(service_url: &str, api_key: &str) -> Result
     send_http_event(service_url, api_key, &daemon_start_entry).await
 }
 
+// TODO: Should tag updates be parts of events?
 pub async fn send_update_tags_event(
     service_url: &str,
     api_key: &str,

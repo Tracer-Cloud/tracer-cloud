@@ -57,7 +57,7 @@ mod tests {
         let api_key = config.api_key.clone();
 
         let mut system = System::new();
-        let mut logs = EventRecorder::new();
+        let mut logs = EventRecorder::default();
         let mut metrics_collector = SystemMetricsCollector::new();
         let mut last_sent = None;
         let interval = Duration::from_secs(60);

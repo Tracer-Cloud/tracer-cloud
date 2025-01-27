@@ -1,21 +1,11 @@
-use chrono::serde::ts_seconds;
+use crate::types::event::{attributes::EventAttributes, Event};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Event {
-    #[serde(with = "ts_seconds")]
-    timestamp: DateTime<Utc>,
-    message: String,
-    pub event_type: String,
-    process_type: String,
-    process_status: String,
-    pub attributes: Option<Value>,
-}
 
 pub struct EventRecorder {
     events: Vec<Event>,
+    run_name: Option<String>,
+    run_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
@@ -27,6 +17,8 @@ pub enum EventType {
     ToolMetricEvent,
     MetricEvent,
     SyslogEvent,
+    RunStatusMessage,
+    Alert,
     TestEvent, // Added TestEvent variant
 }
 
@@ -41,20 +33,31 @@ impl EventType {
             EventType::SyslogEvent => "syslog_event",
             EventType::ToolMetricEvent => "tool_metric_event",
             EventType::TestEvent => "test_event", // Handle TestEvent
+            EventType::RunStatusMessage => "run_status_message",
+            EventType::Alert => "alert",
         }
     }
 }
 
 impl EventRecorder {
-    pub fn new() -> Self {
-        EventRecorder { events: Vec::new() }
+    pub fn new(run_name: Option<String>, run_id: Option<String>) -> Self {
+        EventRecorder {
+            events: Vec::new(),
+            run_id,
+            run_name,
+        }
+    }
+
+    pub(crate) fn update_run_details(&mut self, run_name: Option<String>, run_id: Option<String>) {
+        self.run_name = run_name;
+        self.run_id = run_id
     }
 
     pub fn record_event(
         &mut self,
         event_type: EventType,
         message: String,
-        attributes: Option<Value>,
+        attributes: Option<EventAttributes>,
         timestamp: Option<DateTime<Utc>>,
     ) {
         let event = Event {
@@ -64,6 +67,9 @@ impl EventRecorder {
             process_type: "pipeline".to_owned(),
             process_status: event_type.as_str().to_owned(),
             attributes,
+            // NOTE: not a fan of constant cloning so would look for an alt
+            run_name: self.run_name.clone(),
+            run_id: self.run_id.clone(),
         };
         self.events.push(event);
     }
@@ -89,7 +95,7 @@ impl EventRecorder {
 
 impl Default for EventRecorder {
     fn default() -> Self {
-        Self::new()
+        Self::new(None, None)
     }
 }
 
@@ -100,9 +106,9 @@ mod tests {
 
     #[test]
     fn test_record_event() {
-        let mut recorder = EventRecorder::new();
+        let mut recorder = EventRecorder::default();
         let message = "[event_recorder.rs]Test event".to_string();
-        let attributes = Some(json!({"key": "value"}));
+        let attributes = Some(EventAttributes::Other(json!({"key": "value"})));
 
         recorder.record_event(
             EventType::ToolExecution,
@@ -118,12 +124,15 @@ mod tests {
         assert_eq!(event.event_type, "process_status");
         assert_eq!(event.process_type, "pipeline");
         assert_eq!(event.process_status, "tool_execution");
-        assert_eq!(event.attributes, attributes);
+        assert!(matches!(
+            event.attributes.clone().unwrap(),
+            EventAttributes::Other(_)
+        ));
     }
 
     #[test]
     fn test_clear_events() {
-        let mut recorder = EventRecorder::new();
+        let mut recorder = EventRecorder::default();
         recorder.record_event(
             EventType::ToolExecution,
             "Test event".to_string(),
@@ -146,9 +155,9 @@ mod tests {
 
     #[test]
     fn test_record_test_event() {
-        let mut recorder = EventRecorder::new();
+        let mut recorder = EventRecorder::default();
         let message = "Test event for testing".to_string();
-        let attributes = Some(json!({"test_key": "test_value"}));
+        let attributes = Some(EventAttributes::Other(json!({"test_key": "test_value"})));
 
         recorder.record_event(
             EventType::TestEvent,
@@ -164,6 +173,9 @@ mod tests {
         assert_eq!(event.event_type, "process_status");
         assert_eq!(event.process_type, "pipeline");
         assert_eq!(event.process_status, "test_event");
-        assert_eq!(event.attributes, attributes);
+        assert!(matches!(
+            event.attributes.clone().unwrap(),
+            EventAttributes::Other(_)
+        ));
     }
 }

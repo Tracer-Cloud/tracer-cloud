@@ -39,6 +39,7 @@ async fn record_all_outgoing_http_calls(
     write_to_log_file("log_outgoing_http_calls.txt", &log_message).await
 }
 
+#[allow(dead_code)]
 pub async fn send_http_get(
     url: &str,
     api_key: Option<&str>,
