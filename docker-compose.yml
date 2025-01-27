@@ -1,4 +1,4 @@
-
+# docker-compose.yml
 services:
   # Temporary comment: uncommenting because we need both Grafana and Local Stack 
   localstack:

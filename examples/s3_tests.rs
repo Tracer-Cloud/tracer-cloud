@@ -5,6 +5,9 @@ use tracer::exporters::ParquetExport;
 use tracer::exporters::{FsExportHandler, S3ExportHandler};
 use tracer::metrics::SystemMetricsCollector;
 
+
+/// This file goes to S3 but needs tweaking
+
 #[tokio::main]
 async fn main() {
     let collector = SystemMetricsCollector::new();
