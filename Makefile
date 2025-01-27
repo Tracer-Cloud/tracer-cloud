@@ -23,7 +23,7 @@ setup_nextest:
 	@which cargo-nextest >/dev/null || cargo install cargo-nextest
 
 test: setup_nextest ## Run cargo nextest
-	cargo nextest run --no-capture --jobs 16
+	cargo nextest run --jobs 16
 
 all: ## Run all steps in parallel: format, check, test, clippy
 	$(MAKE) format &
