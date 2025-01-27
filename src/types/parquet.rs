@@ -1,4 +1,3 @@
-use super::event::attributes::system_metrics::SystemProperties;
 use super::ParquetSchema;
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use chrono::serde::ts_seconds;
@@ -8,7 +7,7 @@ use super::event::{
     attributes::{
         process::{CompletedProcess, ProcessProperties},
         syslog::SyslogProperties,
-        system_metrics::SystemMetric,
+        system_metrics::{SystemMetric, SystemProperties},
         EventAttributes,
     },
     Event,

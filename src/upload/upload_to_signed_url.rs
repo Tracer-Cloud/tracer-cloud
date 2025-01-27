@@ -101,7 +101,7 @@ mod tests {
 
         let config = ConfigManager::load_default_config();
 
-        let signed_url = request_presigned_url(&config.service_url, &config.api_key, &file_path)
+        let signed_url = request_presigned_url(&config.service_url, &config.api_key, file_path)
             .await
             .unwrap();
 

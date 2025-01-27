@@ -25,8 +25,8 @@ check: ## cargo check
 setup_nextest:
 	@which cargo-nextest >/dev/null || cargo install cargo-nextest
 
-test: setup_nextest ## Run cargo nextest
-	cargo nextest run --no-capture
+test: setup_nextest ## Run cargo nextest, needs to be run single threaded in github actions due to s3 race conditions
+	CARGO_NEXTEST_NO_CAPTURE=1 cargo nextest run --test-threads=1
 
 all: format check test clippy  ## format, check, test, clippy.
 

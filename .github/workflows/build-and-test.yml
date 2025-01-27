@@ -2,7 +2,7 @@ name: Rust CI
 on:
   push:
     branches:
-      - "**"
+      - "main"
   pull_request:
     branches:
       - "**"
@@ -11,13 +11,21 @@ env:
 
 jobs:
   build-and-test:
-    name: Build and Test on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-      fail-fast: false
+    name: Build and Test
+    runs-on: ubuntu-latest
+    # runs-on: 16gb-runner
 
+    services:
+      localstack:
+        image: localstack/localstack:4.0.3
+        env:
+          SERVICES: s3,
+          AWS_REGION: us-east-2
+          AWS_ACCESS_KEY_ID: 000000
+          AWS_SECRET_ACCESS_KEY: 000000000000
+          DEBUG: 1
+        ports:
+          - 4566:4566
     steps:
       - uses: actions/checkout@v4.1.4
 
@@ -32,16 +40,17 @@ jobs:
           which cargo-nextest || cargo install cargo-nextest
 
       - name: Build
-        run: cargo build --release --verbose
+        run: cargo build --verbose
 
       # - name: Copy config
       #   run: mkdir -p $HOME/.config/tracer && cp tracer.toml $HOME/.config/tracer/tracer.toml
-
-      - name: Run tests
-        run: make test
 
       - name: Check Formatting
         run: cargo fmt -- --check
 
       - name: Lint with Clippy
         run: make clippy
+
+      - name: Run tests
+        run: make test
+

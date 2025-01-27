@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 // src/events/mod.rs
 use crate::{
     debug_log::Logger,
@@ -15,6 +13,7 @@ use chrono::Utc;
 use run_details::{generate_run_id, generate_run_name};
 use serde::Deserialize;
 use serde_json::json;
+use std::collections::HashMap;
 use sysinfo::System;
 use tracing::info;
 
