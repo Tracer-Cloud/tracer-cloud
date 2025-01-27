@@ -7,10 +7,9 @@ on:
 
 jobs:
   create-release:
-     runs-on: 
-        labels:
-            - org-16c-64r-arm64-ubuntu22
-    # runs-on: 16gb-runner
+    runs-on: 
+        labels: org-16c-64r-arm64-ubuntu22
+
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
@@ -90,3 +89,4 @@ jobs:
           target: ${{ matrix.target }}
           # (required) GitHub token for uploading assets to GitHub Releases.
           token: ${{ secrets.GITHUB_TOKEN }}
+
