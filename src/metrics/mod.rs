@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
-/// src/system_metrics.rs
+/// src/metrics/mod.rs
 use anyhow::Result;
 use chrono::Utc;
+use std::collections::HashMap;
 use sysinfo::{Disks, System};
 
 use crate::{
@@ -111,7 +110,7 @@ mod tests {
             assert_eq!(system_metric.events_name, "global_system_metrics");
         } else {
             // fail test
-            assert!(false)
+            panic!("Expected SystemMetric attribute type"); // Replace assert!(false)
         }
     }
 }

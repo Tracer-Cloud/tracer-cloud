@@ -46,8 +46,8 @@ pub struct ProcessProperties {
     pub input_files: Option<Vec<InputFile>>,
 }
 
-impl ParquetSchema for ProcessProperties {
-    fn schema() -> Schema {
+impl ProcessProperties {
+    pub fn schema() -> Schema {
         let input_file_dt = DataType::Struct(InputFile::schema().fields);
         let fields = vec![
             Field::new("tool_name", DataType::Utf8, false),

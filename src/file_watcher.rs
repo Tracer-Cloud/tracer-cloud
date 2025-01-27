@@ -387,8 +387,8 @@ mod tests {
         let old_file_info = WatchedFileInfo {
             path: "/tmp/test.txt".to_string(),
             size: 50,
-            last_update: now.clone(),
-            last_upload: Some(now.clone()),
+            last_update: now,
+            last_upload: Some(now),
             cached_path: None,
             action: FileAction::None,
         };
@@ -396,8 +396,8 @@ mod tests {
         let new_file_info = WatchedFileInfo {
             path: "/tmp/test.txt".to_string(),
             size: 50,
-            last_update: now.clone(),
-            last_upload: Some(now.clone()),
+            last_update: now,
+            last_upload: Some(now),
             cached_path: None,
             action: FileAction::None,
         };
@@ -412,8 +412,8 @@ mod tests {
         let old_file_info = WatchedFileInfo {
             path: "/tmp/test.txt".to_string(),
             size: 50,
-            last_update: now.clone(),
-            last_upload: Some(now.clone()),
+            last_update: now,
+            last_upload: Some(now),
             cached_path: None,
             action: FileAction::None,
         };
@@ -422,8 +422,8 @@ mod tests {
         let new_file_info = WatchedFileInfo {
             path: "/tmp/test.txt".to_string(),
             size: 50,
-            last_update: newer.clone(),
-            last_upload: Some(now.clone()),
+            last_update: newer,
+            last_upload: Some(now),
             cached_path: None,
             action: FileAction::None,
         };

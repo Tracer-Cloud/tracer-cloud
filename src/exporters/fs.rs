@@ -6,13 +6,14 @@ use std::sync::Arc;
 
 use crate::types::{event::Event, parquet::FlattenedTracerEvent, ParquetSchema};
 
-/// Exports the ``FlattenedTracerEvent`` to path based on the run_id
-pub struct ExportManager {
-    base_dir: PathBuf,
+use super::ParquetExport;
+
+pub struct FsExportHandler {
+    pub base_dir: PathBuf,
     compression: Compression,
 }
 
-impl ExportManager {
+impl FsExportHandler {
     pub fn new(base_dir: PathBuf, compression: Option<Compression>) -> Self {
         let compression = compression.unwrap_or(Compression::SNAPPY);
 
@@ -21,12 +22,15 @@ impl ExportManager {
             compression,
         }
     }
+}
 
-    pub async fn output(&self, data: &[Event], run_name: &str) -> Result<PathBuf, String> {
+impl ParquetExport for FsExportHandler {
+    type ExportableType = FlattenedTracerEvent;
+    async fn output(&self, data: &[Event], run_name: &str) -> Result<PathBuf, String> {
         if data.is_empty() {
             return Err("Empty data passed".to_string());
         }
-        let data: Vec<FlattenedTracerEvent> =
+        let data: Vec<Self::ExportableType> =
             data.iter().cloned().map(|event| event.into()).collect();
 
         let data_schema = Arc::new(FlattenedTracerEvent::schema());
@@ -84,7 +88,7 @@ mod tests {
 
         let base_dir = temp_dir.path().join("./exports");
 
-        let exporter = ExportManager::new(base_dir, None);
+        let exporter = FsExportHandler::new(base_dir, None);
 
         metrics_collector
             .collect_metrics(&mut system, &mut logs)
@@ -111,7 +115,7 @@ mod tests {
 
         let base_dir = temp_dir.path().join("./exports");
 
-        let exporter = ExportManager::new(base_dir, None);
+        let exporter = FsExportHandler::new(base_dir, None);
 
         let data = logs.get_events();
         let res = exporter.output(data, "annoymous").await;
