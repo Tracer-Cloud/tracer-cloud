@@ -28,7 +28,7 @@ test-threads = "num-cpus"
 
 # The number of threads required for each test. This is generally used in overrides to
 # mark certain tests as heavier than others. However, it can also be set as a global parameter.
-threads-required = 1
+# threads-required = 1
 
 # Extra arguments to pass in to the test binary at runtime. Intended primarily for
 # communication with custom test harnesses -- use with caution!
