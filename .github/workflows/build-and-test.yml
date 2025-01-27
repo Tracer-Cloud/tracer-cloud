@@ -27,6 +27,10 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.7.3
 
+      - name: Set up cargo Nextest
+        run: |
+          which cargo-nextest || cargo install cargo-nextest
+
       - name: Build
         run: cargo build --release --verbose
 
@@ -34,10 +38,10 @@ jobs:
       #   run: mkdir -p $HOME/.config/tracer && cp tracer.toml $HOME/.config/tracer/tracer.toml
 
       - name: Run tests
-        run: cargo test --verbose
+        run: make test
 
       - name: Check Formatting
         run: cargo fmt -- --check
 
       - name: Lint with Clippy
-        run: cargo clippy -- -D warnings
+        run: make clippy

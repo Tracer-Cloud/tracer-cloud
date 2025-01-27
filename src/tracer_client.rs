@@ -1,12 +1,14 @@
 // src/tracer_client.rs
 use crate::event_recorder::{EventRecorder, EventType};
 use crate::events::{send_end_run_event, send_start_run_event};
+use crate::exporter::ExportManager;
 use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
 use crate::process_watcher::ProcessWatcher;
 use crate::stdout::StdoutWatcher;
 use crate::submit_batched_data::submit_batched_data;
 use crate::syslog::SyslogWatcher;
+use crate::types::event::attributes::EventAttributes;
 use crate::FILE_CACHE_DIR;
 use crate::{config_manager::Config, process_watcher::ShortLivedProcessLog};
 use anyhow::Result;
@@ -52,6 +54,7 @@ pub struct TracerClient {
     syslog_lines_buffer: LinesBufferArc,
     stdout_lines_buffer: LinesBufferArc,
     stderr_lines_buffer: LinesBufferArc,
+    pub exporter: ExportManager,
 }
 
 impl TracerClient {
@@ -62,6 +65,12 @@ impl TracerClient {
         println!("Service URL: {}", service_url);
 
         let file_watcher = FileWatcher::new();
+
+        // TODO: Might have to move this
+        let mut base_dir = homedir::get_my_home()?.expect("Failed to get home dir");
+        base_dir.push("exports");
+
+        let exporter = ExportManager::new(base_dir, None);
 
         file_watcher.prepare_cache_directory(FILE_CACHE_DIR)?;
 
@@ -84,7 +93,7 @@ impl TracerClient {
             syslog_watcher: SyslogWatcher::new(),
             stdout_watcher: StdoutWatcher::new(),
             // Sub mannagers
-            logs: EventRecorder::new(),
+            logs: EventRecorder::default(),
             file_watcher,
             workflow_directory,
             syslog_lines_buffer: Arc::new(RwLock::new(Vec::new())),
@@ -92,6 +101,7 @@ impl TracerClient {
             stderr_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
+            exporter,
         })
     }
 
@@ -123,6 +133,19 @@ impl TracerClient {
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
+        let data = self.logs.get_events();
+        let run_name = if let Some(run) = &self.current_run {
+            &run.name
+        } else {
+            "annoymous"
+        };
+        match self.exporter.output(data, run_name).await {
+            Ok(_path) => {
+                // upload to s3
+                println!("Successfully outputed, uploading to s3");
+            }
+            Err(err) => println!("error outputing parquet file: {err}"),
+        };
         submit_batched_data(
             &self.api_key,
             &self.service_url,
@@ -183,24 +206,47 @@ impl TracerClient {
         }
 
         let result = send_start_run_event(&self.service_url, &self.api_key, &self.system).await?;
-
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),
             parent_pid: None,
             start_time: timestamp.unwrap_or_else(Utc::now),
-            name: result.run_name,
-            id: result.run_id,
+            name: result.run_name.clone(),
+            id: result.run_id.clone(),
             service_name: result.service_name,
         });
+
+        self.logs
+            .update_run_details(Some(result.run_name), Some(result.run_id));
+
+        self.logs.record_event(
+            EventType::NewRun,
+            "[CLI] Starting new pipeline run".to_owned(),
+            Some(EventAttributes::SystemProperties(result.system_properties)),
+            timestamp,
+        );
 
         Ok(())
     }
 
     pub async fn stop_run(&mut self) -> Result<()> {
         if self.current_run.is_some() {
+            self.logs.record_event(
+                EventType::FinishedRun,
+                "[CLI] Finishing pipeline run".to_owned(),
+                None,
+                Some(Utc::now()),
+            );
+            // clear events containing this run
+            let run_metadata = self.current_run.as_ref().unwrap();
+
+            let data = self.logs.get_events();
+            if let Err(err) = self.exporter.output(data, &run_metadata.name).await {
+                println!("Error outputing end run logs: {err}")
+            };
             send_end_run_event(&self.service_url, &self.api_key).await?;
             self.current_run = None;
         }
+        self.logs.clear();
         Ok(())
     }
 
