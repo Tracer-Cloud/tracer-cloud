@@ -271,16 +271,22 @@ impl ConfigManager {
         let path = dir.as_ref();
 
         if !path.exists() {
-            anyhow::bail!("Not a valid directory")
+            anyhow::bail!(format!("{path:?} is not a valid path"))
         }
 
         if path
             .metadata()
-            .map_err(|err| anyhow::anyhow!(format!("Failed to get metadata: {}", err.to_string())))?
+            .map_err(|err| {
+                anyhow::anyhow!(
+                    "Failed to get metadata for path {:?}. Error: {}",
+                    path,
+                    err.to_string()
+                )
+            })?
             .permissions()
             .readonly()
         {
-            anyhow::bail!("Only Readonly permissions granted")
+            anyhow::bail!("Only Readonly permissions granted for path: {path:?}")
         }
 
         Ok(())
