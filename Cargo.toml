@@ -56,7 +56,6 @@ dirs = "6.0.0"
 env_logger = "0.9"
 tempdir = "0.3.7"
 
-
 # [[bin]]
 # name = "tracer"
 # path = "src/main.rs"
