@@ -5,7 +5,6 @@ use tracer::exporters::ParquetExport;
 use tracer::exporters::{FsExportHandler, S3ExportHandler};
 use tracer::metrics::SystemMetricsCollector;
 
-
 /// This file goes to S3 but needs tweaking
 
 #[tokio::main]
@@ -15,12 +14,15 @@ async fn main() {
     let mut recorder = EventRecorder::new(Some(run_name.clone()), Some("test_id".to_string()));
     let mut system = System::new();
 
-    let raw_config = ConfigManager::load_config();
+    // loads default config wwith profile as initialization
+    let raw_config = ConfigManager::load_default_config();
 
     let export_dir =
         ConfigManager::get_tracer_parquet_export_dir().expect("Failed to get export dir");
 
     let fs_handler = FsExportHandler::new(export_dir, None);
+
+    // default config loads Profile either [default] or [me] from aws credentials
     let s3_handler = S3ExportHandler::new(
         fs_handler,
         raw_config.aws_init_type.clone(),
