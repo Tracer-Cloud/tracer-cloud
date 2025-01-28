@@ -86,3 +86,13 @@ The S3 client initializes with the following options:
   ```
 
 
+# Docker container registry
+- To speed up our CI pipeline, we use a custom Docker container registry in GitHub (Github Container Registry, GCHR)
+- docker tag rust-ci-arm64 ghcr.io/tracer-cloud/tracer-cloud:rust-ci-arm64
+- docker push ghcr.io/tracer-cloud/tracer-cloud:rust-ci-arm64
+- echo $GITHUB_TOKEN | docker login ghcr.io -u Tracer-Cloud --password-stdin
+- docker tag rust-ci-arm64 ghcr.io/tracer-cloud/tracer-cloud:rust-ci-arm64
+- docker push ghcr.io/tracer-cloud/tracer-cloud:rust-ci-arm64
+
+
+echo $GITHUB_TOKEN | docker login ghcr.io -u davincios --password-stdin
