@@ -39,4 +39,3 @@ all: format check test clippy  ## format, check, test, clippy.
 	.DEFAULT: help # Running Make will run the help target
 
 MAKEFLAGS += --no-print-directory # dont add message about entering and leaving the working directory
-

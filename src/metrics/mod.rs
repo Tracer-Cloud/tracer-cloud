@@ -14,6 +14,12 @@ use crate::{
 
 pub struct SystemMetricsCollector;
 
+impl Default for SystemMetricsCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SystemMetricsCollector {
     pub fn new() -> Self {
         SystemMetricsCollector

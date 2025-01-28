@@ -1,3 +1,5 @@
+use super::event::attributes::system_metrics::SystemProperties;
+use super::event::OtelJsonEvent;
 use super::ParquetSchema;
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use chrono::serde::ts_seconds;
@@ -7,11 +9,12 @@ use super::event::{
     attributes::{
         process::{CompletedProcess, ProcessProperties},
         syslog::SyslogProperties,
-        system_metrics::{SystemMetric, SystemProperties},
+        system_metrics::SystemMetric,
         EventAttributes,
     },
     Event,
 };
+
 ///
 /// This struct would serve as an intermediary between the events types tracer exports
 ///
@@ -38,10 +41,15 @@ pub struct FlattenedTracerEvent {
     pub system_metric_attributes: Option<SystemMetric>,
     pub completed_process_attributes: Option<CompletedProcess>,
     pub syslog_attributes: Option<SyslogProperties>,
+
+    pub json_event: String,
 }
 
 impl From<Event> for FlattenedTracerEvent {
     fn from(value: Event) -> Self {
+        let otel_event: OtelJsonEvent = value.clone().into();
+        let json_event =
+            serde_json::to_string_pretty(&otel_event).expect("Failed to create event str");
         let mut tracer_event = Self {
             timestamp: value.timestamp,
             message: value.message,
@@ -50,6 +58,7 @@ impl From<Event> for FlattenedTracerEvent {
             process_status: value.process_status,
             run_name: value.run_name,
             run_id: value.run_id,
+            json_event,
             ..Default::default()
         };
 
@@ -104,6 +113,7 @@ impl ParquetSchema for FlattenedTracerEvent {
                 true,
             ),
             Field::new("syslog_attributes", DataType::Struct(syslog_dt), true),
+            Field::new("json_event", DataType::Utf8, false),
         ];
         Schema::new(fields)
     }
