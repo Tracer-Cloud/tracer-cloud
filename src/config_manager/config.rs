@@ -1,5 +1,8 @@
 // src/config_manager/mod.rs
-use std::{env, path::PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -259,7 +262,34 @@ impl ConfigManager {
     pub fn get_tracer_parquet_export_dir() -> Result<PathBuf> {
         let mut export_dir = homedir::get_my_home()?.expect("Failed to get home dir");
         export_dir.push("exports");
+        Self::validate_path(&export_dir)?;
         Ok(export_dir)
+    }
+
+    /// Validates a directory of file path. It checks if it exists or has write permissions
+    pub fn validate_path<P: AsRef<Path>>(dir: P) -> Result<()> {
+        let path = dir.as_ref();
+
+        if !path.exists() {
+            anyhow::bail!(format!("{path:?} is not a valid path"))
+        }
+
+        if path
+            .metadata()
+            .map_err(|err| {
+                anyhow::anyhow!(
+                    "Failed to get metadata for path {:?}. Error: {}",
+                    path,
+                    err.to_string()
+                )
+            })?
+            .permissions()
+            .readonly()
+        {
+            anyhow::bail!("Only Readonly permissions granted for path: {path:?}")
+        }
+
+        Ok(())
     }
 }
 
@@ -267,6 +297,7 @@ impl ConfigManager {
 mod tests {
     use super::*;
     use std::env;
+    use tempfile;
 
     #[test]
     fn test_default_config() {
@@ -288,5 +319,47 @@ mod tests {
             PROCESS_METRICS_SEND_INTERVAL_MS
         );
         assert!(!config.targets.is_empty());
+    }
+
+    #[test]
+    fn test_path_validation_for_dir_succeeds() {
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let dir_path = temp_dir.path();
+
+        assert!(ConfigManager::validate_path(dir_path).is_ok());
+    }
+
+    #[test]
+    fn test_path_validation_for_file_succeeds() {
+        // Create a temporary directory
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let file_path = temp_dir.path().join("test_file.txt");
+
+        std::fs::File::create(&file_path).expect("failed to create file");
+
+        assert!(ConfigManager::validate_path(file_path).is_ok());
+    }
+
+    #[test]
+    fn test_path_validation_invalid_file() {
+        let invalid_path = "non_existent_file.txt";
+        assert!(ConfigManager::validate_path(invalid_path).is_err());
+    }
+
+    #[test]
+    fn test_read_only_permissions() {
+        let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
+        let file_path = temp_dir.path().join("readonly_file.txt");
+        std::fs::File::create(&file_path).expect("Failed to create temp file");
+
+        // Set the file to readonly
+        let mut permissions = std::fs::metadata(&file_path)
+            .expect("Failed to get metadata")
+            .permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&file_path, permissions)
+            .expect("Failed to set readonly permissions");
+
+        assert!(ConfigManager::validate_path(&file_path).is_err());
     }
 }
