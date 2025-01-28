@@ -19,10 +19,10 @@ jobs:
     name: Build and Test
     runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
 
-    container:
-      # Use pre-built container from your GitHub Container Registry
-      image: ghcr.io/tracer-cloud/tracer-cloud:rust-ci-arm64
-      options: --entrypoint ""
+    # container:
+    #   # Use pre-built container from your GitHub Container Registry
+    #   image: ghcr.io/tracer-cloud/tracer-cloud:rust-ci-arm64
+    #   options: --entrypoint ""
 
     services:
       localstack:
