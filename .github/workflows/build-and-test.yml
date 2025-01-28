@@ -10,6 +10,10 @@ on:
 env:
   CARGO_TERM_COLOR: always # Ensures colored output in GitHub Actions logs
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-and-test:
     name: Build and Test
