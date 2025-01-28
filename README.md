@@ -92,7 +92,7 @@ To speed up our CI pipeline, we utilize a custom Docker container registry on Gi
 ### Steps to Use the Docker Container Registry
 1. **Build the docker file**
    ```bash
-   docker build -t rust-ci-arm64 -f ci.Dockerfile .
+   docker build -t rust-ci-arm64 -f Dockerfile .
    ```
 
 2. **Tag the Docker Image**  

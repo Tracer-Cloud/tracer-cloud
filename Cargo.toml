@@ -55,8 +55,3 @@ dirs = "6.0.0"
 [dev-dependencies]
 env_logger = "0.9"
 tempdir = "0.3.7"
-
-# [[bin]]
-# name = "tracer"
-# path = "src/main.rs"
-# test = false  # Disable tests for the binary target so that they don't execute twice for both lib.rs and main.rs
