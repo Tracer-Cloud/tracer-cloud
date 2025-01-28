@@ -244,6 +244,9 @@ impl TracerClient {
             if let Err(err) = self.exporter.output(data, &run_metadata.name).await {
                 println!("Error outputing end run logs: {err}")
             };
+
+            self.logs
+                .update_run_details(Some(run_metadata.pipeline_name.clone()), None, None);
             send_end_run_event(&self.service_url, &self.api_key).await?;
             self.current_run = None;
         }

@@ -91,6 +91,7 @@ impl ParquetSchema for FlattenedTracerEvent {
         let completed_process_dt = CompletedProcess::schema().fields;
         let system_metrics_dt = SystemMetric::schema().fields;
         let syslog_dt = SyslogProperties::schema().fields;
+        let system_properties_dt = SystemProperties::schema().fields;
         let fields = vec![
             Field::new(
                 "timestamp",
@@ -113,6 +114,11 @@ impl ParquetSchema for FlattenedTracerEvent {
             Field::new(
                 "system_metric_attributes",
                 DataType::Struct(system_metrics_dt),
+                true,
+            ),
+            Field::new(
+                "system_properties",
+                DataType::Struct(system_properties_dt),
                 true,
             ),
             Field::new("syslog_attributes", DataType::Struct(syslog_dt), true),
