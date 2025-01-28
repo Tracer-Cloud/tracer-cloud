@@ -53,28 +53,3 @@ jobs:
 
     - name: Run tests
       run: make test
-
-    - name: Upload Test Results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: rust
-        path: target/nextest/default/junit.xml
-  # upload-test-results:
-  #     if: always()
-  #     runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
-  #     needs: ["build-and-test"]
-
-  #     steps:
-  #     - name: Download Rust Test Output
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: rust
-  #         path: ./rust
-
-  #     - name: Publish Test Results
-  #       uses: EnricoMi/publish-unit-test-result-action/macos@v2
-  #       if: always()
-  #       with:
-  #         files: |
-  #           rust/*.xml
