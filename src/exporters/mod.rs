@@ -15,5 +15,6 @@ where
     Self::ExportableType: ParquetSchema + Debug,
 {
     type ExportableType;
+    #[allow(async_fn_in_trait)]
     async fn output(&self, data: &[Event], run_name: &str) -> Result<PathBuf, String>;
 }

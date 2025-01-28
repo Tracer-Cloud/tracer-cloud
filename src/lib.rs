@@ -1,24 +1,25 @@
-use anyhow::Result;
-use tracer::cli::process_cli;
-mod cli;
-mod cloud_providers;
-mod config_manager;
-mod daemon_communication;
-mod debug_log;
-mod event_recorder;
-mod events;
-mod exporters;
-mod file_watcher;
-mod http_client;
-mod metrics;
-mod process_watcher;
-mod stdout;
-mod submit_batched_data;
-mod syslog;
-mod tracer_client;
-mod types;
-mod upload;
-use anyhow::{Context, Ok};
+pub mod cli;
+/// lib.rs
+pub mod cloud_providers;
+pub mod config_manager;
+pub mod daemon_communication;
+pub mod debug_log;
+pub mod event_recorder;
+pub mod events;
+pub mod exporters;
+pub mod file_watcher;
+pub mod http_client;
+pub mod metrics;
+pub mod process_watcher;
+pub mod stdout;
+pub mod submit_batched_data;
+pub mod syslog;
+pub mod tracer_client;
+pub mod tracing;
+pub mod types;
+pub mod upload;
+
+use anyhow::{Context, Ok, Result};
 use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
@@ -44,8 +45,8 @@ const FILE_CACHE_DIR: &str = "/tmp/tracerd_cache";
 
 const SYSLOG_FILE: &str = "/var/log/syslog";
 
-pub const REPO_OWNER: &str = "davincios";
-pub const REPO_NAME: &str = "tracer-daemon";
+const REPO_OWNER: &str = "davincios";
+const REPO_NAME: &str = "tracer-daemon";
 
 pub fn start_daemon() -> Result<()> {
     ConfigManager::test_service_config_sync()?;
@@ -66,10 +67,6 @@ pub fn start_daemon() -> Result<()> {
         )
         .start()
         .context("Failed to start daemon.")
-}
-
-pub fn main() -> Result<()> {
-    process_cli()
 }
 
 #[tokio::main]

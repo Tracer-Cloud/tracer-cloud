@@ -24,7 +24,7 @@ pub struct RunMetadata {
     pub last_interaction: Instant,
     pub name: String,
     pub id: String,
-    pub service_name: String,
+    pub pipeline_name: String,
     pub parent_pid: Option<Pid>,
     pub start_time: DateTime<Utc>,
 }
@@ -210,7 +210,7 @@ impl TracerClient {
             start_time: timestamp.unwrap_or_else(Utc::now),
             name: result.run_name.clone(),
             id: result.run_id.clone(),
-            service_name: result.service_name,
+            pipeline_name: result.pipeline_name,
         });
 
         self.logs

@@ -99,13 +99,13 @@ pub fn process_start_run_command<'a>(
             json!({
                 "run_name": info.name,
                 "run_id": info.id,
-                "service_name": info.service_name,
+                "pipeline_name": info.pipeline_name,
             })
         } else {
             json!({
                 "run_name": "",
                 "run_id": "",
-                "service_name": "",
+                "pipeline_name": "",
             })
         };
 
@@ -135,13 +135,13 @@ pub fn process_info_command<'a>(
             json!({
                 "run_name": out.name,
                 "run_id": out.id,
-                "service_name": out.service_name,
+                "pipeline_name": out.pipeline_name,
             })
         } else {
             json!({
                 "run_name": "",
                 "run_id": "",
-                "service_name": "",
+                "pipeline_name": "",
             })
         };
 

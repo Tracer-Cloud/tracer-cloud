@@ -36,7 +36,7 @@ pub async fn print_config_info() -> Result<()> {
         if !info.run_name.is_empty() {
             println!("Run name: {}", info.run_name);
             println!("Run ID: {}", info.run_id);
-            println!("Service name: {}", info.service_name);
+            println!("Service name: {}", info.pipeline_name);
         }
         println!("Daemon status: Running");
     } else {
