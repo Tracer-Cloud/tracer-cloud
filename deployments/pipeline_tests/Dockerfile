@@ -1,11 +1,14 @@
-# Stage 1: Nextflow Setup
-FROM debian:bullseye-slim AS tool_setup
+FROM sapmachine:17.0.13-jre-ubuntu-jammy as tool_setup 
 
 USER root
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
 
 # Install core utilities
 RUN apt-get update --quiet && \
     apt-get install --quiet --yes --no-install-recommends \
+        gnupg \
         ca-certificates \
         apt-transport-https \
         wget \
@@ -14,16 +17,17 @@ RUN apt-get update --quiet && \
         git \
         unzip \
         graphviz \
-        tree && \
+        tree \
+        software-properties-common \
+        libarchive-dev && \
+        
     rm -rf /var/lib/apt/lists/*
 
 # Install Apptainer (formerly Singularity)
-RUN apt-get update --quiet && \
-    apt-get install --quiet --yes --no-install-recommends \
-        software-properties-common && \
-    add-apt-repository -y ppa:apptainer/ppa && \
-    apt-get install --quiet --yes apptainer && \
-    rm -rf /var/lib/apt/lists/*
+#RUN add-apt-repository -y ppa:apptainer/ppa && \ 
+#     apt-get update --quiet && \
+#     apt-get install --quiet --yes apptainer && \
+#     rm -rf /var/lib/apt/lists/*
 
 # Install Miniconda
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
@@ -39,21 +43,71 @@ RUN conda config --add channels defaults && \
     conda install --quiet --yes --name base \
         nextflow \
         nf-core \
-        python && \
+        python \
+
+        salmon \
+        boost \
+        star \
+        macs3 \
+        multiqc \
+        subread \
+        kallisto \
+        hisat2 \
+        bwa \
+        bowtie2 \
+        fastqc \
+        gawk \
+        samtools \
+        mamba \
+        nf-test \
+        stringtie \
+        black \
+        prettier \
+        pre-commit \
+        pytest-workflow \
+        snakemake \
+        airflow  \
+        trimmomatic \
+        picard \
+        gatk4 \
+        snpeff \
+        cnvkit && \
+
     conda clean --all --force-pkgs-dirs --yes
 
 
-# Install additional tools and libraries
+# Install R and required dependencies
 RUN apt-get update --quiet && \
     apt-get install --quiet --yes --no-install-recommends \
+        tzdata \
         r-base \
         libxml2-dev \
         libcurl4-openssl-dev \
         libssl-dev \
-        libfontconfig1-dev && \
-    R -e "install.packages(c('BiocManager', 'ggplot2'), repos='http://cran.rstudio.com/')" && \
-    R -e "BiocManager::install(c('DESeq2', 'EnhancedVolcano'))" && \
+        libfontconfig1-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libfreetype6-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
+        libgit2-dev \
+        libglpk-dev \
+        make \
+        build-essential && \
     rm -rf /var/lib/apt/lists/*
+
+
+# Create a writable library path for R packages
+ENV R_LIBS_USER=/usr/local/lib/R/site-library
+
+# Ensure the library path is writable
+RUN mkdir -p $R_LIBS_USER && \
+    chmod -R 777 $R_LIBS_USER
+
+# Install R packages
+RUN R -e "install.packages(c('BiocManager', 'ggplot2'), repos='http://cran.rstudio.com/')" && \
+    R -e "BiocManager::install(c('DESeq2', 'tximport', 'apeglm', 'edgeR', 'limma', 'EnhancedVolcano'))"
 
 
 
@@ -62,20 +116,19 @@ ENV NXF_EDGE=1
 ENV NXF_VER=24.02.0-edge
 RUN nextflow self-update && nextflow -version
 
-# Stage 2: Custom Tools and Bashrc
-FROM tool_setup AS script_setups
 
 # Set working directory
 WORKDIR /workspace
-
 
 # Pass the GitHub token as a build argument
 ARG GITHUB_TOKEN
 
 # Clone  repository using the token and setup scripts 
 RUN git clone https://${GITHUB_TOKEN}@github.com/TracerBio/tracer-workflow-templates.git /tmp/temp-scripts \
-    && mkdir /workspace/bashrc_scripts && cp -R /tmp/temp-scripts/shell-tracer-autoinstrumentation/ /workspace/bashrc_scripts \
-    && mkdir /workspace/bashrc_scripts && cp -R /tmp/temp-scripts/nextflow-tracer-autoinstrumentation/ /workspace/nextflow_scripts \
+    && mkdir -p /workspace/bashrc_scripts && cp -R /tmp/temp-scripts/shell-tracer-autoinstrumentation/ /workspace/bashrc_scripts \
+    && mkdir -p /workspace/nextflow_scripts && cp -R /tmp/temp-scripts/nextflow-tracer-autoinstrumentation/ /workspace/nextflow_scripts \
+    && mkdir -p /workspace/tracer-workflow-templates/data && cp -R /tmp/temp-scripts/data/ /workspace/tracer-workflow-templates \
+    && mkdir -p /workspace/data && cp -R /tmp/temp-scripts/data/ /workspace/data \
     && rm -rf /tmp/temp-scripts \
 
     && chmod -R +x /workspace/bashrc_scripts \
@@ -85,5 +138,9 @@ RUN git clone https://${GITHUB_TOKEN}@github.com/TracerBio/tracer-workflow-templ
 # Set environment variables for Nextflow work directory
 ENV NXF_WORK=/workspace/nextflow_work
 
+RUN unset JAVA_TOOL_OPTIONS
+
+RUN export PS1='\t -> '
+
 # Default to Bash shell
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["tail", "-f", "/dev/null"]
