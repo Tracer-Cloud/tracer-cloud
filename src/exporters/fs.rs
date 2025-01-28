@@ -24,6 +24,7 @@ impl FsExportHandler {
     }
 }
 
+#[async_trait::async_trait]
 impl ParquetExport for FsExportHandler {
     type ExportableType = FlattenedTracerEvent;
     async fn output(&self, data: &[Event], run_name: &str) -> Result<PathBuf, String> {

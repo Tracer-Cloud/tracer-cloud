@@ -112,6 +112,7 @@ impl S3ExportHandler {
     }
 }
 
+#[async_trait::async_trait]
 impl ParquetExport for S3ExportHandler {
     type ExportableType = FlattenedTracerEvent;
 
