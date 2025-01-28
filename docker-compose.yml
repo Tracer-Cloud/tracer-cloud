@@ -1,52 +1,55 @@
-# docker-compose.yml
-services:
-  # Temporary comment: uncommenting because we need both Grafana and Local Stack 
-  localstack:
-   restart: "no"
-   image: localstack/localstack:4.0.3
-   ports:
-     - "4566:4566"
-   environment:
-     - SERVICES=s3,
-     - AWS_REGION=us-east-2
-     - AWS_ACCESS_KEY_ID=000000
-     - AWS_SECRET_ACCESS_KEY=000000000000
-     - DEBUG=1
+# Base image aligned with Ubuntu ARM64
+FROM ubuntu:24.04
 
-  loki:
-    image: grafana/loki:3.3.0
-    ports:
-      - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
-    profiles: [observe]
+# Install necessary dependencies for Rust, Localstack, Loki, and Grafana
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    python3-pip \
+    jq \
+    git \
+    build-essential \
+    libssl-dev \
+    pkg-config \
+    && apt-get clean
 
-  grafana:
-    environment:
-      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_FEATURE_TOGGLES_ENABLE=alertingSimplifiedRouting,alertingQueryAndExpressionsStepMode
-    entrypoint:
-      - sh
-      - -euc
-      - |
-        mkdir -p /etc/grafana/provisioning/datasources
-        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
-        apiVersion: 1
-        datasources:
-        - name: Loki
-          type: loki
-          access: proxy 
-          orgId: 1
-          url: http://loki:3100
-          basicAuth: false
-          isDefault: true
-          version: 1
-          editable: false
-        EOF
-        /run.sh
-    image: grafana/grafana:11.3.1
-    ports:
-      - "3000:3000"
-    profiles: [observe]
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
 
+# Install cargo-nextest for Rust testing
+RUN cargo install cargo-nextest
+
+# Install Localstack
+RUN pip3 install localstack
+
+# Install Loki (optional if you want to build and use binaries)
+RUN wget https://github.com/grafana/loki/releases/download/v3.3.0/loki-linux-arm64.zip \
+    && unzip loki-linux-arm64.zip -d /usr/bin/ \
+    && rm loki-linux-arm64.zip
+
+# Configure Grafana
+RUN mkdir -p /etc/grafana/provisioning/datasources
+RUN echo 'apiVersion: 1
+datasources:
+- name: Loki
+  type: loki
+  access: proxy
+  orgId: 1
+  url: http://localhost:3100
+  basicAuth: false
+  isDefault: true
+  version: 1
+  editable: false' > /etc/grafana/provisioning/datasources/ds.yaml
+
+ENV GF_PATHS_PROVISIONING="/etc/grafana/provisioning" \
+    GF_AUTH_ANONYMOUS_ENABLED="true" \
+    GF_AUTH_ANONYMOUS_ORG_ROLE="Admin" \
+    GF_FEATURE_TOGGLES_ENABLE="alertingSimplifiedRouting,alertingQueryAndExpressionsStepMode"
+
+EXPOSE 3000 3100 4566
+
+# Entrypoint script to run all services
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+ENTRYPOINT ["/start.sh"]

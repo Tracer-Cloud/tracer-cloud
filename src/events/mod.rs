@@ -67,7 +67,7 @@ pub async fn send_alert_event(service_url: &str, api_key: &str, message: String)
 pub struct RunEventOut {
     pub run_name: String,
     pub run_id: String,
-    pub service_name: String,
+    pub pipeline_name: String,
     pub system_properties: SystemProperties,
 }
 
@@ -105,7 +105,7 @@ async fn gather_system_properties(system: &System) -> SystemProperties {
 }
 
 #[allow(dead_code)]
-// TODO: Can we remove dependencies from this or Do we refactor to just get (service_name, run_id
+// TODO: Can we remove dependencies from this or Do we refactor to just get (pipeline_name, run_id
 // and run name) without sending any event?
 pub async fn send_start_run_event(
     service_url: &str,
@@ -118,7 +118,7 @@ pub async fn send_start_run_event(
 
     #[derive(Deserialize)]
     struct RunLogOutProperties {
-        service_name: String,
+        pipeline_name: String,
         #[serde(flatten)]
         extra: HashMap<String, serde_json::Value>, // not used any more
     }
@@ -164,13 +164,13 @@ pub async fn send_start_run_event(
 
     let run_id = generate_run_id();
 
-    let service_name = &value.result[0].properties.service_name;
+    let pipeline_name = &value.result[0].properties.pipeline_name;
 
     logger
         .log(
             format!(
                 "Run name: {}, run id: {}, service name: {}",
-                run_name, run_id, service_name
+                run_name, run_id, pipeline_name
             )
             .as_str(),
             None,
@@ -182,7 +182,7 @@ pub async fn send_start_run_event(
     Ok(RunEventOut {
         run_name: run_name.clone(),
         run_id: run_id.clone(),
-        service_name: service_name.clone(),
+        pipeline_name: pipeline_name.clone(),
         system_properties,
     })
 }

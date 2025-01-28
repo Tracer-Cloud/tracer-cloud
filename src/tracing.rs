@@ -17,7 +17,7 @@ pub fn init_tracing() -> Result<(BackgroundTask, BackgroundTaskController), trac
 
     let (layer, task_controller, task) = tracing_loki::builder()
         .label("host", "tracer-client-rust")?
-        .label("service_name", "tracer-client-rust")?
+        .label("pipeline_name", "tracer-client-rust")?
         .extra_field("run_id", uuid::Uuid::new_v4())?
         .build_controller_url(Url::parse(&loki_url).unwrap())?;
 
