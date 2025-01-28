@@ -1,5 +1,6 @@
-pub mod cli;
 /// lib.rs
+//
+pub mod cli;
 pub mod cloud_providers;
 pub mod config_manager;
 pub mod daemon_communication;

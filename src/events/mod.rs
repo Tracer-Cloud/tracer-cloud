@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 // src/events/mod.rs
 use crate::{
     debug_log::Logger,
@@ -12,8 +10,7 @@ use crate::{
 mod run_details;
 use anyhow::{Context, Result};
 use chrono::Utc;
-use run_details::{generate_run_id, generate_run_name};
-use serde::Deserialize;
+use run_details::{generate_pipeline_name_from_key, generate_run_id, generate_run_name};
 use serde_json::json;
 use sysinfo::System;
 use tracing::info;
@@ -104,67 +101,25 @@ async fn gather_system_properties(system: &System) -> SystemProperties {
     }
 }
 
-#[allow(dead_code)]
-// TODO: Can we remove dependencies from this or Do we refactor to just get (pipeline_name, run_id
-// and run name) without sending any event?
-pub async fn send_start_run_event(
-    service_url: &str,
-    api_key: &str,
-    system: &System,
-) -> Result<RunEventOut> {
+pub async fn send_start_run_event(api_key: &str, system: &System) -> Result<RunEventOut> {
     info!("Starting new pipeline...");
 
     let logger = Logger::new();
 
-    #[derive(Deserialize)]
-    struct RunLogOutProperties {
-        pipeline_name: String,
-        #[serde(flatten)]
-        extra: HashMap<String, serde_json::Value>, // not used any more
-    }
-
-    #[derive(Deserialize)]
-    struct RunLogOut {
-        properties: RunLogOutProperties,
-    }
-
-    #[derive(Deserialize)]
-    struct RunLogResult {
-        result: Vec<RunLogOut>,
-    }
-
     let system_properties = gather_system_properties(system).await;
-
-    let init_entry = json!({
-        "message": "[CLI] Starting new pipeline run",
-        "process_type": "pipeline",
-        "process_status": "new_run",
-        "event_type": "process_status",
-        "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
-        "attributes": &system_properties,
-    });
-
-    // TODO: remove !. We need to get the service name else where
-    let result = send_http_event(service_url, api_key, &init_entry).await?;
-
-    let value: RunLogResult = serde_json::from_str(&result).unwrap();
-
-    logger
-        .log(
-            format!("New pipeline run result: {}", result).as_str(),
-            None,
-        )
-        .await;
-
-    if value.result.len() != 1 {
-        return Err(anyhow::anyhow!("Invalid response from server"));
-    }
 
     let run_name = generate_run_name();
 
     let run_id = generate_run_id();
 
-    let pipeline_name = &value.result[0].properties.pipeline_name;
+    let pipeline_name = generate_pipeline_name_from_key(api_key);
+
+    logger
+        .log(
+            format!("New pipeline {} run initiated", &pipeline_name).as_str(),
+            None,
+        )
+        .await;
 
     logger
         .log(
@@ -182,7 +137,7 @@ pub async fn send_start_run_event(
     Ok(RunEventOut {
         run_name: run_name.clone(),
         run_id: run_id.clone(),
-        pipeline_name: pipeline_name.clone(),
+        pipeline_name: pipeline_name.to_string(),
         system_properties,
     })
 }

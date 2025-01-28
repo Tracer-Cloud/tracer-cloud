@@ -32,6 +32,7 @@ pub struct FlattenedTracerEvent {
     pub process_type: String,
     pub process_status: String,
 
+    pub pipeline_name: Option<String>,
     pub run_name: Option<String>,
     pub run_id: Option<String>,
 
@@ -56,6 +57,7 @@ impl From<Event> for FlattenedTracerEvent {
             event_type: value.event_type,
             process_type: value.process_type,
             process_status: value.process_status,
+            pipeline_name: value.pipeline_name,
             run_name: value.run_name,
             run_id: value.run_id,
             json_event,
@@ -99,6 +101,7 @@ impl ParquetSchema for FlattenedTracerEvent {
             Field::new("event_type", DataType::Utf8, false),
             Field::new("process_type", DataType::Utf8, false),
             Field::new("process_status", DataType::Utf8, false),
+            Field::new("pipeline_name", DataType::Utf8, true),
             Field::new("run_name", DataType::Utf8, true),
             Field::new("run_id", DataType::Utf8, true),
             Field::new("process_attributes", DataType::Struct(process_dt), true),

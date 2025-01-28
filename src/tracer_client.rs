@@ -203,18 +203,21 @@ impl TracerClient {
             self.stop_run().await?;
         }
 
-        let result = send_start_run_event(&self.service_url, &self.api_key, &self.system).await?;
+        let result = send_start_run_event(&self.api_key, &self.system).await?;
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),
             parent_pid: None,
             start_time: timestamp.unwrap_or_else(Utc::now),
             name: result.run_name.clone(),
             id: result.run_id.clone(),
-            pipeline_name: result.pipeline_name,
+            pipeline_name: result.pipeline_name.clone(),
         });
 
-        self.logs
-            .update_run_details(Some(result.run_name), Some(result.run_id));
+        self.logs.update_run_details(
+            Some(result.pipeline_name),
+            Some(result.run_name),
+            Some(result.run_id),
+        );
 
         self.logs.record_event(
             EventType::NewRun,
