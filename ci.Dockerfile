@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y \
     python3-venv \
     jq \
     unzip \
+    libssl-dev \
+    pkg-config \
     && apt-get clean
 
 # Install Rust and cargo-nextest

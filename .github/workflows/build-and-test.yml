@@ -26,7 +26,8 @@ jobs:
 
     services:
       localstack:
-        image: localstack/localstack:4.0.3
+        image: ghcr.io/tracer-cloud/localstack:4.0.3
+
         env:
           SERVICES: s3,
           AWS_REGION: us-east-2
