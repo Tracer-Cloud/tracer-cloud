@@ -8,19 +8,19 @@ ENV TZ=Etc/UTC
 # Install core utilities
 RUN apt-get update --quiet && \
     apt-get install --quiet --yes --no-install-recommends \
-        gnupg \
-        ca-certificates \
-        apt-transport-https \
-        wget \
-        curl \
-        sudo \
-        git \
-        unzip \
-        graphviz \
-        tree \
-        software-properties-common \
-        libarchive-dev && \
-        
+    gnupg \
+    ca-certificates \
+    apt-transport-https \
+    wget \
+    curl \
+    sudo \
+    git \
+    unzip \
+    graphviz \
+    tree \
+    software-properties-common \
+    libarchive-dev && \
+
     rm -rf /var/lib/apt/lists/*
 
 # Install Apptainer (formerly Singularity)
@@ -41,37 +41,37 @@ RUN conda config --add channels defaults && \
     conda config --add channels conda-forge && \
     conda config --set channel_priority strict && \
     conda install --quiet --yes --name base \
-        nextflow \
-        nf-core \
-        python \
+    nextflow \
+    nf-core \
+    python \
 
-        salmon \
-        boost \
-        star \
-        macs3 \
-        multiqc \
-        subread \
-        kallisto \
-        hisat2 \
-        bwa \
-        bowtie2 \
-        fastqc \
-        gawk \
-        samtools \
-        mamba \
-        nf-test \
-        stringtie \
-        black \
-        prettier \
-        pre-commit \
-        pytest-workflow \
-        snakemake \
-        airflow  \
-        trimmomatic \
-        picard \
-        gatk4 \
-        snpeff \
-        cnvkit && \
+    salmon \
+    boost \
+    star \
+    macs3 \
+    multiqc \
+    subread \
+    kallisto \
+    hisat2 \
+    bwa \
+    bowtie2 \
+    fastqc \
+    gawk \
+    samtools \
+    mamba \
+    nf-test \
+    stringtie \
+    black \
+    prettier \
+    pre-commit \
+    pytest-workflow \
+    snakemake \
+    airflow  \
+    trimmomatic \
+    picard \
+    gatk4 \
+    snpeff \
+    cnvkit && \
 
     conda clean --all --force-pkgs-dirs --yes
 
@@ -79,22 +79,22 @@ RUN conda config --add channels defaults && \
 # Install R and required dependencies
 RUN apt-get update --quiet && \
     apt-get install --quiet --yes --no-install-recommends \
-        tzdata \
-        r-base \
-        libxml2-dev \
-        libcurl4-openssl-dev \
-        libssl-dev \
-        libfontconfig1-dev \
-        libharfbuzz-dev \
-        libfribidi-dev \
-        libfreetype6-dev \
-        libpng-dev \
-        libtiff5-dev \
-        libjpeg-dev \
-        libgit2-dev \
-        libglpk-dev \
-        make \
-        build-essential && \
+    tzdata \
+    r-base \
+    libxml2-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libfontconfig1-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libjpeg-dev \
+    libgit2-dev \
+    libglpk-dev \
+    make \
+    build-essential && \
     rm -rf /var/lib/apt/lists/*
 
 
@@ -120,11 +120,8 @@ RUN nextflow self-update && nextflow -version
 # Set working directory
 WORKDIR /workspace
 
-# Pass the GitHub token as a build argument
-ARG GITHUB_TOKEN
-
 # Clone  repository using the token and setup scripts 
-RUN git clone https://${GITHUB_TOKEN}@github.com/TracerBio/tracer-workflow-templates.git /tmp/temp-scripts \
+RUN git clone https://github.com/TracerBio/tracer-workflow-templates.git /tmp/temp-scripts \
     && mkdir -p /workspace/bashrc_scripts && cp -R /tmp/temp-scripts/shell-tracer-autoinstrumentation/ /workspace/bashrc_scripts \
     && mkdir -p /workspace/nextflow_scripts && cp -R /tmp/temp-scripts/nextflow-tracer-autoinstrumentation/ /workspace/nextflow_scripts \
     && mkdir -p /workspace/tracer-workflow-templates/data && cp -R /tmp/temp-scripts/data/ /workspace/tracer-workflow-templates \
