@@ -44,7 +44,7 @@ RUN conda config --add channels defaults && \
     nextflow \
     nf-core \
     python \
-
+    deeptools \
     salmon \
     boost \
     star \
