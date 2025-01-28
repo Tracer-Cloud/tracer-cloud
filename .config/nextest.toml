@@ -24,7 +24,7 @@ retries = { backoff = "exponential", count = 3, delay = "500ms", jitter = true, 
 
 # The number of threads to run tests with. Supported values are either an integer or
 # the string "num-cpus". Can be overridden through the `--test-threads` option.
-test-threads = 16
+test-threads = "num-cpus" # Use all available CPUs
 
 # The number of threads required for each test. This is generally used in overrides to
 # mark certain tests as heavier than others. However, it can also be set as a global parameter.

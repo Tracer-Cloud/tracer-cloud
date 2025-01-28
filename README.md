@@ -90,26 +90,30 @@ The S3 client initializes with the following options:
 To speed up our CI pipeline, we utilize a custom Docker container registry on GitHub, known as the GitHub Container Registry (GCHR). This allows us to efficiently manage and deploy our Docker images.
 
 ### Steps to Use the Docker Container Registry
+1. **Build the docker file**
+   ```bash
+   docker build -t rust-ci-arm64 -f ci.Dockerfile .
+   ```
 
-1. **Tag the Docker Image**  
+2. **Tag the Docker Image**  
    Tag your Docker image with the appropriate repository name:
    ```bash
    docker tag rust-ci-arm64 ghcr.io/tracer-cloud/tracer-cloud:rust-ci-arm64
    ```
-
-2. **Push the Docker Image to the Registry**  
-   Push the tagged image to the GitHub Container Registry:
-   ```bash
-   docker push ghcr.io/tracer-cloud/tracer-cloud:rust-ci-arm64
-   ```
-
 3. **Authenticate with the GitHub Container Registry**  
    Use your GitHub token to log in to the registry. This step is necessary for pushing images:
    ```bash
    echo $GITHUB_TOKEN | docker login ghcr.io -u Tracer-Cloud --password-stdin
    ```
 
-4. **Repeat Tagging and Pushing**  
+4. **Push the Docker Image to the Registry**  
+   Push the tagged image to the GitHub Container Registry:
+   ```bash
+   docker push ghcr.io/tracer-cloud/tracer-cloud:rust-ci-arm64
+   ```
+
+
+5. **Repeat Tagging and Pushing**  
    If you need to tag and push the image again, you can repeat the tagging and pushing steps:
    ```bash
    docker tag rust-ci-arm64 ghcr.io/tracer-cloud/tracer-cloud:rust-ci-arm64
