@@ -4461,6 +4461,7 @@ dependencies = [
  "arrow",
  "assert_cmd",
  "async-recursion",
+ "async-trait",
  "aws-config",
  "aws-credential-types",
  "aws-sdk-s3",
