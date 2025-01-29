@@ -93,13 +93,15 @@ pub fn process_start_run_command<'a>(
     ) -> Result<String, anyhow::Error> {
         tracer_client.lock().await.start_new_run(None).await?;
 
-        let info = tracer_client.lock().await.get_run_metadata();
+        let guard = tracer_client.lock().await;
+
+        let info = guard.get_run_metadata();
 
         let output = if let Some(info) = info {
             json!({
                 "run_name": info.name,
                 "run_id": info.id,
-                "pipeline_name": info.pipeline_name,
+                "pipeline_name": guard.get_pipeline_name(),
             })
         } else {
             json!({
@@ -129,13 +131,15 @@ pub fn process_info_command<'a>(
         tracer_client: &'a Arc<Mutex<TracerClient>>,
         stream: &'a mut UnixStream,
     ) -> Result<String, anyhow::Error> {
-        let out = tracer_client.lock().await.get_run_metadata();
+        let guard = tracer_client.lock().await;
+
+        let out = guard.get_run_metadata();
 
         let output = if let Some(out) = out {
             json!({
                 "run_name": out.name,
                 "run_id": out.id,
-                "pipeline_name": out.pipeline_name,
+                "pipeline_name": guard.get_pipeline_name(),
             })
         } else {
             json!({

@@ -71,7 +71,7 @@ pub fn start_daemon() -> Result<()> {
 }
 
 #[tokio::main]
-pub async fn run(workflow_directory_path: String) -> Result<()> {
+pub async fn run(workflow_directory_path: String, pipeline_name: String) -> Result<()> {
     let raw_config = ConfigManager::load_config();
 
     let export_dir = ConfigManager::get_tracer_parquet_export_dir()?;
@@ -84,9 +84,14 @@ pub async fn run(workflow_directory_path: String) -> Result<()> {
     )
     .await;
 
-    let client = TracerClient::new(raw_config.clone(), workflow_directory_path, s3_handler)
-        .await
-        .context("Failed to create TracerClient")?;
+    let client = TracerClient::new(
+        raw_config.clone(),
+        workflow_directory_path,
+        s3_handler,
+        pipeline_name,
+    )
+    .await
+    .context("Failed to create TracerClient")?;
     let tracer_client = Arc::new(Mutex::new(client));
     let config: Arc<RwLock<config_manager::Config>> = Arc::new(RwLock::new(raw_config));
 
@@ -196,10 +201,14 @@ mod tests {
 
         let s3_handler = S3ExportHandler::new_with_config(fs_handler, aws_config).await;
 
-        let mut tracer_client =
-            TracerClient::new(config, pwd.to_str().unwrap().to_string(), s3_handler)
-                .await
-                .unwrap();
+        let mut tracer_client = TracerClient::new(
+            config,
+            pwd.to_str().unwrap().to_string(),
+            s3_handler,
+            "testing".to_string(),
+        )
+        .await
+        .unwrap();
         let result = monitor_processes_with_tracer_client(&mut tracer_client).await;
         assert!(result.is_ok());
     }

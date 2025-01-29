@@ -19,12 +19,18 @@ use std::time::{Duration, Instant};
 use sysinfo::{Pid, System};
 use tokio::sync::RwLock;
 
+// NOTE: we might have to find a better alternative than passing the pipeline name to tracer client
+// directly. Currently with this approach, we do not need to generate a new pipeline name for every
+// new run.
+// But this also means that a system can setup tracer agent and exec
+// multiple pipelines
+
 #[derive(Clone)]
 pub struct RunMetadata {
     pub last_interaction: Instant,
     pub name: String,
     pub id: String,
-    pub pipeline_name: String,
+    //pub pipeline_name: String,
     pub parent_pid: Option<Pid>,
     pub start_time: DateTime<Utc>,
 }
@@ -55,6 +61,7 @@ pub struct TracerClient {
     stdout_lines_buffer: LinesBufferArc,
     stderr_lines_buffer: LinesBufferArc,
     pub exporter: S3ExportHandler,
+    pipeline_name: String,
 }
 
 impl TracerClient {
@@ -62,6 +69,7 @@ impl TracerClient {
         config: Config,
         workflow_directory: String,
         exporter: S3ExportHandler,
+        pipeline_name: String,
     ) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
@@ -100,6 +108,7 @@ impl TracerClient {
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
             exporter,
+            pipeline_name,
         })
     }
 
@@ -195,18 +204,17 @@ impl TracerClient {
             self.stop_run().await?;
         }
 
-        let result = send_start_run_event(&self.api_key, &self.system).await?;
+        let result = send_start_run_event(&self.system, &self.pipeline_name).await?;
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),
             parent_pid: None,
             start_time: timestamp.unwrap_or_else(Utc::now),
             name: result.run_name.clone(),
             id: result.run_id.clone(),
-            pipeline_name: result.pipeline_name.clone(),
         });
 
         self.logs.update_run_details(
-            Some(result.pipeline_name),
+            Some(self.pipeline_name.clone()),
             Some(result.run_name),
             Some(result.run_id),
         );
@@ -239,7 +247,7 @@ impl TracerClient {
             self.logs.clear();
 
             self.logs
-                .update_run_details(Some(run_metadata.pipeline_name.clone()), None, None);
+                .update_run_details(Some(self.pipeline_name.clone()), None, None);
             self.current_run = None;
         }
         Ok(())
@@ -319,6 +327,10 @@ impl TracerClient {
 
     pub fn get_service_url(&self) -> &str {
         &self.service_url
+    }
+
+    pub fn get_pipeline_name(&self) -> &str {
+        &self.pipeline_name
     }
 
     pub fn get_api_key(&self) -> &str {

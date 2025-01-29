@@ -10,7 +10,7 @@ use crate::{
 mod run_details;
 use anyhow::{Context, Result};
 use chrono::Utc;
-use run_details::{generate_pipeline_name_from_key, generate_run_id, generate_run_name};
+use run_details::{generate_run_id, generate_run_name};
 use serde_json::json;
 use sysinfo::System;
 use tracing::info;
@@ -64,7 +64,6 @@ pub async fn send_alert_event(service_url: &str, api_key: &str, message: String)
 pub struct RunEventOut {
     pub run_name: String,
     pub run_id: String,
-    pub pipeline_name: String,
     pub system_properties: SystemProperties,
 }
 
@@ -101,7 +100,8 @@ async fn gather_system_properties(system: &System) -> SystemProperties {
     }
 }
 
-pub async fn send_start_run_event(api_key: &str, system: &System) -> Result<RunEventOut> {
+// NOTE: moved pipeline_name to tracer client
+pub async fn send_start_run_event(system: &System, pipeline_name: &str) -> Result<RunEventOut> {
     info!("Starting new pipeline...");
 
     let logger = Logger::new();
@@ -111,8 +111,6 @@ pub async fn send_start_run_event(api_key: &str, system: &System) -> Result<RunE
     let run_name = generate_run_name();
 
     let run_id = generate_run_id();
-
-    let pipeline_name = generate_pipeline_name_from_key(api_key);
 
     logger
         .log(
@@ -137,7 +135,6 @@ pub async fn send_start_run_event(api_key: &str, system: &System) -> Result<RunE
     Ok(RunEventOut {
         run_name: run_name.clone(),
         run_id: run_id.clone(),
-        pipeline_name: pipeline_name.to_string(),
         system_properties,
     })
 }

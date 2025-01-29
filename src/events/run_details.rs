@@ -26,6 +26,7 @@ pub(super) fn generate_run_id() -> String {
     uuid::Uuid::new_v4().to_string()
 }
 
+#[allow(dead_code)]
 pub(super) fn generate_pipeline_name_from_key(api_key: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(api_key);
