@@ -91,7 +91,7 @@ impl S3ExportHandler {
                 }
                 Err(err) => {
                     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                    eprintln!("error creating bucket {err}");
+                    eprintln!("error creating bucket {err:?}");
                     continue;
                 }
             }
