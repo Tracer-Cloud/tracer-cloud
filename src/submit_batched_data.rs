@@ -1,17 +1,15 @@
 // src/submit_batched_data.rs
-use crate::event_recorder::EventRecorder;
-use crate::http_client::send_http_event;
 use crate::metrics::SystemMetricsCollector;
+use crate::{event_recorder::EventRecorder, exporters::ParquetExport};
 
 use anyhow::{Context, Result};
-use serde_json::json;
+
 use std::time::{Duration, Instant};
 use sysinfo::System;
-use tracing::info;
 
 pub async fn submit_batched_data(
-    api_key: &str,
-    service_url: &str,
+    run_name: &str,
+    exporter: &mut impl ParquetExport,
     system: &mut System,
     logs: &mut EventRecorder, // Todo and change: there should be a distinction between logs array and event recorder. The logs appears as vector while it isn't
     metrics_collector: &mut SystemMetricsCollector,
@@ -23,16 +21,16 @@ pub async fn submit_batched_data(
             .collect_metrics(system, logs)
             .context("Failed to collect metrics")?;
 
-        let data = json!(logs.get_events());
-
-        info!("Payload: {:#?}", data);
-
+        let data = logs.get_events();
+        match exporter.output(data, run_name).await {
+            Ok(_path) => {
+                // upload to s3
+                println!("Successfully outputed, uploading to s3");
+            }
+            Err(err) => println!("error outputing parquet file: {err}"),
+        };
         *last_sent = Some(Instant::now());
         logs.clear();
-
-        send_http_event(service_url, api_key, &data)
-            .await
-            .context("Failed to send HTTP event")?;
 
         Ok(())
     } else {
@@ -43,24 +41,25 @@ pub async fn submit_batched_data(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config_manager::ConfigManager;
     use crate::event_recorder::{EventRecorder, EventType};
+    use crate::exporters::FsExportHandler;
     use crate::metrics::SystemMetricsCollector;
     use anyhow::Result;
     use std::time::Duration;
     use sysinfo::System;
+    use tempdir::TempDir;
 
     #[tokio::test]
     async fn test_submit_batched_data() -> Result<()> {
-        let config = ConfigManager::load_default_config();
-        let service_url = config.service_url.clone();
-        let api_key = config.api_key.clone();
-
         let mut system = System::new();
         let mut logs = EventRecorder::default();
         let mut metrics_collector = SystemMetricsCollector::new();
         let mut last_sent = None;
         let interval = Duration::from_secs(60);
+        let temp_dir = TempDir::new("tracer-client-events").expect("failed to create tempdir");
+
+        let base_dir = temp_dir.path().join("./exports");
+        let mut exporter = FsExportHandler::new(base_dir, None);
 
         // Record a test event
         logs.record_event(
@@ -72,8 +71,8 @@ mod tests {
 
         // Call the method to submit batched data
         submit_batched_data(
-            &api_key,
-            &service_url,
+            "test_run",
+            &mut exporter,
             &mut system,
             &mut logs,
             &mut metrics_collector,

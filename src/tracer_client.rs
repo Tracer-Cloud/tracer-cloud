@@ -1,6 +1,6 @@
 // src/tracer_client.rs
 use crate::event_recorder::{EventRecorder, EventType};
-use crate::events::{send_end_run_event, send_start_run_event};
+use crate::events::send_start_run_event;
 use crate::exporters::{ParquetExport, S3ExportHandler};
 use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
@@ -131,22 +131,14 @@ impl TracerClient {
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
-        let data = self.logs.get_events();
         let run_name = if let Some(run) = &self.current_run {
             &run.name
         } else {
             "annoymous"
         };
-        match self.exporter.output(data, run_name).await {
-            Ok(_path) => {
-                // upload to s3
-                println!("Successfully outputed, uploading to s3");
-            }
-            Err(err) => println!("error outputing parquet file: {err}"),
-        };
         submit_batched_data(
-            &self.api_key,
-            &self.service_url,
+            run_name,
+            &mut self.exporter,
             &mut self.system,
             &mut self.logs,
             &mut self.metrics_collector,
@@ -244,13 +236,12 @@ impl TracerClient {
             if let Err(err) = self.exporter.output(data, &run_metadata.name).await {
                 println!("Error outputing end run logs: {err}")
             };
+            self.logs.clear();
 
             self.logs
                 .update_run_details(Some(run_metadata.pipeline_name.clone()), None, None);
-            send_end_run_event(&self.service_url, &self.api_key).await?;
             self.current_run = None;
         }
-        self.logs.clear();
         Ok(())
     }
 
