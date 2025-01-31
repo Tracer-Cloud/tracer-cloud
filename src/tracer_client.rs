@@ -9,6 +9,7 @@ use crate::process_watcher::ProcessWatcher;
 use crate::stdout::StdoutWatcher;
 use crate::submit_batched_data::submit_batched_data;
 use crate::syslog::SyslogWatcher;
+use crate::types::event::attributes::process::ProcessedDataSampleStats;
 use crate::types::event::attributes::EventAttributes;
 use crate::FILE_CACHE_DIR;
 use crate::{config_manager::Config, process_watcher::ShortLivedProcessLog};
@@ -229,6 +230,16 @@ impl TracerClient {
             EventType::NewRun,
             "[CLI] Starting new pipeline run".to_owned(),
             Some(EventAttributes::SystemProperties(result.system_properties)),
+            timestamp,
+        );
+
+        // NOTE: This is just for Demo Purposes, take it out when done
+        self.logs.record_event(
+            EventType::ToolMetricEvent,
+            "[CLI] Number of Processed Data".to_owned(),
+            Some(EventAttributes::ProcessStatistics(
+                ProcessedDataSampleStats::generate(),
+            )),
             timestamp,
         );
 

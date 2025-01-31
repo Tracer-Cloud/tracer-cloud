@@ -1,4 +1,4 @@
-use process::{CompletedProcess, ProcessProperties};
+use process::{CompletedProcess, ProcessProperties, ProcessedDataSampleStats};
 use syslog::SyslogProperties;
 use system_metrics::{SystemMetric, SystemProperties};
 
@@ -14,5 +14,7 @@ pub enum EventAttributes {
     SystemMetric(SystemMetric),
     Syslog(SyslogProperties),
     SystemProperties(SystemProperties),
+    // TODO: take out when done with demo
+    ProcessStatistics(ProcessedDataSampleStats),
     Other(serde_json::Value),
 }
