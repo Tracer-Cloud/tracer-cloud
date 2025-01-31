@@ -1,11 +1,11 @@
-use aws_config::{BehaviorVersion, SdkConfig};
-use aws_sdk_s3::{
-    config::ProvideCredentials,
-    types::{BucketLocationConstraint, CreateBucketConfiguration},
-};
+use aws_config::SdkConfig;
+use aws_credential_types::provider::ProvideCredentials;
+use aws_sdk_s3::types::{BucketLocationConstraint, CreateBucketConfiguration};
 use std::str::FromStr;
 
 use crate::types::config::AwsConfig;
+
+use super::get_initialized_aws_conf;
 
 pub struct S3Client {
     pub client: aws_sdk_s3::Client,
@@ -15,35 +15,7 @@ pub struct S3Client {
 #[allow(dead_code)]
 impl S3Client {
     pub async fn new(initialization_conf: AwsConfig, region: &'static str) -> Self {
-        let config_loader = aws_config::defaults(BehaviorVersion::latest());
-        let config = match initialization_conf {
-            AwsConfig::Profile(profile) => config_loader.profile_name(profile),
-            AwsConfig::RoleArn(arn) => {
-                let assumed_role_provider = aws_config::sts::AssumeRoleProvider::builder(arn)
-                    .session_name("tracer-client-session")
-                    .build()
-                    .await;
-
-                let assumed_credentials_provider = assumed_role_provider
-                    .provide_credentials()
-                    .await
-                    .expect("Failed to get assumed session role");
-
-                config_loader.credentials_provider(assumed_credentials_provider)
-            }
-            AwsConfig::Env => aws_config::from_env(),
-        }
-        .region(region)
-        .load()
-        .await;
-
-        let credentials_provider = config
-            .credentials_provider()
-            .expect("Failed to get credentials_provider");
-        let _ = credentials_provider
-            .provide_credentials()
-            .await
-            .expect("No Credentials Loaded");
+        let config = get_initialized_aws_conf(initialization_conf, region).await;
 
         Self {
             client: aws_sdk_s3::Client::new(&config),
@@ -228,6 +200,7 @@ impl S3Client {
 /// To fix this, I added cleanup steps before and after each test to maintain a clean state and used the #[serial] attribute to enforce sequential execution, preventing concurrent access.
 pub mod tests {
     use super::*;
+    use aws_config::BehaviorVersion;
     use serial_test::serial;
     use std::env;
     use tokio::time::{sleep, Duration};
