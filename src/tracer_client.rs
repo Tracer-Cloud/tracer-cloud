@@ -1,4 +1,5 @@
 // src/tracer_client.rs
+use crate::cloud_providers::aws::PricingClient;
 use crate::event_recorder::{EventRecorder, EventType};
 use crate::events::send_start_run_event;
 use crate::exporters::{ParquetExport, S3ExportHandler};
@@ -62,6 +63,7 @@ pub struct TracerClient {
     stderr_lines_buffer: LinesBufferArc,
     pub exporter: S3ExportHandler,
     pipeline_name: String,
+    pub pricing_client: PricingClient,
 }
 
 impl TracerClient {
@@ -75,6 +77,8 @@ impl TracerClient {
 
         println!("Initializing TracerClient with API Key: {}", config.api_key);
         println!("Service URL: {}", service_url);
+
+        let pricing_client = PricingClient::new(config.aws_init_type.clone(), "us-east-1").await;
 
         let file_watcher = FileWatcher::new();
 
@@ -109,6 +113,7 @@ impl TracerClient {
             metrics_collector: SystemMetricsCollector::new(),
             exporter,
             pipeline_name,
+            pricing_client,
         })
     }
 
@@ -204,7 +209,8 @@ impl TracerClient {
             self.stop_run().await?;
         }
 
-        let result = send_start_run_event(&self.system, &self.pipeline_name).await?;
+        let result =
+            send_start_run_event(&self.system, &self.pipeline_name, &self.pricing_client).await?;
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),
             parent_pid: None,

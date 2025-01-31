@@ -1,10 +1,12 @@
 // src/events/mod.rs
 use crate::{
+    cloud_providers::aws::PricingClient,
     debug_log::Logger,
     http_client::send_http_event,
     metrics::SystemMetricsCollector,
-    types::event::{
-        attributes::system_metrics::SystemProperties, aws_metadata::AwsInstanceMetaData,
+    types::{
+        aws::pricing::EC2FilterBuilder,
+        event::{attributes::system_metrics::SystemProperties, aws_metadata::AwsInstanceMetaData},
     },
 };
 mod run_details;
@@ -78,9 +80,28 @@ async fn get_aws_instance_metadata() -> Option<AwsInstanceMetaData> {
     }
 }
 
-async fn gather_system_properties(system: &System) -> SystemProperties {
+async fn gather_system_properties(
+    system: &System,
+    pricing_client: &PricingClient,
+) -> SystemProperties {
     let aws_metadata = get_aws_instance_metadata().await;
     let is_aws_instance = aws_metadata.is_some();
+
+    let ec2_cost_analysis = if let Some(ref metadata) = &aws_metadata {
+        let filters = EC2FilterBuilder {
+            instance_type: metadata.instance_type.clone(),
+            vcpu: system.cpus().len(),
+            memory_bytes: system.total_memory(),
+            region: metadata.region.clone(),
+        }
+        .to_filter();
+        pricing_client
+            .get_ec2_instance_price(filters)
+            .await
+            .map(|v| v.price_per_unit)
+    } else {
+        None
+    };
 
     let system_disk_io = SystemMetricsCollector::gather_disk_data();
 
@@ -97,16 +118,21 @@ async fn gather_system_properties(system: &System) -> SystemProperties {
         aws_metadata,
         is_aws_instance,
         system_disk_io,
+        ec2_cost_per_hour: ec2_cost_analysis,
     }
 }
 
 // NOTE: moved pipeline_name to tracer client
-pub async fn send_start_run_event(system: &System, pipeline_name: &str) -> Result<RunEventOut> {
+pub async fn send_start_run_event(
+    system: &System,
+    pipeline_name: &str,
+    pricing_client: &PricingClient,
+) -> Result<RunEventOut> {
     info!("Starting new pipeline...");
 
     let logger = Logger::new();
 
-    let system_properties = gather_system_properties(system).await;
+    let system_properties = gather_system_properties(system, pricing_client).await;
 
     let run_name = generate_run_name();
 
