@@ -13,6 +13,7 @@ pub struct Event {
     pub event_type: String,
     pub process_type: String,
     pub process_status: String,
+    pub pipeline_name: Option<String>,
     pub run_name: Option<String>,
     pub run_id: Option<String>,
     pub attributes: Option<EventAttributes>,

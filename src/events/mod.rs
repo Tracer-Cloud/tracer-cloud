@@ -1,19 +1,18 @@
-use std::collections::HashMap;
-
 // src/events/mod.rs
 use crate::{
+    cloud_providers::aws::PricingClient,
     debug_log::Logger,
     http_client::send_http_event,
     metrics::SystemMetricsCollector,
-    types::event::{
-        attributes::system_metrics::SystemProperties, aws_metadata::AwsInstanceMetaData,
+    types::{
+        aws::pricing::EC2FilterBuilder,
+        event::{attributes::system_metrics::SystemProperties, aws_metadata::AwsInstanceMetaData},
     },
 };
 mod run_details;
 use anyhow::{Context, Result};
 use chrono::Utc;
 use run_details::{generate_run_id, generate_run_name};
-use serde::Deserialize;
 use serde_json::json;
 use sysinfo::System;
 use tracing::info;
@@ -67,7 +66,6 @@ pub async fn send_alert_event(service_url: &str, api_key: &str, message: String)
 pub struct RunEventOut {
     pub run_name: String,
     pub run_id: String,
-    pub pipeline_name: String,
     pub system_properties: SystemProperties,
 }
 
@@ -82,9 +80,28 @@ async fn get_aws_instance_metadata() -> Option<AwsInstanceMetaData> {
     }
 }
 
-async fn gather_system_properties(system: &System) -> SystemProperties {
+async fn gather_system_properties(
+    system: &System,
+    pricing_client: &PricingClient,
+) -> SystemProperties {
     let aws_metadata = get_aws_instance_metadata().await;
     let is_aws_instance = aws_metadata.is_some();
+
+    let ec2_cost_analysis = if let Some(ref metadata) = &aws_metadata {
+        let filters = EC2FilterBuilder {
+            instance_type: metadata.instance_type.clone(),
+            vcpu: system.cpus().len(),
+            memory_bytes: system.total_memory(),
+            region: metadata.region.clone(),
+        }
+        .to_filter();
+        pricing_client
+            .get_ec2_instance_price(filters)
+            .await
+            .map(|v| v.price_per_unit)
+    } else {
+        None
+    };
 
     let system_disk_io = SystemMetricsCollector::gather_disk_data();
 
@@ -101,70 +118,32 @@ async fn gather_system_properties(system: &System) -> SystemProperties {
         aws_metadata,
         is_aws_instance,
         system_disk_io,
+        ec2_cost_per_hour: ec2_cost_analysis,
     }
 }
 
-#[allow(dead_code)]
-// TODO: Can we remove dependencies from this or Do we refactor to just get (pipeline_name, run_id
-// and run name) without sending any event?
+// NOTE: moved pipeline_name to tracer client
 pub async fn send_start_run_event(
-    service_url: &str,
-    api_key: &str,
     system: &System,
+    pipeline_name: &str,
+    pricing_client: &PricingClient,
 ) -> Result<RunEventOut> {
     info!("Starting new pipeline...");
 
     let logger = Logger::new();
 
-    #[derive(Deserialize)]
-    struct RunLogOutProperties {
-        pipeline_name: String,
-        #[serde(flatten)]
-        extra: HashMap<String, serde_json::Value>, // not used any more
-    }
-
-    #[derive(Deserialize)]
-    struct RunLogOut {
-        properties: RunLogOutProperties,
-    }
-
-    #[derive(Deserialize)]
-    struct RunLogResult {
-        result: Vec<RunLogOut>,
-    }
-
-    let system_properties = gather_system_properties(system).await;
-
-    let init_entry = json!({
-        "message": "[CLI] Starting new pipeline run",
-        "process_type": "pipeline",
-        "process_status": "new_run",
-        "event_type": "process_status",
-        "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
-        "attributes": &system_properties,
-    });
-
-    // TODO: remove !. We need to get the service name else where
-    let result = send_http_event(service_url, api_key, &init_entry).await?;
-
-    let value: RunLogResult = serde_json::from_str(&result).unwrap();
-
-    logger
-        .log(
-            format!("New pipeline run result: {}", result).as_str(),
-            None,
-        )
-        .await;
-
-    if value.result.len() != 1 {
-        return Err(anyhow::anyhow!("Invalid response from server"));
-    }
+    let system_properties = gather_system_properties(system, pricing_client).await;
 
     let run_name = generate_run_name();
 
     let run_id = generate_run_id();
 
-    let pipeline_name = &value.result[0].properties.pipeline_name;
+    logger
+        .log(
+            format!("New pipeline {} run initiated", &pipeline_name).as_str(),
+            None,
+        )
+        .await;
 
     logger
         .log(
@@ -182,7 +161,6 @@ pub async fn send_start_run_event(
     Ok(RunEventOut {
         run_name: run_name.clone(),
         run_id: run_id.clone(),
-        pipeline_name: pipeline_name.clone(),
         system_properties,
     })
 }

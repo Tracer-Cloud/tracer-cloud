@@ -56,6 +56,7 @@ impl SystemMetricsCollector {
     pub fn gather_metrics_object_attributes(system: &mut System) -> SystemMetric {
         let used_memory = system.used_memory();
         let total_memory = system.total_memory();
+        // System::host_name()
         let memory_utilization = (used_memory as f64 / total_memory as f64) * 100.0;
 
         let cpu_usage = system.global_cpu_info().cpu_usage();

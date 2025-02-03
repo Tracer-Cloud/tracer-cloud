@@ -2,10 +2,13 @@ use crate::types::event::{attributes::EventAttributes, Event};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// Events recorder for each pipeline run
 pub struct EventRecorder {
     events: Vec<Event>,
     run_name: Option<String>,
     run_id: Option<String>,
+    // NOTE: Tying a pipeline_name to the events recorder because, you can only start one pipeline at a time
+    pipeline_name: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
@@ -40,17 +43,28 @@ impl EventType {
 }
 
 impl EventRecorder {
-    pub fn new(run_name: Option<String>, run_id: Option<String>) -> Self {
+    pub fn new(
+        pipeline_name: Option<String>,
+        run_name: Option<String>,
+        run_id: Option<String>,
+    ) -> Self {
         EventRecorder {
             events: Vec::new(),
             run_id,
             run_name,
+            pipeline_name,
         }
     }
 
-    pub(crate) fn update_run_details(&mut self, run_name: Option<String>, run_id: Option<String>) {
+    pub(crate) fn update_run_details(
+        &mut self,
+        pipeline_name: Option<String>,
+        run_name: Option<String>,
+        run_id: Option<String>,
+    ) {
         self.run_name = run_name;
-        self.run_id = run_id
+        self.run_id = run_id;
+        self.pipeline_name = pipeline_name
     }
 
     pub fn record_event(
@@ -70,6 +84,7 @@ impl EventRecorder {
             // NOTE: not a fan of constant cloning so would look for an alt
             run_name: self.run_name.clone(),
             run_id: self.run_id.clone(),
+            pipeline_name: self.pipeline_name.clone(),
         };
         self.events.push(event);
     }
@@ -95,7 +110,7 @@ impl EventRecorder {
 
 impl Default for EventRecorder {
     fn default() -> Self {
-        Self::new(None, None)
+        Self::new(None, None, None)
     }
 }
 

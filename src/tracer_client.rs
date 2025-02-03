@@ -1,6 +1,7 @@
 // src/tracer_client.rs
+use crate::cloud_providers::aws::PricingClient;
 use crate::event_recorder::{EventRecorder, EventType};
-use crate::events::{send_end_run_event, send_start_run_event};
+use crate::events::send_start_run_event;
 use crate::exporters::{ParquetExport, S3ExportHandler};
 use crate::file_watcher::FileWatcher;
 use crate::metrics::SystemMetricsCollector;
@@ -8,6 +9,7 @@ use crate::process_watcher::ProcessWatcher;
 use crate::stdout::StdoutWatcher;
 use crate::submit_batched_data::submit_batched_data;
 use crate::syslog::SyslogWatcher;
+use crate::types::event::attributes::process::ProcessedDataSampleStats;
 use crate::types::event::attributes::EventAttributes;
 use crate::FILE_CACHE_DIR;
 use crate::{config_manager::Config, process_watcher::ShortLivedProcessLog};
@@ -19,12 +21,18 @@ use std::time::{Duration, Instant};
 use sysinfo::{Pid, System};
 use tokio::sync::RwLock;
 
+// NOTE: we might have to find a better alternative than passing the pipeline name to tracer client
+// directly. Currently with this approach, we do not need to generate a new pipeline name for every
+// new run.
+// But this also means that a system can setup tracer agent and exec
+// multiple pipelines
+
 #[derive(Clone)]
 pub struct RunMetadata {
     pub last_interaction: Instant,
     pub name: String,
     pub id: String,
-    pub pipeline_name: String,
+    //pub pipeline_name: String,
     pub parent_pid: Option<Pid>,
     pub start_time: DateTime<Utc>,
 }
@@ -55,6 +63,8 @@ pub struct TracerClient {
     stdout_lines_buffer: LinesBufferArc,
     stderr_lines_buffer: LinesBufferArc,
     pub exporter: S3ExportHandler,
+    pipeline_name: String,
+    pub pricing_client: PricingClient,
 }
 
 impl TracerClient {
@@ -62,11 +72,14 @@ impl TracerClient {
         config: Config,
         workflow_directory: String,
         exporter: S3ExportHandler,
+        pipeline_name: String,
     ) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
         println!("Initializing TracerClient with API Key: {}", config.api_key);
         println!("Service URL: {}", service_url);
+
+        let pricing_client = PricingClient::new(config.aws_init_type.clone(), "us-east-1").await;
 
         let file_watcher = FileWatcher::new();
 
@@ -100,6 +113,8 @@ impl TracerClient {
             process_watcher: ProcessWatcher::new(config.targets),
             metrics_collector: SystemMetricsCollector::new(),
             exporter,
+            pipeline_name,
+            pricing_client,
         })
     }
 
@@ -131,22 +146,14 @@ impl TracerClient {
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
-        let data = self.logs.get_events();
         let run_name = if let Some(run) = &self.current_run {
             &run.name
         } else {
             "annoymous"
         };
-        match self.exporter.output(data, run_name).await {
-            Ok(_path) => {
-                // upload to s3
-                println!("Successfully outputed, uploading to s3");
-            }
-            Err(err) => println!("error outputing parquet file: {err}"),
-        };
         submit_batched_data(
-            &self.api_key,
-            &self.service_url,
+            run_name,
+            &mut self.exporter,
             &mut self.system,
             &mut self.logs,
             &mut self.metrics_collector,
@@ -203,23 +210,36 @@ impl TracerClient {
             self.stop_run().await?;
         }
 
-        let result = send_start_run_event(&self.service_url, &self.api_key, &self.system).await?;
+        let result =
+            send_start_run_event(&self.system, &self.pipeline_name, &self.pricing_client).await?;
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),
             parent_pid: None,
             start_time: timestamp.unwrap_or_else(Utc::now),
             name: result.run_name.clone(),
             id: result.run_id.clone(),
-            pipeline_name: result.pipeline_name,
         });
 
-        self.logs
-            .update_run_details(Some(result.run_name), Some(result.run_id));
+        self.logs.update_run_details(
+            Some(self.pipeline_name.clone()),
+            Some(result.run_name),
+            Some(result.run_id),
+        );
 
         self.logs.record_event(
             EventType::NewRun,
             "[CLI] Starting new pipeline run".to_owned(),
             Some(EventAttributes::SystemProperties(result.system_properties)),
+            timestamp,
+        );
+
+        // NOTE: This is just for Demo Purposes, take it out when done
+        self.logs.record_event(
+            EventType::ToolMetricEvent,
+            "[CLI] Number of Processed Data".to_owned(),
+            Some(EventAttributes::ProcessStatistics(
+                ProcessedDataSampleStats::generate(),
+            )),
             timestamp,
         );
 
@@ -241,10 +261,12 @@ impl TracerClient {
             if let Err(err) = self.exporter.output(data, &run_metadata.name).await {
                 println!("Error outputing end run logs: {err}")
             };
-            send_end_run_event(&self.service_url, &self.api_key).await?;
+            self.logs.clear();
+
+            self.logs
+                .update_run_details(Some(self.pipeline_name.clone()), None, None);
             self.current_run = None;
         }
-        self.logs.clear();
         Ok(())
     }
 
@@ -322,6 +344,10 @@ impl TracerClient {
 
     pub fn get_service_url(&self) -> &str {
         &self.service_url
+    }
+
+    pub fn get_pipeline_name(&self) -> &str {
+        &self.pipeline_name
     }
 
     pub fn get_api_key(&self) -> &str {
