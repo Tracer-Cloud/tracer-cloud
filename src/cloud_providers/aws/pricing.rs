@@ -61,3 +61,126 @@ impl PricingClient {
         })
     }
 }
+
+// e2e S3 tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use aws_sdk_pricing::types::{FilterType, Filter};
+    use tokio;
+    use dotenv::dotenv;
+    use tokio::time::timeout;
+    use std::time::Duration;
+    use crate::types::config::AwsConfig;
+
+    async fn setup_client() -> PricingClient {
+        dotenv().ok();
+        let config = AwsConfig::Env;
+        PricingClient::new(config, "us-east-1").await
+    }
+
+    // Basic functionality test
+    #[tokio::test]
+    async fn test_get_ec2_instance_price() {
+        let client = setup_client().await;
+        let filters = vec![
+            Filter::builder()
+                .field("instanceType")
+                .value("t2.micro")
+                .r#type(FilterType::TermMatch)
+                .build()
+                .unwrap(),
+            Filter::builder()
+                .field("operatingSystem")
+                .value("Linux")
+                .r#type(FilterType::TermMatch)
+                .build()
+                .unwrap(),
+            Filter::builder()
+                .field("tenancy")
+                .value("Shared")
+                .r#type(FilterType::TermMatch)
+                .build()
+                .unwrap(),
+            Filter::builder()
+                .field("location")
+                .value("US East (N. Virginia)")
+                .r#type(FilterType::TermMatch)
+                .build()
+                .unwrap(),
+        ];
+
+        let result = client.get_ec2_instance_price(filters).await;
+        assert!(result.is_some());
+        
+        let price_data = result.unwrap();
+        assert_eq!(price_data.instance_type, "t2.micro");
+        assert!(price_data.price_per_unit > 0.0);
+        assert_eq!(price_data.unit, "Hrs");
+    }
+
+    // Test no results case
+    #[tokio::test]
+    async fn test_no_matching_instances() {
+        let client = setup_client().await;
+        let filters = vec![
+            Filter::builder()
+                .field("instanceType")
+                .value("non_existent_instance_type")
+                .r#type(FilterType::TermMatch)
+                .build()
+                .unwrap(),
+        ];
+
+        let result = client.get_ec2_instance_price(filters).await;
+        assert!(result.is_none());
+    }
+
+    // Test multiple instance types
+    #[tokio::test]
+    async fn test_multiple_instance_types() {
+        let client = setup_client().await;
+        let filters = vec![
+            Filter::builder()
+                .field("operatingSystem")
+                .value("Linux")
+                .r#type(FilterType::TermMatch)
+                .build()
+                .unwrap(),
+            Filter::builder()
+                .field("location")
+                .value("US East (N. Virginia)")
+                .r#type(FilterType::TermMatch)
+                .build()
+                .unwrap(),
+        ];
+
+        let result = client.get_ec2_instance_price(filters).await;
+        assert!(result.is_some());
+        let price_data = result.unwrap();
+        assert!(price_data.price_per_unit > 0.0);
+    }
+
+    // Test with timeout
+    #[tokio::test]
+    async fn test_request_timeout() {
+        let client = setup_client().await;
+        let filters = vec![
+            Filter::builder()
+                .field("instanceType")
+                .value("t2.micro")
+                .r#type(FilterType::TermMatch)
+                .build()
+                .unwrap(),
+        ];
+
+        let result = timeout(
+            Duration::from_secs(5),
+            client.get_ec2_instance_price(filters)
+        ).await;
+        
+        assert!(result.is_ok());
+        let price_data = result.unwrap();
+        assert!(price_data.is_some());
+    }
+}
