@@ -30,13 +30,13 @@ impl PricingClient {
 
     /// Fetches EC2 instance pricing based on provided filters
     /// Returns the most expensive instance that matches the filters
-    /// 
+    ///
     /// This method includes retry logic with exponential backoff for handling
     /// temporary failures or long response times
-    /// 
+    ///
     /// # Arguments
     /// * `filters` - Vector of filters to apply to the pricing query
-    /// 
+    ///
     /// # Returns
     /// * `Option<FlattenedData>` - Pricing data for the most expensive matching instance, if any
     pub async fn get_ec2_instance_price(
@@ -45,7 +45,7 @@ impl PricingClient {
     ) -> Option<FlattenedData> {
         // Retry configuration
         const MAX_RETRIES: u32 = 3;
-        const INITIAL_RETRY_DELAY: u64 = 1;  // seconds
+        const INITIAL_RETRY_DELAY: u64 = 1; // seconds
 
         let mut retry_count = 0;
         let mut last_error = None;
@@ -61,7 +61,7 @@ impl PricingClient {
             // Attempt to get pricing data
             match self.attempt_get_ec2_price(filters.clone()).await {
                 Ok(Some(data)) => return Some(data),
-                Ok(None) => return None,  // No matching data found, don't retry
+                Ok(None) => return None, // No matching data found, don't retry
                 Err(e) => {
                     last_error = Some(e);
                     retry_count += 1;
@@ -75,10 +75,10 @@ impl PricingClient {
     }
 
     /// Single attempt to fetch EC2 pricing data
-    /// 
+    ///
     /// # Arguments
     /// * `filters` - Vector of filters to apply to the pricing query
-    /// 
+    ///
     /// # Returns
     /// * `Result<Option<FlattenedData>, Box<dyn Error>>` - Result containing either:
     ///   - Ok(Some(data)) - Successfully found pricing data
@@ -92,16 +92,16 @@ impl PricingClient {
         let mut response = self
             .client
             .get_products()
-            .service_code("AmazonEC2".to_string())  // Specifically query EC2 prices
-            .set_filters(Some(filters))             // Apply the filters (instance type, OS, etc)
-            .into_paginator()                       // Handle pagination of results
+            .service_code("AmazonEC2".to_string()) // Specifically query EC2 prices
+            .set_filters(Some(filters)) // Apply the filters (instance type, OS, etc)
+            .into_paginator() // Handle pagination of results
             .send();
 
         let mut data = Vec::new();
 
         // Process each page of results
         while let Some(output) = response.next().await {
-            let output = output?;  // Propagate any AWS API errors
+            let output = output?; // Propagate any AWS API errors
 
             // Process each product in the current page
             for product in output.price_list() {
@@ -114,14 +114,14 @@ impl PricingClient {
                     }
                     Err(e) => {
                         error!("Failed to parse product data: {:?}", e);
-                        continue;  // Skip invalid products
+                        continue; // Skip invalid products
                     }
                 }
             }
         }
 
         debug!("Processed pricing data length: {}", data.len());
-        
+
         // Return the most expensive instance from the results
         if data.is_empty() {
             warn!("No valid pricing data found");
@@ -342,12 +342,19 @@ mod tests {
 
         // Test with a reasonable timeout that allows for retries
         let result = timeout(
-            Duration::from_secs(15),  // Longer timeout to account for retries
-            client.get_ec2_instance_price(filters)
-        ).await;
+            Duration::from_secs(15), // Longer timeout to account for retries
+            client.get_ec2_instance_price(filters),
+        )
+        .await;
 
-        assert!(result.is_ok(), "Request should complete within timeout including retries");
+        assert!(
+            result.is_ok(),
+            "Request should complete within timeout including retries"
+        );
         let price_data = result.unwrap();
-        assert!(price_data.is_some(), "Should return valid pricing data after retries if needed");
+        assert!(
+            price_data.is_some(),
+            "Should return valid pricing data after retries if needed"
+        );
     }
 }
