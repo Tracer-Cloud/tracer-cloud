@@ -79,6 +79,8 @@ pub struct SystemProperties {
     pub aws_metadata: Option<AwsInstanceMetaData>,
     pub is_aws_instance: bool,
     pub system_disk_io: HashMap<String, DiskStatistic>,
+    // cost analysis
+    pub ec2_cost_per_hour: Option<f64>,
 }
 
 impl ParquetSchema for SystemProperties {
@@ -108,6 +110,7 @@ impl ParquetSchema for SystemProperties {
                 DataType::Map(Arc::new(Field::new("entries", mapped, false)), false),
                 false,
             ),
+            Field::new("ec2_cost_per_hour", DataType::Float64, true),
         ];
         Schema::new(fields)
     }

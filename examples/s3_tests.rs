@@ -10,8 +10,13 @@ use tracer::metrics::SystemMetricsCollector;
 #[tokio::main]
 async fn main() {
     let collector = SystemMetricsCollector::new();
+    let pipeline_name = "s3_test_pipeline".to_string();
     let run_name = "test_run_two_22".to_string();
-    let mut recorder = EventRecorder::new(Some(run_name.clone()), Some("test_id".to_string()));
+    let mut recorder = EventRecorder::new(
+        Some(pipeline_name),
+        Some(run_name.clone()),
+        Some("test_id".to_string()),
+    );
     let mut system = System::new();
 
     // loads default config wwith profile as initialization

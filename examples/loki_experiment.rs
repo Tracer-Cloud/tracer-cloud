@@ -16,8 +16,10 @@ async fn main() {
     tokio::spawn(loki_task);
 
     let collector = SystemMetricsCollector::new();
+    let pipeline_name = "otel_pipeline".to_string();
     let run_name = "local_otel_compliance_123".to_string();
-    let mut recorder = EventRecorder::new(Some(run_name.clone()), Some(run_name));
+    let mut recorder =
+        EventRecorder::new(Some(pipeline_name), Some(run_name.clone()), Some(run_name));
     let mut system = System::new();
 
     println!("beginning");

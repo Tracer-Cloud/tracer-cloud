@@ -89,8 +89,9 @@ impl S3ExportHandler {
                     log::info!("Bucket {} is ready", bucket_name);
                     return;
                 }
-                Err(_) => {
+                Err(err) => {
                     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    eprintln!("error creating bucket {err:?}");
                     continue;
                 }
             }

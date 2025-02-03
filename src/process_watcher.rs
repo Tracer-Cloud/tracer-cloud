@@ -313,7 +313,7 @@ impl ProcessWatcher {
                 .unwrap()
                 .to_string(),
             tool_cmd: proc.cmd().join(" "),
-            start_timestamp: start_time.to_string(),
+            start_timestamp: start_time.to_rfc3339(),
             process_cpu_utilization: proc.cpu_usage(),
             process_run_time: proc.run_time(),
             process_disk_usage_read_total: proc.disk_usage().total_read_bytes,

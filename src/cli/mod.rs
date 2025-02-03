@@ -56,7 +56,10 @@ pub enum Commands {
     Alert { message: String },
 
     /// Start the daemon
-    Init,
+    Init {
+        /// pipeline name to init the daemon with
+        pipeline_name: String,
+    },
 
     /// Stop the daemon
     Terminate,
@@ -102,7 +105,7 @@ pub fn process_cli() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Init => {
+        Commands::Init { pipeline_name } => {
             let test_result = ConfigManager::test_service_config_sync();
             if test_result.is_err() {
                 print_config_info_sync()?;
@@ -115,7 +118,10 @@ pub fn process_cli() -> Result<()> {
                 println!("Failed to start daemon. Maybe the daemon is already running? If it's not, run `tracer cleanup` to clean up the previous daemon files.");
                 return Ok(());
             }
-            run(current_working_directory.to_str().unwrap().to_string())?;
+            run(
+                current_working_directory.to_str().unwrap().to_string(),
+                pipeline_name.clone(),
+            )?;
             clean_up_after_daemon()
         }
         Commands::Test => {

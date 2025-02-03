@@ -136,6 +136,7 @@ impl ConfigManager {
         }
     }
 
+    // TODO: add error message as to why it can't read config
     pub fn load_config() -> Config {
         let config_file_location = ConfigManager::get_config_path();
 
@@ -262,6 +263,8 @@ impl ConfigManager {
     pub fn get_tracer_parquet_export_dir() -> Result<PathBuf> {
         let mut export_dir = homedir::get_my_home()?.expect("Failed to get home dir");
         export_dir.push("exports");
+        // Create export dir if not exists
+        let _ = std::fs::create_dir_all(&export_dir);
         Self::validate_path(&export_dir)?;
         Ok(export_dir)
     }
