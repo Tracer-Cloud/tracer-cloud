@@ -200,7 +200,7 @@ pub mod tests {
         // Configure AWS environment
         let region = "us-east-2";
         setup_env_vars(region);
-        
+
         // Initialize system monitoring components
         let mut system = System::new();
         let mut logs = EventRecorder::default();

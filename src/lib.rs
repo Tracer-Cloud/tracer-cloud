@@ -160,9 +160,9 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
 mod tests {
     use super::*;
     use crate::config_manager::ConfigManager;
-    use dotenv::dotenv;
-    use config_manager::Config;
     use aws_config::BehaviorVersion;
+    use config_manager::Config;
+    use dotenv::dotenv;
     use tempdir::TempDir;
 
     fn load_test_config() -> Config {
@@ -179,7 +179,7 @@ mod tests {
         let config = load_test_config();
         let pwd = std::env::current_dir().unwrap();
         let region = "us-east-2";
-        
+
         setup_env_vars(region);
 
         let temp_dir = TempDir::new("export").expect("failed to create tempdir");
