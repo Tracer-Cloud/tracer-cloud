@@ -4,6 +4,7 @@ use crate::config_manager::target_process::{
     target_matching::{CommandContainsStruct, TargetMatch},
     DisplayName,
 };
+use once_cell::sync::Lazy;
 
 use super::Target;
 
@@ -758,7 +759,15 @@ pub static ref TARGETS: Vec<Target> = [
         .set_display_name(DisplayName::UseFirstArgumentBaseName()),
     Target::new(TargetMatch::BinPathStartsWith("/opt/conda/bin".to_string()))
         .set_filter_out(Some(OPT_CONDA_BIN_EXCEPTIONS.to_vec())),
+
+
+
+
 ]
 .to_vec();
 
 }
+// Have this as a seperate Vec because the assumption is the datasamples because it's faster to go
+// through a dedicated list than filtering the main target_list to find all CommandContainsV2
+// variants
+pub static DATA_SAMPLES_EXT: Lazy<Vec<&'static str>> = Lazy::new(|| vec![".fq", ".fastq"]);

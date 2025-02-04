@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use arrow::datatypes::{DataType, Field, Schema};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::types::ParquetSchema;
@@ -45,6 +44,7 @@ pub struct ProcessProperties {
     pub process_disk_usage_write_total: u64,
     pub process_status: String,
     pub input_files: Option<Vec<InputFile>>,
+    pub datasets_in_process: u64,
 }
 
 impl ParquetSchema for ProcessProperties {
@@ -79,6 +79,7 @@ impl ParquetSchema for ProcessProperties {
                 DataType::List(Arc::new(Field::new("file", input_file_dt, false))),
                 true,
             ),
+            Field::new("datasets_in_process", DataType::UInt64, false),
         ];
         Schema::new(fields)
     }
@@ -98,33 +99,6 @@ impl ParquetSchema for CompletedProcess {
             Field::new("file_path", DataType::Utf8, false),
             Field::new("duration_sec", DataType::UInt64, false),
         ];
-        Schema::new(fields)
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ProcessedDataSampleStats {
-    pub total_samples_processed: u64,
-}
-
-impl ProcessedDataSampleStats {
-    pub fn generate() -> Self {
-        let mut rng = rand::thread_rng();
-        let random_number = rng.gen_range(6..=18) as u64;
-
-        Self {
-            total_samples_processed: random_number,
-        }
-    }
-}
-
-impl ParquetSchema for ProcessedDataSampleStats {
-    fn schema() -> Schema {
-        let fields = vec![Field::new(
-            "total_samples_processed",
-            DataType::UInt64,
-            false,
-        )];
         Schema::new(fields)
     }
 }

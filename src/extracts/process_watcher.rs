@@ -1,6 +1,8 @@
 // src/process_watcher.rs
-use crate::config_manager::target_process::Target;
-use crate::config_manager::target_process::TargetMatchable;
+use crate::config_manager::target_process::{
+    target_matching::count_datasample_matches,
+    {Target, TargetMatchable},
+};
 use crate::events::recorder::{EventRecorder, EventType};
 use crate::extracts::file_watcher::FileWatcher;
 use crate::types::event::attributes::process::CompletedProcess;
@@ -323,6 +325,8 @@ impl ProcessWatcher {
             process_memory_virtual: proc.virtual_memory(),
             process_status: process_status_to_string(&proc.status()),
             input_files: None,
+            // NOTE: temp set to None:
+            datasets_in_process: 0,
         }
     }
 
@@ -386,6 +390,7 @@ impl ProcessWatcher {
                     process_disk_usage_write_total: 0,
                     process_status: "Unknown".to_string(),
                     input_files: None,
+                    datasets_in_process: 0,
                 },
             }
         }
@@ -430,6 +435,9 @@ impl ProcessWatcher {
         let mut properties = Self::gather_process_data(&pid, p, Some(display_name.clone()));
 
         let cmd_arguments = p.cmd();
+
+        // count the datasets in a new process found, no need for using target_matching
+        properties.datasets_in_process = count_datasample_matches(&cmd_arguments.join(" "));
         let mut input_files = vec![];
 
         let mut arguments_to_check = vec![];
@@ -653,6 +661,7 @@ mod tests {
                 process_disk_usage_write_total: 0,
                 process_status: "test".to_string(),
                 input_files: None,
+                datasets_in_process: 1,
             };
 
             let node = ProcessTreeNode {
@@ -691,5 +700,13 @@ mod tests {
         process_watcher.build_process_trees(system.processes());
 
         Ok(())
+    }
+
+    #[test]
+    fn test_count_dataset_matches_works() {
+        let command =
+            "kallisto quant -t 4 -i control_index -o ./control_quant_9 control1_1.fq control1_2.fq";
+
+        assert_eq!(count_datasample_matches(command), 2)
     }
 }

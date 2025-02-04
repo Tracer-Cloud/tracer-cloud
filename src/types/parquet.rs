@@ -1,4 +1,3 @@
-use super::event::attributes::process::ProcessedDataSampleStats;
 use super::event::attributes::system_metrics::SystemProperties;
 use super::event::OtelJsonEvent;
 use super::ParquetSchema;
@@ -45,11 +44,6 @@ pub struct FlattenedTracerEvent {
     pub syslog_attributes: Option<SyslogProperties>,
 
     pub json_event: String,
-
-    // NOTE: This is a random number and we'd need to
-    // keep track of the number of data samples processed in real time, but for now
-    // this is just for a demo
-    pub process_statistics: Option<ProcessedDataSampleStats>,
 }
 
 impl From<Event> for FlattenedTracerEvent {
@@ -84,9 +78,6 @@ impl From<Event> for FlattenedTracerEvent {
                     tracer_event.system_properties = Some(inner)
                 }
 
-                EventAttributes::ProcessStatistics(inner) => {
-                    tracer_event.process_statistics = Some(inner)
-                }
                 // would take out the other or handle it by converting it into a str
                 EventAttributes::Other(_inner) => (),
             }
@@ -98,7 +89,6 @@ impl From<Event> for FlattenedTracerEvent {
 impl ParquetSchema for FlattenedTracerEvent {
     fn schema() -> arrow::datatypes::Schema {
         let process_dt = ProcessProperties::schema().fields;
-        let statistics = ProcessedDataSampleStats::schema().fields;
         let completed_process_dt = CompletedProcess::schema().fields;
         let system_metrics_dt = SystemMetric::schema().fields;
         let syslog_dt = SyslogProperties::schema().fields;
@@ -134,7 +124,6 @@ impl ParquetSchema for FlattenedTracerEvent {
             ),
             Field::new("syslog_attributes", DataType::Struct(syslog_dt), true),
             Field::new("json_event", DataType::Utf8, false),
-            Field::new("process_statistics", DataType::Struct(statistics), true),
         ];
         Schema::new(fields)
     }
