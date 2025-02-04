@@ -160,33 +160,34 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
 mod tests {
     use super::*;
     use crate::config_manager::ConfigManager;
-    use aws_config::BehaviorVersion;
+    use dotenv::dotenv;
     use config_manager::Config;
+    use aws_config::BehaviorVersion;
     use tempdir::TempDir;
 
     fn load_test_config() -> Config {
         ConfigManager::load_default_config()
     }
 
+    pub fn setup_env_vars(region: &str) {
+        dotenv().ok(); // Load from .env file in development
+        std::env::set_var("AWS_REGION", region);
+    }
+
     #[tokio::test]
     async fn test_monitor_processes_with_tracer_client() {
         let config = load_test_config();
         let pwd = std::env::current_dir().unwrap();
-
         let region = "us-east-2";
-        crate::cloud_providers::aws::setup_env_vars("us-east-2");
+        
+        setup_env_vars(region);
 
         let temp_dir = TempDir::new("export").expect("failed to create tempdir");
-
         let base_dir = temp_dir.path().join("./exports");
-
         let fs_handler = FsExportHandler::new(base_dir, None);
-
-        let endpoint_url = std::env::var("S3_ENDPOINT_URL").unwrap();
 
         let aws_config = aws_config::defaults(BehaviorVersion::latest())
             .region(region)
-            .endpoint_url(endpoint_url.clone())
             .load()
             .await;
 
