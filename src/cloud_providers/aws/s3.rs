@@ -200,56 +200,56 @@ impl S3Client {
 /// To fix this, I added cleanup steps before and after each test to maintain a clean state and used the #[serial] attribute to enforce sequential execution, preventing concurrent access.
 pub mod tests {
     use super::*;
-    use aws_config::BehaviorVersion;
+    use dotenv::dotenv;
     use serial_test::serial;
     use std::env;
     use tokio::time::{sleep, Duration};
+    use uuid::Uuid;
 
     pub fn setup_env_vars(region: &str) {
-        // Set S3 configuration
-        env::set_var("S3_ENDPOINT_URL", "http://0.0.0.0:4566/");
-        env::set_var("AWS_ACCESS_KEY_ID", "000000");
-        env::set_var("AWS_SECRET_ACCESS_KEY", "000000000000");
+        dotenv().ok(); // Load from .env file in development
         env::set_var("AWS_REGION", region);
-        env::set_var("AWS_LOG_LEVEL", "debug");
     }
 
-    async fn cleanup_all_buckets(client: &S3Client) -> Result<(), String> {
+    async fn cleanup_test_buckets(client: &S3Client) -> Result<(), String> {
         let buckets = client.list_buckets().await?;
         println!("Existing buckets before cleanup: {:?}", buckets);
 
+        // Only delete buckets that start with "test-"
         for bucket in &buckets {
-            // Delete all objects first
-            if let Ok(objects) = client.client.list_objects_v2().bucket(bucket).send().await {
-                if let Some(contents) = objects.contents {
-                    for object in contents {
-                        if let Some(key) = object.key.as_deref() {
-                            let key_clone = key.to_string(); // Clone before moving
-                            println!("Deleting object: {}", key_clone);
-                            client
-                                .client
-                                .delete_object()
-                                .bucket(bucket)
-                                .key(&key_clone) // Use cloned key here
-                                .send()
-                                .await
-                                .map_err(|err| {
-                                    format!("Failed to delete object {}: {}", key_clone, err)
-                                })?;
+            if bucket.starts_with("test-") {
+                // Delete all objects first
+                if let Ok(objects) = client.client.list_objects_v2().bucket(bucket).send().await {
+                    if let Some(contents) = objects.contents {
+                        for object in contents {
+                            if let Some(key) = object.key.as_deref() {
+                                let key_clone = key.to_string();
+                                println!("Deleting object: {}", key_clone);
+                                client
+                                    .client
+                                    .delete_object()
+                                    .bucket(bucket)
+                                    .key(&key_clone)
+                                    .send()
+                                    .await
+                                    .map_err(|err| {
+                                        format!("Failed to delete object {}: {}", key_clone, err)
+                                    })?;
+                            }
                         }
                     }
                 }
-            }
 
-            // Now delete the empty bucket
-            if let Err(e) = client.delete_bucket(bucket).await {
-                log::error!("Failed to delete bucket {}: {}", bucket, e);
-                return Err(format!("Failed to delete bucket {}: {}", bucket, e));
-            } else {
-                println!("Successfully deleted bucket: {}", bucket);
-            }
+                // Now delete the empty bucket
+                if let Err(e) = client.delete_bucket(bucket).await {
+                    log::error!("Failed to delete bucket {}: {}", bucket, e);
+                    return Err(format!("Failed to delete bucket {}: {}", bucket, e));
+                } else {
+                    println!("Successfully deleted bucket: {}", bucket);
+                }
 
-            sleep(Duration::from_secs(3)).await;
+                sleep(Duration::from_secs(3)).await;
+            }
         }
 
         Ok(())
@@ -258,19 +258,8 @@ pub mod tests {
     async fn get_test_s3_client() -> S3Client {
         let region = "us-east-2";
         setup_env_vars(region);
-        let endpoint_url = std::env::var("S3_ENDPOINT_URL")
-            .unwrap_or_else(|_| "http://localhost:4566".to_string());
-        let config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region)
-            .endpoint_url(endpoint_url)
-            .load()
-            .await;
-
-        let s3_config = aws_sdk_s3::config::Builder::from(&config)
-            .force_path_style(true)
-            .build();
-
-        S3Client::new_with_s3_config(s3_config, region).await
+        let config = AwsConfig::Env;
+        S3Client::new(config, region).await
     }
 
     #[tokio::test]
@@ -280,17 +269,17 @@ pub mod tests {
 
         let s3_client = get_test_s3_client().await;
 
-        cleanup_all_buckets(&s3_client).await?;
+        cleanup_test_buckets(&s3_client).await?;
 
         // Now run the test with clean state
-        let test_bucket = "test-bucket";
-        s3_client.create_bucket(test_bucket, None).await?;
+        let test_bucket = format!("test-bucket-{}", Uuid::new_v4());
+        s3_client.create_bucket(&test_bucket, None).await?;
 
         let list_buckets = s3_client.list_buckets().await?;
         println!("Buckets {:?}", list_buckets);
-        assert_eq!(list_buckets.len(), 1);
+        assert!(list_buckets.contains(&test_bucket));
 
-        cleanup_all_buckets(&s3_client).await?;
+        cleanup_test_buckets(&s3_client).await?;
 
         Ok(())
     }
@@ -298,86 +287,44 @@ pub mod tests {
     #[tokio::test]
     #[serial]
     async fn test_additional_s3_actions() -> Result<(), Box<dyn std::error::Error>> {
-        // Initialize
-        let region = "us-east-2";
-        setup_env_vars(region);
+        let s3_client = get_test_s3_client().await;
 
-        let endpoint_url = std::env::var("S3_ENDPOINT_URL")
-            .unwrap_or_else(|_| "http://localhost:4566".to_string());
+        cleanup_test_buckets(&s3_client).await?;
 
-        let config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region)
-            .endpoint_url(endpoint_url)
-            .load()
-            .await;
-
-        let s3_config = aws_sdk_s3::config::Builder::from(&config)
-            .force_path_style(true)
-            .build();
-
-        let s3_client = S3Client::new_with_s3_config(s3_config, region).await;
-
-        let test_bucket_name = "test-additional-actions-bucket";
-        cleanup_all_buckets(&s3_client)
-            .await
-            .expect("Cleanup failed");
-
+        let test_bucket = format!("test-additional-{}", Uuid::new_v4());
         let key_1 = "exports/test_run/file1.parquet";
         let key_2 = "exports/test_run/file2.parquet";
         let file_path = "test-files/exports/test_run/bd01d5c9-8658-4a22-b059-3d504f346f8e.parquet";
 
         // Create bucket
-        s3_client
-            .create_bucket(test_bucket_name, None)
-            .await
-            .expect("Failed to create bucket");
+        s3_client.create_bucket(&test_bucket, None).await?;
 
         // Add multiple objects
-        s3_client
-            .put_object(test_bucket_name, file_path, key_1)
-            .await
-            .expect("Failed to put object 1");
-
-        s3_client
-            .put_object(test_bucket_name, file_path, key_2)
-            .await
-            .expect("Failed to put object 2");
+        s3_client.put_object(&test_bucket, file_path, key_1).await?;
+        s3_client.put_object(&test_bucket, file_path, key_2).await?;
 
         // List buckets (paginated)
         let buckets = s3_client.list_buckets_paginated().await;
-        assert!(buckets.contains(&test_bucket_name.to_string()));
+        assert!(buckets.contains(&test_bucket));
 
         // Delete multiple objects
         s3_client
-            .delete_objects(test_bucket_name, vec![key_1, key_2])
-            .await
-            .expect("Failed to delete objects");
+            .delete_objects(&test_bucket, vec![key_1, key_2])
+            .await?;
 
         // Verify objects deletion
         let objects_after_delete = s3_client
             .client
             .list_objects()
-            .bucket(test_bucket_name)
+            .bucket(&test_bucket)
             .send()
-            .await
-            .expect("Failed to list objects after delete")
+            .await?
             .contents;
 
         assert!(objects_after_delete.is_none());
 
-        s3_client
-            .delete_bucket(test_bucket_name)
-            .await
-            .expect("Failed to delete bucket");
-
-        // Verify bucket deletion
-        let buckets = s3_client.list_buckets().await?;
-        assert!(!buckets.contains(&test_bucket_name.to_string()));
-
-        // Delete all buckets and ensure cleanup is complete
-        cleanup_all_buckets(&s3_client)
-            .await
-            .expect("Failed to clean up buckets");
+        // Clean up
+        cleanup_test_buckets(&s3_client).await?;
 
         Ok(())
     }
