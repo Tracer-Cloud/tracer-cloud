@@ -25,13 +25,12 @@ check: ## cargo check
 setup_nextest:
 	@which cargo-nextest >/dev/null || cargo install cargo-nextest
 
-test: setup_nextest ## Run tests single threaded due to s3 race conditions
+test: setup_nextest ## Run cargo nextest, needs to be run single threaded in github actions due to s3 race conditions
 	AWS_REGION=us-east-2 \
 	AWS_ENDPOINT=https://s3.us-east-2.amazonaws.com \
 	RUST_LOG=debug \
 	RUST_BACKTRACE=1 \
-	CARGO_NEXTEST_NO_CAPTURE=1 \
-	cargo nextest run --test-threads=1
+	cargo test -- --nocapture
 
 all: format check test clippy  ## format, check, test, clippy.
 
