@@ -154,8 +154,8 @@ pub mod tests {
     use crate::cloud_providers::aws::setup_env_vars;
     use serial_test::serial;
 
-    use crate::event_recorder::{EventRecorder, EventType};
-    use crate::metrics::SystemMetricsCollector;
+    use crate::events::recorder::{EventRecorder, EventType};
+    use crate::extracts::metrics::SystemMetricsCollector;
     use aws_config::BehaviorVersion;
     use sysinfo::System;
     use tempdir::TempDir;

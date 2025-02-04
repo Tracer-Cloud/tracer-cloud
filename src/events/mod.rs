@@ -1,14 +1,14 @@
 // src/events/mod.rs
 use crate::{
     cloud_providers::aws::PricingClient,
-    debug_log::Logger,
-    http_client::send_http_event,
-    metrics::SystemMetricsCollector,
+    extracts::metrics::SystemMetricsCollector,
     types::{
         aws::pricing::EC2FilterBuilder,
         event::{attributes::system_metrics::SystemProperties, aws_metadata::AwsInstanceMetaData},
     },
+    utils::{debug_log::Logger, http_client::send_http_event},
 };
+pub mod recorder;
 mod run_details;
 use anyhow::{Context, Result};
 use chrono::Utc;
@@ -16,24 +16,6 @@ use run_details::{generate_run_id, generate_run_name};
 use serde_json::json;
 use sysinfo::System;
 use tracing::info;
-
-#[derive(Debug)]
-pub enum EventStatus {
-    #[allow(dead_code)]
-    NewRun,
-}
-
-impl std::fmt::Display for EventStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                EventStatus::NewRun => "new_run".to_string(),
-            }
-        )
-    }
-}
 
 pub async fn send_log_event(service_url: &str, api_key: &str, message: String) -> Result<String> {
     let log_entry = json!({

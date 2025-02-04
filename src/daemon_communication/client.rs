@@ -1,17 +1,15 @@
-use std::path::PathBuf;
-
 // src/cli.rs
 use anyhow::Result;
 use serde::Deserialize;
 use serde_json::{from_str, json};
-
+use std::path::PathBuf;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::UnixStream,
 };
 
-use crate::debug_log::Logger;
-use crate::process_watcher::ShortLivedProcessLog;
+use crate::extracts::process_watcher::ShortLivedProcessLog;
+use crate::utils::debug_log::Logger;
 
 use super::structs::InfoResponse;
 

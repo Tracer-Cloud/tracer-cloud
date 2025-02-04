@@ -1,6 +1,6 @@
 // src/submit_batched_data.rs
-use crate::metrics::SystemMetricsCollector;
-use crate::{event_recorder::EventRecorder, exporters::ParquetExport};
+use crate::extracts::metrics::SystemMetricsCollector;
+use crate::{events::recorder::EventRecorder, exporters::ParquetExport};
 
 use anyhow::{Context, Result};
 
@@ -41,9 +41,9 @@ pub async fn submit_batched_data(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::event_recorder::{EventRecorder, EventType};
+    use crate::events::recorder::{EventRecorder, EventType};
     use crate::exporters::FsExportHandler;
-    use crate::metrics::SystemMetricsCollector;
+    use crate::extracts::metrics::SystemMetricsCollector;
     use anyhow::Result;
     use std::time::Duration;
     use sysinfo::System;

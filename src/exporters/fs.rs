@@ -75,8 +75,8 @@ impl ParquetExport for FsExportHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::event_recorder::{EventRecorder, EventType};
-    use crate::metrics::SystemMetricsCollector;
+    use crate::events::recorder::{EventRecorder, EventType};
+    use crate::extracts::metrics::SystemMetricsCollector;
     use sysinfo::System;
     use tempdir::TempDir;
 
