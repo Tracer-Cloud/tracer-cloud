@@ -57,3 +57,5 @@ serde-query = "0.2.0"
 [dev-dependencies]
 env_logger = "0.9"
 tempdir = "0.3.7"
+dotenv = "0.15"
+tokio-test = "0.4"
