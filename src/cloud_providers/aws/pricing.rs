@@ -101,7 +101,9 @@ impl PricingClient {
 
         // Process each page of results
         while let Some(output) = response.next().await {
-            let output = output?; // Propagate any AWS API errors
+            // Propagate any AWS API errors
+            // Useful for retrying the request in the method get_ec2_instance_price()
+            let output = output?;
 
             // Process each product in the current page
             for product in output.price_list() {

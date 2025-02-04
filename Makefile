@@ -35,6 +35,12 @@ all: format check test clippy  ## format, check, test, clippy.
 #  .NOTPARALLEL: ; # wait for this target to finish
 .EXPORT_ALL_VARIABLES: ; # send all vars to shell
 
+# AWS Configuration for tests
+AWS_ACCESS_KEY_ID ?= $(shell echo $$AWS_ACCESS_KEY_ID)
+AWS_SECRET_ACCESS_KEY ?= $(shell echo $$AWS_SECRET_ACCESS_KEY)
+export AWS_ACCESS_KEY_ID
+export AWS_SECRET_ACCESS_KEY
+
 .PHONY: docs all # All targets are accessible for user
 	.DEFAULT: help # Running Make will run the help target
 
