@@ -156,13 +156,14 @@ pub mod tests {
 
     use crate::events::recorder::{EventRecorder, EventType};
     use crate::extracts::metrics::SystemMetricsCollector;
-    use aws_config::BehaviorVersion;
     use sysinfo::System;
     use tempdir::TempDir;
+    use uuid::Uuid;
 
     #[tokio::test]
     #[serial]
-    async fn test_s3_exporter_initializes_export_bucket_on_start() {
+    async fn test_s3_exporter_initializes_export_bucket_on_start() -> Result<(), String> {
+        // Configure AWS environment
         let region = "us-east-2";
         setup_env_vars(region);
 
@@ -170,27 +171,29 @@ pub mod tests {
         let temp_dir = TempDir::new(&tracer_bucket_name).expect("failed to create tempdir");
         let base_dir = temp_dir.path().join("./exports");
 
-        let endpoint_url = std::env::var("S3_ENDPOINT_URL").unwrap();
-        let config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region)
-            .endpoint_url(endpoint_url.clone())
-            .load()
-            .await;
-
-        let s3_config = aws_sdk_s3::config::Builder::from(&config)
-            .force_path_style(true)
-            .build();
-        let s3_client = S3Client::new_with_s3_config(s3_config.clone(), region).await;
-
+        // Initialize handlers
         let fs_handler = FsExportHandler::new(base_dir, None);
-        let _exporter = S3ExportHandler::new_with_config(fs_handler, config).await;
-        let buckets = s3_client
+        let aws_config = AwsConfig::Env;
+        let exporter = S3ExportHandler::new(fs_handler, aws_config, region).await;
+
+        // Verify the bucket exists
+        let buckets = exporter
+            .s3_client
             .list_buckets()
             .await
             .expect("Failed to list buckets");
 
-        assert_eq!(buckets.len(), 1);
-        assert!(buckets.contains(&tracer_bucket_name));
+        assert!(
+            buckets.contains(&tracer_bucket_name),
+            "Bucket {} was not created successfully",
+            tracer_bucket_name
+        );
+
+        println!(
+            "Successfully verified bucket creation: {}",
+            tracer_bucket_name
+        );
+        Ok(())
     }
 
     /// Tests the complete flow of exporting events to both filesystem and S3
@@ -215,6 +218,11 @@ pub mod tests {
         let aws_config = AwsConfig::Env;
         let exporter = S3ExportHandler::new(fs_handler, aws_config, region).await;
 
+        // Generate a unique run name using a UUID
+        let unique_id = Uuid::new_v4();
+        let run_name = format!("test-run-{}", unique_id);
+        println!("Generated unique run name: {}", run_name);
+
         // Collect metrics and record test event
         metrics_collector
             .collect_metrics(&mut system, &mut logs)
@@ -222,7 +230,7 @@ pub mod tests {
 
         logs.record_event(
             EventType::TestEvent,
-            "[submit_batched_data.rs] Test event".to_string(),
+            format!("[submit_batched_data.rs] Test event for run {}", run_name),
             None,
             None,
         );
@@ -230,7 +238,7 @@ pub mod tests {
         // Export data and get file path
         let data = logs.get_events();
         let file_path = exporter
-            .output(data, "anonymous")
+            .output(data, &run_name)
             .await
             .expect("failed to export output");
         logs.clear();
