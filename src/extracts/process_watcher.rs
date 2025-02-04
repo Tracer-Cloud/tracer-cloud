@@ -1,9 +1,8 @@
 // src/process_watcher.rs
 use crate::config_manager::target_process::Target;
 use crate::config_manager::target_process::TargetMatchable;
-use crate::event_recorder::EventRecorder;
-use crate::event_recorder::EventType;
-use crate::file_watcher::FileWatcher;
+use crate::events::recorder::{EventRecorder, EventType};
+use crate::extracts::file_watcher::FileWatcher;
 use crate::types::event::attributes::process::CompletedProcess;
 use crate::types::event::attributes::process::InputFile;
 use crate::types::event::attributes::process::ProcessProperties;

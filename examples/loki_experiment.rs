@@ -1,9 +1,9 @@
 use reqwest::Client;
 use serde_json::json;
 use serde_json::Value;
-use tracer::event_recorder::EventRecorder;
-use tracer::metrics::SystemMetricsCollector;
-use tracer::tracing::init_tracing;
+use tracer::events::recorder::EventRecorder;
+use tracer::extracts::metrics::SystemMetricsCollector;
+use tracer::utils::tracing::init_tracing;
 
 use tracer::types::event::Event;
 

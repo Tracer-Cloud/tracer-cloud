@@ -7,7 +7,7 @@ use crate::{
         send_log_short_lived_process_request, send_start_run_request, send_terminate_request,
         send_update_tags_request, send_upload_file_request,
     },
-    process_watcher::ProcessWatcher,
+    extracts::process_watcher::ProcessWatcher,
     run, start_daemon, SOCKET_PATH,
 };
 use anyhow::Result;

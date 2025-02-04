@@ -12,12 +12,10 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     config_manager::{Config, ConfigManager},
-    debug_log::Logger,
-    event_recorder::EventType,
-    events::{send_alert_event, send_log_event, send_update_tags_event},
-    process_watcher::ShortLivedProcessLog,
+    events::{recorder::EventType, send_alert_event, send_log_event, send_update_tags_event},
+    extracts::process_watcher::ShortLivedProcessLog,
     tracer_client::TracerClient,
-    upload::upload_from_file_path,
+    utils::{debug_log::Logger, upload::upload_from_file_path},
 };
 
 type ProcessOutput<'a> =

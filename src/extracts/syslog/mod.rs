@@ -11,10 +11,10 @@ use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
 
 use crate::{
-    debug_log::Logger,
-    event_recorder::{EventRecorder, EventType},
-    metrics::SystemMetricsCollector,
+    events::recorder::{EventRecorder, EventType},
+    extracts::metrics::SystemMetricsCollector,
     types::event::attributes::syslog::SyslogProperties,
+    utils::debug_log::Logger,
 };
 
 const LINES_BEFORE: usize = 2;
@@ -150,7 +150,7 @@ mod tests {
     };
 
     use super::*;
-    use crate::debug_log::Logger;
+    use crate::utils::debug_log::Logger;
 
     #[tokio::test]
     async fn test_grep_errors() {

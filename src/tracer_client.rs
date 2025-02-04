@@ -1,18 +1,21 @@
 // src/tracer_client.rs
 use crate::cloud_providers::aws::PricingClient;
-use crate::event_recorder::{EventRecorder, EventType};
-use crate::events::send_start_run_event;
+use crate::config_manager::Config;
+use crate::events::{
+    recorder::{EventRecorder, EventType},
+    send_start_run_event,
+};
 use crate::exporters::{ParquetExport, S3ExportHandler};
-use crate::file_watcher::FileWatcher;
-use crate::metrics::SystemMetricsCollector;
-use crate::process_watcher::ProcessWatcher;
-use crate::stdout::StdoutWatcher;
-use crate::submit_batched_data::submit_batched_data;
-use crate::syslog::SyslogWatcher;
-use crate::types::event::attributes::process::ProcessedDataSampleStats;
-use crate::types::event::attributes::EventAttributes;
+use crate::extracts::{
+    file_watcher::FileWatcher,
+    metrics::SystemMetricsCollector,
+    process_watcher::{ProcessWatcher, ShortLivedProcessLog},
+    stdout::StdoutWatcher,
+    syslog::SyslogWatcher,
+};
+use crate::types::event::attributes::{process::ProcessedDataSampleStats, EventAttributes};
+use crate::utils::submit_batched_data::submit_batched_data;
 use crate::FILE_CACHE_DIR;
-use crate::{config_manager::Config, process_watcher::ShortLivedProcessLog};
 use anyhow::Result;
 use chrono::{DateTime, TimeDelta, Utc};
 use std::ops::Sub;
