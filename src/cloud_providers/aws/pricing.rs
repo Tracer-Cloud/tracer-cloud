@@ -125,18 +125,14 @@ impl PricingClient {
         debug!("Processed pricing data length: {}", data.len());
 
         // Return the most expensive instance from the results
-        if data.is_empty() {
-            warn!("No valid pricing data found");
-            Ok(None)
-        } else {
-            Ok(data.into_iter().reduce(|a, b| {
-                if a.price_per_unit > b.price_per_unit {
-                    a
-                } else {
-                    b
-                }
-            }))
-        }
+        // if data is empty the reduce will return OK(None)
+        Ok(data.into_iter().reduce(|a, b| {
+            if a.price_per_unit > b.price_per_unit {
+                a
+            } else {
+                b
+            }
+        }))
     }
 }
 
