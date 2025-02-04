@@ -1,9 +1,9 @@
 use sysinfo::System;
 use tracer::config_manager::ConfigManager;
-use tracer::event_recorder::EventRecorder;
+use tracer::events::recorder::EventRecorder;
 use tracer::exporters::ParquetExport;
 use tracer::exporters::{FsExportHandler, S3ExportHandler};
-use tracer::metrics::SystemMetricsCollector;
+use tracer::extracts::metrics::SystemMetricsCollector;
 
 /// This file goes to S3 but needs tweaking
 
@@ -19,7 +19,7 @@ async fn main() {
     );
     let mut system = System::new();
 
-    // loads default config wwith profile as initialization
+    // loads default config with profile as initialization
     let raw_config = ConfigManager::load_default_config();
 
     let export_dir =

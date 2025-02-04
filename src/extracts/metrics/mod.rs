@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use sysinfo::{Disks, System};
 
 use crate::{
-    event_recorder::{EventRecorder, EventType},
+    events::recorder::{EventRecorder, EventType},
     types::event::{
         attributes::system_metrics::{DiskStatistic, SystemMetric},
         attributes::EventAttributes,
@@ -95,7 +95,7 @@ impl SystemMetricsCollector {
 mod tests {
 
     use super::*;
-    use crate::event_recorder::EventRecorder;
+    use crate::events::recorder::EventRecorder;
 
     #[test]
     fn test_collect_metrics() {

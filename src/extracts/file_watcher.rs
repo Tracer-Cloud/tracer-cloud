@@ -9,8 +9,8 @@ use predicates::prelude::predicate;
 use predicates::str::RegexPredicate;
 use predicates::Predicate;
 
-use crate::debug_log::Logger;
-use crate::upload::upload_from_file_path;
+use crate::utils::debug_log::Logger;
+use crate::utils::upload::upload_from_file_path;
 
 #[derive(Debug, Clone)]
 pub struct WatchedFileInfo {

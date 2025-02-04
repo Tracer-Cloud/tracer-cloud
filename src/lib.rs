@@ -4,28 +4,19 @@ pub mod cli;
 pub mod cloud_providers;
 pub mod config_manager;
 pub mod daemon_communication;
-pub mod debug_log;
-pub mod event_recorder;
 pub mod events;
 pub mod exporters;
-pub mod file_watcher;
-pub mod http_client;
-pub mod metrics;
-pub mod process_watcher;
-pub mod stdout;
-pub mod submit_batched_data;
-pub mod syslog;
+pub mod extracts;
 pub mod tracer_client;
-pub mod tracing;
 pub mod types;
-pub mod upload;
+pub mod utils;
 
 use anyhow::{Context, Ok, Result};
 use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
+use extracts::syslog::run_syslog_lines_read_thread;
 use std::borrow::BorrowMut;
-use syslog::run_syslog_lines_read_thread;
 
 use crate::exporters::{FsExportHandler, S3ExportHandler};
 use std::fs::File;
@@ -109,7 +100,7 @@ pub async fn run(workflow_directory_path: String, pipeline_name: String) -> Resu
         tracer_client.lock().await.get_syslog_lines_buffer(),
     ));
 
-    let stdout_lines_task = tokio::spawn(stdout::run_stdout_lines_read_thread(
+    let stdout_lines_task = tokio::spawn(extracts::stdout::run_stdout_lines_read_thread(
         INTERCEPTOR_STDOUT_FILE,
         INTERCEPTOR_STDERR_FILE,
         tracer_client.lock().await.get_stdout_stderr_lines_buffer(),

@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use serde_json::{json, Value};
 use url::Url;
 
-use crate::{debug_log::Logger, http_client::send_http_body};
+use crate::utils::{debug_log::Logger, http_client::send_http_body};
 
 pub async fn request_presigned_url(
     service_url: &str,

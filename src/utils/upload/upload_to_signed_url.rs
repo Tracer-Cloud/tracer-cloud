@@ -82,7 +82,9 @@ pub async fn upload_file_to_signed_url_s3(
 #[cfg(test)]
 mod tests {
 
-    use crate::{config_manager::ConfigManager, upload::presigned_url_put::request_presigned_url};
+    use crate::{
+        config_manager::ConfigManager, utils::upload::presigned_url_put::request_presigned_url,
+    };
 
     use super::*;
 

@@ -1,12 +1,14 @@
 use std::{path::Path, sync::Arc};
 
+use crate::{
+    tracer_client::LinesBufferArc,
+    utils::{debug_log::Logger, http_client::send_http_body},
+};
 use anyhow::Result;
 use linemux::MuxedLines;
 use serde_json::json;
 use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
-
-use crate::{debug_log::Logger, http_client::send_http_body, tracer_client::LinesBufferArc};
 
 // Todo: A lot of code is duplicated between this file and syslog. Maybe we could extract the file reading code into a separate module?
 pub struct StdoutWatcher {}
