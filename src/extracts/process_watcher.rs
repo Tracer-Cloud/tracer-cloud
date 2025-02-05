@@ -302,6 +302,9 @@ impl ProcessWatcher {
     ) -> ProcessProperties {
         let start_time = Utc::now();
 
+        let tool_cmd = proc.cmd().join(" ");
+        let datasets_in_process = count_datasample_matches(&tool_cmd);
+
         ProcessProperties {
             tool_name: display_name.unwrap_or(proc.name().to_owned()),
             tool_pid: pid.to_string(),
@@ -313,7 +316,7 @@ impl ProcessWatcher {
                 .to_str()
                 .unwrap()
                 .to_string(),
-            tool_cmd: proc.cmd().join(" "),
+            tool_cmd,
             start_timestamp: start_time.to_rfc3339(),
             process_cpu_utilization: proc.cpu_usage(),
             process_run_time: proc.run_time(),
@@ -325,8 +328,7 @@ impl ProcessWatcher {
             process_memory_virtual: proc.virtual_memory(),
             process_status: process_status_to_string(&proc.status()),
             input_files: None,
-            // NOTE: temp set to None:
-            datasets_in_process: 0,
+            datasets_in_process,
         }
     }
 
@@ -436,8 +438,6 @@ impl ProcessWatcher {
 
         let cmd_arguments = p.cmd();
 
-        // count the datasets in a new process found, no need for using target_matching
-        properties.datasets_in_process = count_datasample_matches(&cmd_arguments.join(" "));
         let mut input_files = vec![];
 
         let mut arguments_to_check = vec![];
@@ -705,7 +705,7 @@ mod tests {
     #[test]
     fn test_count_dataset_matches_works() {
         let command =
-            "kallisto quant -t 4 -i control_index -o ./control_quant_9 control1_1.fq control1_2.fq";
+            "kallisto quant -t 4 -i control_index -o ./control_quant_9 control1_1.fa control1_2.fa";
 
         assert_eq!(count_datasample_matches(command), 2)
     }
