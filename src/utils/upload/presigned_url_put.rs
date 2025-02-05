@@ -69,7 +69,7 @@ mod tests {
     #[tokio::test]
     async fn test_request_presigned_url() -> Result<()> {
         setup_env_vars();
-        
+
         // Load the configuration
         let config = ConfigManager::load_default_config();
         let api_key = config.api_key.clone();
@@ -78,7 +78,8 @@ mod tests {
         let file_name = format!("test-upload-{}.txt", Uuid::new_v4());
 
         // Call the function
-        let presigned_url = request_presigned_url(&config.service_url, &api_key, &file_name).await?;
+        let presigned_url =
+            request_presigned_url(&config.service_url, &api_key, &file_name).await?;
 
         // Validate the returned presigned URL
         let url = Url::parse(&presigned_url)?;
