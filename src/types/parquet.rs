@@ -1,4 +1,3 @@
-use super::event::attributes::system_metrics::SystemProperties;
 use super::event::OtelJsonEvent;
 use super::ParquetSchema;
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
@@ -7,9 +6,9 @@ use chrono::{DateTime, Utc};
 
 use super::event::{
     attributes::{
-        process::{CompletedProcess, ProcessProperties},
+        process::{CompletedProcess, DataSetsProcessed, ProcessProperties},
         syslog::SyslogProperties,
-        system_metrics::SystemMetric,
+        system_metrics::{SystemMetric, SystemProperties},
         EventAttributes,
     },
     Event,
@@ -43,6 +42,7 @@ pub struct FlattenedTracerEvent {
     pub completed_process_attributes: Option<CompletedProcess>,
     pub syslog_attributes: Option<SyslogProperties>,
 
+    pub datasets_in_process: Option<DataSetsProcessed>,
     pub json_event: String,
 }
 
@@ -77,6 +77,9 @@ impl From<Event> for FlattenedTracerEvent {
                 EventAttributes::SystemProperties(inner) => {
                     tracer_event.system_properties = Some(inner)
                 }
+                EventAttributes::ProcessDatasetStats(inner) => {
+                    tracer_event.datasets_in_process = Some(inner)
+                }
 
                 // would take out the other or handle it by converting it into a str
                 EventAttributes::Other(_inner) => (),
@@ -92,6 +95,7 @@ impl ParquetSchema for FlattenedTracerEvent {
         let completed_process_dt = CompletedProcess::schema().fields;
         let system_metrics_dt = SystemMetric::schema().fields;
         let syslog_dt = SyslogProperties::schema().fields;
+        let datasets_processed = DataSetsProcessed::schema().fields;
         let system_properties_dt = SystemProperties::schema().fields;
         let fields = vec![
             Field::new(
@@ -123,6 +127,11 @@ impl ParquetSchema for FlattenedTracerEvent {
                 true,
             ),
             Field::new("syslog_attributes", DataType::Struct(syslog_dt), true),
+            Field::new(
+                "datasets_processed",
+                DataType::Struct(datasets_processed),
+                true,
+            ),
             Field::new("json_event", DataType::Utf8, false),
         ];
         Schema::new(fields)

@@ -102,3 +102,19 @@ impl ParquetSchema for CompletedProcess {
         Schema::new(fields)
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataSetsProcessed {
+    pub datasets: String,
+    pub count: u64,
+}
+
+impl ParquetSchema for DataSetsProcessed {
+    fn schema() -> Schema {
+        let fields = vec![
+            Field::new("datasets", DataType::Utf8, false),
+            Field::new("count", DataType::UInt64, false),
+        ];
+        Schema::new(fields)
+    }
+}
