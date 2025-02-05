@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use std::{borrow::Cow, path::Path};
 
-use super::targets_list::DATA_SAMPLES_EXT;
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct CommandContainsStruct {
     pub process_name: Option<String>,
@@ -71,15 +69,6 @@ pub fn matches_target(
             bin_path_last_component_matches(expected_name, bin_path)
         }
     }
-}
-
-/// Given a string, it counts the number of times a tracked dataset is present in a command string
-pub fn count_datasample_matches(command: &str) -> u64 {
-    let command_lower = to_lowercase(command);
-    DATA_SAMPLES_EXT
-        .iter()
-        .map(|&ext| command_lower.matches(ext).count() as u64)
-        .sum()
 }
 
 #[cfg(test)]

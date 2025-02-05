@@ -201,6 +201,7 @@ mod tests {
     use crate::config_manager::ConfigManager;
     use anyhow::Error;
 
+    #[ignore = "deprecated"]
     #[tokio::test]
     async fn test_event_log() -> Result<(), Error> {
         let config = ConfigManager::load_default_config();

@@ -1,7 +1,6 @@
 // src/process_watcher.rs
 use crate::config_manager::target_process::{
-    target_matching::count_datasample_matches, targets_list::DATA_SAMPLES_EXT, Target,
-    TargetMatchable,
+    targets_list::DATA_SAMPLES_EXT, Target, TargetMatchable,
 };
 use crate::events::recorder::{EventRecorder, EventType};
 use crate::extracts::file_watcher::FileWatcher;
@@ -306,9 +305,6 @@ impl ProcessWatcher {
     ) -> ProcessProperties {
         let start_time = Utc::now();
 
-        let tool_cmd = proc.cmd().join(" ");
-        let datasets_in_process = count_datasample_matches(&tool_cmd);
-
         ProcessProperties {
             tool_name: display_name.unwrap_or(proc.name().to_owned()),
             tool_pid: pid.to_string(),
@@ -320,7 +316,7 @@ impl ProcessWatcher {
                 .to_str()
                 .unwrap()
                 .to_string(),
-            tool_cmd,
+            tool_cmd: proc.cmd().join(" "),
             start_timestamp: start_time.to_rfc3339(),
             process_cpu_utilization: proc.cpu_usage(),
             process_run_time: proc.run_time(),
@@ -332,7 +328,6 @@ impl ProcessWatcher {
             process_memory_virtual: proc.virtual_memory(),
             process_status: process_status_to_string(&proc.status()),
             input_files: None,
-            datasets_in_process,
         }
     }
 
@@ -396,7 +391,6 @@ impl ProcessWatcher {
                     process_disk_usage_write_total: 0,
                     process_status: "Unknown".to_string(),
                     input_files: None,
-                    datasets_in_process: 0,
                 },
             }
         }
@@ -688,7 +682,6 @@ mod tests {
                 process_disk_usage_write_total: 0,
                 process_status: "test".to_string(),
                 input_files: None,
-                datasets_in_process: 1,
             };
 
             let node = ProcessTreeNode {

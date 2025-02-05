@@ -44,7 +44,6 @@ pub struct ProcessProperties {
     pub process_disk_usage_write_total: u64,
     pub process_status: String,
     pub input_files: Option<Vec<InputFile>>,
-    pub datasets_in_process: u64,
 }
 
 impl ParquetSchema for ProcessProperties {
@@ -79,7 +78,6 @@ impl ParquetSchema for ProcessProperties {
                 DataType::List(Arc::new(Field::new("file", input_file_dt, false))),
                 true,
             ),
-            Field::new("datasets_in_process", DataType::UInt64, false),
         ];
         Schema::new(fields)
     }
