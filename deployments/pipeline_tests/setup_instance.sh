@@ -26,7 +26,7 @@ sudo apt-get install --quiet --yes --no-install-recommends \
 
 # Install Java (SapMachine) Use this instead. https://rushiinfotech.in/java-17-installation-on-ubuntu-22-04-lts/ ??
 echo "Installing Java ..."
-sudo apt install openjdk-17-jdk
+sudo apt install --quiet --yes openjdk-17-jdk
 
 # Install Miniconda
 echo "Installing Miniconda..."
@@ -35,9 +35,10 @@ sudo bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda
 rm Miniconda3-latest-Linux-x86_64.sh
 # export PATH="/opt/conda/bin:$PATH"
 echo 'export PATH="/opt/conda/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
 
 sudo chown -R $USER:$USER /opt/conda/
+
+source ~/.bashrc
 
 # Configure Conda and install Nextflow + packages
 echo "Configuring Conda and installing packages..."
