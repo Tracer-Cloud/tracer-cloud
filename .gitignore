@@ -31,3 +31,4 @@ log_outgoing_http_calls.txt
 debug.log
 
 .env
+.vscode/settings.json
