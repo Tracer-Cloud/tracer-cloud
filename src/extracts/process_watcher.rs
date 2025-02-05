@@ -619,7 +619,7 @@ impl ProcessWatcher {
 
         let properties = DataSetsProcessed {
             datasets: self.datasamples_tracker.iter().join(", "),
-            count: self.datasamples_tracker.len() as u64,
+            total: self.datasamples_tracker.len() as u64,
         };
 
         event_logger.record_event(
