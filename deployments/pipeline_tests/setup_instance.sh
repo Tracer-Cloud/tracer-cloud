@@ -29,16 +29,36 @@ echo "Installing Java ..."
 sudo apt install --quiet --yes openjdk-17-jdk
 
 # Install Miniconda
-echo "Installing Miniconda..."
-wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-sudo bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda
-rm Miniconda3-latest-Linux-x86_64.sh
-# export PATH="/opt/conda/bin:$PATH"
-echo 'export PATH="/opt/conda/bin:$PATH"' >> ~/.bashrc
+# echo "Installing Miniconda..."
+# wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+# sudo bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda
+# rm Miniconda3-latest-Linux-x86_64.sh
+# # export PATH="/opt/conda/bin:$PATH"
+# echo 'export PATH="/opt/conda/bin:$PATH"' >> ~/.bashrc
+# 
+# sudo chown -R $USER:$USER /opt/conda/
+# 
+# source ~/.bashrc
 
-sudo chown -R $USER:$USER /opt/conda/
+# Check if Conda is installed
+if ! command -v conda &> /dev/null
+then
+    # Install Miniconda
+    echo "Installing Miniconda..."
+    wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    sudo bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda
+    rm Miniconda3-latest-Linux-x86_64.sh
+    
+    # Add Conda to PATH
+    echo 'export PATH="/opt/conda/bin:$PATH"' >> ~/.bashrc
+    sudo chown -R $USER:$USER /opt/conda/
+    
+    # Apply the changes to the current shell session
+    source ~/.bashrc
+else
+    echo "Conda is already installed."
+fi
 
-source ~/.bashrc
 
 # Configure Conda and install Nextflow + packages
 echo "Configuring Conda and installing packages..."
@@ -50,12 +70,18 @@ conda config --set channel_priority strict
 # optional
 conda install -n base libarchive -c main --force-reinstall --solver classic
 
+echo "Installing First sets..."
 conda install --quiet --yes --name base \
     nextflow \
     nf-core \
     python \
     salmon \
     deeptools \
+
+
+
+echo "Installing Second sets..."
+conda install --quiet --yes --name base \
     boost \
     star \
     macs3 \
@@ -66,6 +92,11 @@ conda install --quiet --yes --name base \
     bwa \
     bowtie2 \
     fastqc \
+
+
+
+echo "Installing Third sets..."
+conda install --quiet --yes --name base \
     gawk \
     samtools \
     mamba \
@@ -76,12 +107,19 @@ conda install --quiet --yes --name base \
     pre-commit \
     pytest-workflow \
     snakemake \
+
+
+echo "Installing Last sets..."
+conda install --quiet --yes --name base \
     airflow \
     trimmomatic \
     picard \
     gatk4 \
     snpeff \
     cnvkit
+
+
+echo "Cleaning up..."
 conda clean --all --force-pkgs-dirs --yes
 
 # Install R and dependencies
