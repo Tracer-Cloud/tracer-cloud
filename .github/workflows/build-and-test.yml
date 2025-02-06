@@ -7,8 +7,15 @@ on:
   pull_request:
     branches:
     - "**"
+
 env:
-  CARGO_TERM_COLOR: always # Ensures colored output in GitHub Actions logs
+  CARGO_TERM_COLOR: always
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: "us-east-2"
+  AWS_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
+  RUST_LOG: "debug"
+  RUST_BACKTRACE: 1
 
 jobs:
   build-and-test:
@@ -41,11 +48,45 @@ jobs:
       run: make clippy
 
     - name: Run tests
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: "us-east-2"
-        AWS_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
-        RUST_LOG: "debug"
-        RUST_BACKTRACE: 1
       run: make test
+
+  test-aws-batch:
+    name: Test AWS Batch Jobs
+    needs: build-and-test
+    runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
+    steps:
+      - uses: actions/checkout@v4.1.4
+
+      - name: Setup Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build and push container
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
+          docker build -t batch-test-image .
+          docker tag batch-test-image:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/batch-test-image:latest
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/batch-test-image:latest
+
+      - name: Submit and monitor batch job
+        run: cargo test --test batch_jobs -- --nocapture
+
+      - name: Run AWS Batch tests
+        run: |
+          cd e2e-tests/aws-batch
+          make test_all_aws_batch
+          make validate_results
+        env:
+          AWS_BATCH_JOB_QUEUE: ${{ secrets.AWS_BATCH_JOB_QUEUE }}
