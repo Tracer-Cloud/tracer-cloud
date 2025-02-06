@@ -5,7 +5,7 @@ use arrow::array::RecordBatch;
 use arrow::json::ArrayWriter;
 use duckdb::Connection;
 
-pub(crate) async fn query<T: for<'de> serde::Deserialize<'de>>(query: &str) -> Vec<T> {
+pub(crate) async fn process_query<T: for<'de> serde::Deserialize<'de>>(query: &str) -> Vec<T> {
     let conn = Connection::open_in_memory().expect("Failed to create duckdb connection");
     let mut stmt = conn.prepare(query).expect("Query failed");
 
