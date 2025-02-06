@@ -10,6 +10,10 @@ use crate::exporters::FsExportHandler;
 use crate::exporters::ParquetExport;
 use crate::extracts::file_watcher::FileWatcher;
 use crate::extracts::process_watcher::ProcessWatcher;
+use crate::types::parquet::FlattenedTracerEvent;
+use arrow::array::RecordBatch;
+use arrow::json::ArrayWriter;
+use duckdb::Connection;
 use sysinfo::System;
 use tempdir::TempDir;
 
@@ -19,6 +23,36 @@ fn setup_fs_exporter_and_path() -> (FsExportHandler, PathBuf) {
     let export_dir = temp_dir.path().to_path_buf();
 
     (FsExportHandler::new(export_dir.clone(), None), export_dir)
+}
+
+async fn query(query: &str) -> Vec<FlattenedTracerEvent> {
+    let conn = Connection::open_in_memory().expect("Failed to create duckdb connection");
+    let mut stmt = conn.prepare(query).expect("Query failed");
+
+    let records: Vec<RecordBatch> = stmt
+        .query_arrow([])
+        .expect("failed to convert to record batch")
+        .collect();
+
+    records
+        .iter()
+        .map(record_batch_to_structs)
+        .flatten()
+        .collect()
+}
+
+fn record_batch_to_structs(batch: &RecordBatch) -> Vec<FlattenedTracerEvent> {
+    // Convert RecordBatch to JSON
+    let buf = Vec::new();
+    let mut writer = ArrayWriter::new(buf);
+    writer.write_batches(&[batch]).unwrap();
+    writer.finish().unwrap();
+
+    let buf = writer.into_inner();
+    let json_str = String::from_utf8(buf).unwrap();
+
+    // Deserialize JSON into structs
+    serde_json::from_str::<Vec<FlattenedTracerEvent>>(&json_str).unwrap()
 }
 
 async fn run_process_watcher(
@@ -85,11 +119,19 @@ async fn test_tools_tracked_based_on_targets() {
 
     let data = events_recorder.get_events();
 
-    let _ = output.kill().expect("failed to join task");
-
-    let (handler, _export_dir) = setup_fs_exporter_and_path();
+    let (handler, export_dir) = setup_fs_exporter_and_path();
     handler
         .output(data, "testing")
         .await
         .expect("failed to output");
+
+    let query_str = format!(
+        r#" select * from "{}/**/*.parquet" limit 10;"#,
+        export_dir.as_path().to_str().unwrap()
+    );
+
+    let _ = query(&query_str).await;
+
+    // cleanup
+    let _ = output.kill();
 }

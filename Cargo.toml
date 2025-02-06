@@ -60,3 +60,4 @@ env_logger = "0.9"
 tempdir = "0.3.7"
 dotenv = "0.15"
 tokio-test = "0.4"
+duckdb = {version = "1.1.1", features = ["bundled"]}
