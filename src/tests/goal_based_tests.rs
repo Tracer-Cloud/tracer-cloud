@@ -161,11 +161,11 @@ async fn test_tools_tracked_based_on_targets() {
     expected_tool_names.sort();
 
     let query_processes_for_a_run_name = format!(
-        r#"select process_attributes.tool_pid, process_attributes.tool_name
+        r#"select process_attributes.tool_name
         from "{}/{run_name}/*.parquet"
         where process_attributes.tool_pid is not Null and run_name = '{run_name}'
         group by 
-        process_attributes.tool_name, process_attributes.tool_pid;"#,
+        process_attributes.tool_name;"#,
         export_dir.as_path().to_str().unwrap()
     );
 

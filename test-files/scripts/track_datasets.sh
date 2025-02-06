@@ -10,7 +10,7 @@ fi
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 
 # Dataset directory
-DATASET_DIR="$SCRIPT_DIR/../chipseq-test"
+DATASET_DIR="$SCRIPT_DIR/../test-data-samples"
 
 # Ensure the dataset directory exists
 mkdir -p "$DATASET_DIR"
@@ -28,5 +28,5 @@ for file in "$DATASET_DIR"/*.fa; do
 done
 
 # Cleanup after processing
-rm -f "$DATASET_DIR"/*.fa
+rm -rf "$DATASET_DIR"/
 echo "Dataset processing completed."
