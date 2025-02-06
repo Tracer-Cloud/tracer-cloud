@@ -7,10 +7,12 @@ pub mod daemon_communication;
 pub mod events;
 pub mod exporters;
 pub mod extracts;
+#[cfg(test)]
+mod tests;
+
 pub mod tracer_client;
 pub mod types;
 pub mod utils;
-
 use anyhow::{Context, Ok, Result};
 use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
 use daemon_communication::server::run_server;
@@ -154,54 +156,4 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
     tracer_client.refresh_sysinfo();
     tracer_client.reset_just_started_process_flag();
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::config_manager::ConfigManager;
-    use aws_config::BehaviorVersion;
-    use config_manager::Config;
-    use dotenv::dotenv;
-    use tempdir::TempDir;
-
-    fn load_test_config() -> Config {
-        ConfigManager::load_default_config()
-    }
-
-    pub fn setup_env_vars(region: &str) {
-        dotenv().ok(); // Load from .env file in development
-        std::env::set_var("AWS_REGION", region);
-    }
-
-    #[tokio::test]
-    async fn test_monitor_processes_with_tracer_client() {
-        let config = load_test_config();
-        let pwd = std::env::current_dir().unwrap();
-        let region = "us-east-2";
-
-        setup_env_vars(region);
-
-        let temp_dir = TempDir::new("export").expect("failed to create tempdir");
-        let base_dir = temp_dir.path().join("./exports");
-        let fs_handler = FsExportHandler::new(base_dir, None);
-
-        let aws_config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region)
-            .load()
-            .await;
-
-        let s3_handler = S3ExportHandler::new_with_config(fs_handler, aws_config).await;
-
-        let mut tracer_client = TracerClient::new(
-            config,
-            pwd.to_str().unwrap().to_string(),
-            s3_handler,
-            "testing".to_string(),
-        )
-        .await
-        .unwrap();
-        let result = monitor_processes_with_tracer_client(&mut tracer_client).await;
-        assert!(result.is_ok());
-    }
 }
