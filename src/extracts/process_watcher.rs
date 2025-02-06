@@ -228,14 +228,19 @@ impl ProcessWatcher {
             let mut last_valid_parent = *process;
 
             while let Some(parent_node) = map.get(&parent) {
-                parent = parent_node.parent_id.unwrap();
-                if !valid_processes.contains(&parent) {
-                    if !force_ancestor_to_match {
-                        last_valid_parent = parent;
+                if let Some(parent_id) = parent_node.parent_id {
+                    parent = parent_id;
+                    if !valid_processes.contains(&parent) {
+                        if !force_ancestor_to_match {
+                            last_valid_parent = parent;
+                        }
+                        break;
                     }
+                    last_valid_parent = parent;
+                } else {
+                    // last_valid_parent = parent;
                     break;
                 }
-                last_valid_parent = parent;
             }
 
             if !result.contains(&last_valid_parent) {
