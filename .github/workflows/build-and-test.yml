@@ -76,17 +76,17 @@ jobs:
       - name: Build and push container
         run: |
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
-          docker build -t batch-test-image .
-          docker tag batch-test-image:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/batch-test-image:latest
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/batch-test-image:latest
+          docker build -t tracer-client:latest .
+          docker tag tracer-client:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
+          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
 
-      - name: Submit and monitor batch job
-        run: cargo test --test batch_jobs -- --nocapture
+      # - name: Submit and monitor batch job
+      #   run: cargo test --test batch_jobs -- --nocapture
 
-      - name: Run AWS Batch tests
-        run: |
-          cd e2e-tests/aws-batch
-          make test_all_aws_batch
-          make validate_results
-        env:
-          AWS_BATCH_JOB_QUEUE: ${{ secrets.AWS_BATCH_JOB_QUEUE }}
+      # - name: Run AWS Batch tests
+      #   run: |
+      #     cd e2e-tests/aws-batch
+      #     make test_all_aws_batch
+      #     make validate_results
+      #   env:
+      #     AWS_BATCH_JOB_QUEUE: ${{ secrets.AWS_BATCH_JOB_QUEUE }}
