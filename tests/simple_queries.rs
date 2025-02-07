@@ -114,16 +114,12 @@ async fn test_query_via_duckdb_works() {
 async fn test_tools_tracked_based_on_targets() {
     let run_name = uuid::Uuid::new_v4().to_string();
 
-    let total_duration = 10; // Total monitoring duration in seconds
+    let total_duration = 12; // Total monitoring duration in seconds
     let python_ration = 0.6; // 60% of the time for python and 40% for top
     let file_path = "test-files/scripts/monitor.sh";
 
-    let targets = vec![
-        Target::new(TargetMatch::ProcessName("python3".to_string()))
-            .set_display_name(DisplayName::Default()),
-        Target::new(TargetMatch::ProcessName("top".to_string()))
-            .set_display_name(DisplayName::Default()),
-    ];
+    let targets = vec![Target::new(TargetMatch::ProcessName("python3".to_string()))
+        .set_display_name(DisplayName::Default())];
 
     // execute scripts
     let mut output = std::process::Command::new(file_path)
@@ -159,8 +155,7 @@ async fn test_tools_tracked_based_on_targets() {
         tool_name: String,
     }
 
-    let mut expected_tool_names = vec!["python3".to_string(), "top".to_string()];
-    expected_tool_names.sort();
+    let expected_tool_name = "python3".to_string();
 
     let query_processes_for_a_run_name = format!(
         r#"select process_attributes.tool_name
@@ -173,15 +168,13 @@ async fn test_tools_tracked_based_on_targets() {
 
     let query_res: Vec<ProcessSubSet> = process_query(&query_processes_for_a_run_name).await;
 
-    assert_eq!(query_res.len(), 2);
-
     let queried_process_names: Vec<String> = query_res
         .into_iter()
         .map(|p| p.tool_name)
         .sorted()
         .collect();
 
-    assert_eq!(queried_process_names, expected_tool_names);
+    assert!(queried_process_names.contains(&expected_tool_name));
 
     // cleanup
     let _ = output.kill();

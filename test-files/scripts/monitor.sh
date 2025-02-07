@@ -24,4 +24,4 @@ sleep "$python_duration"
 kill $PYTHON_PID
 
 # Run top for the remaining duration
-timeout "$top_duration"s top -d
+timeout "$top_duration"s top
