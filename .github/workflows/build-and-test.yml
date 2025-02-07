@@ -12,6 +12,7 @@ env:
   CARGO_TERM_COLOR: always
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_REGION: "us-east-2"
   AWS_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
   RUST_LOG: "debug"
@@ -75,10 +76,10 @@ jobs:
 
       - name: Build and push container
         run: |
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
           docker build -t tracer-client:latest .
-          docker tag tracer-client:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
+          docker tag tracer-client:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
 
       # - name: Submit and monitor batch job
       #   run: cargo test --test batch_jobs -- --nocapture
