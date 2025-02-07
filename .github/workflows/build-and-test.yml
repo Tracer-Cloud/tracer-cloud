@@ -64,9 +64,6 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.7.3
 
-      - name: Build
-        run: cargo build --verbose
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
