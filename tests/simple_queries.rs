@@ -2,19 +2,21 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::time::Instant;
 
-use super::process_query;
-use crate::config_manager::target_process::target_matching::TargetMatch;
-use crate::config_manager::target_process::DisplayName;
-use crate::config_manager::target_process::Target;
-use crate::events::recorder::EventRecorder;
-use crate::exporters::FsExportHandler;
-use crate::exporters::ParquetExport;
-use crate::extracts::file_watcher::FileWatcher;
-use crate::extracts::process_watcher::ProcessWatcher;
-use crate::types::parquet::FlattenedTracerEvent;
 use itertools::Itertools;
 use sysinfo::System;
 use tempdir::TempDir;
+use tracer::config_manager::target_process::target_matching::TargetMatch;
+use tracer::config_manager::target_process::DisplayName;
+use tracer::config_manager::target_process::Target;
+use tracer::events::recorder::EventRecorder;
+use tracer::exporters::FsExportHandler;
+use tracer::exporters::ParquetExport;
+use tracer::extracts::file_watcher::FileWatcher;
+use tracer::extracts::process_watcher::ProcessWatcher;
+use tracer::types::parquet::FlattenedTracerEvent;
+
+mod common;
+use common::process_query;
 
 fn setup_fs_exporter_and_path() -> (FsExportHandler, PathBuf) {
     let temp_dir = TempDir::new("exports").expect("failed to create tempdir");

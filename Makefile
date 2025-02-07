@@ -28,6 +28,10 @@ setup_nextest:
 test: setup_nextest ## Run tests single threaded due to s3 race conditions
 	CARGO_NEXTEST_NO_CAPTURE=1 \
 	cargo nextest run --test-threads=1
+
+test-tracer: setup_nextest ## Run tests single threaded due to s3 race conditions
+	CARGO_NEXTEST_NO_CAPTURE=1 \
+	cargo nextest run --test-threads=1 -E 'binary(tracer)'
 	
 all: format check test clippy  ## format, check, test, clippy.
 

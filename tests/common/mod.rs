@@ -1,6 +1,3 @@
-mod goal_based_tests;
-mod tracer_tests;
-
 use arrow::array::RecordBatch;
 use arrow::json::ArrayWriter;
 use duckdb::Connection;
