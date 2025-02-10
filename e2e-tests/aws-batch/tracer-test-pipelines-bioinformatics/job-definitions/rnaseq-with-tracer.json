@@ -3,7 +3,7 @@
     "type": "container",
     "containerProperties": {
       "privileged": true,
-      "image": "nextflow/rnaseq:latest",
+      "image": "quay.io/biocontainers/multiqc:1.25.1--pyhdfd78af_0",
       "command": [
         "/bin/bash",
         "-c",
