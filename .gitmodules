@@ -1,3 +1,1 @@
-[submodule "e2e-tests/aws-batch"]
-	path = e2e-tests/aws-batch
-	url = git@github.com:Tracer-Cloud/tracer-test-pipelines-bioinformatics.git
+
