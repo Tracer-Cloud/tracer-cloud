@@ -1,12 +1,12 @@
 {
-    "jobDefinitionName": "proteinfold-with-tracer",
+    "jobDefinitionName": "rnaseq-with-tracer",
     "type": "container",
     "containerProperties": {
-      "image": "quay.io/nf-core/proteinfold_alphafold2_standard:1.1.1",
+      "image": "nfcore/rnaseq:3.14.0",
       "command": [
         "/bin/bash",
         "-c",
-        "apt-get update && apt-get install -y curl git && curl -s https://get.nextflow.io | bash && mkdir -p /opt/nextflow && cd /opt/nextflow && wget https://github.com/nextflow-io/nextflow/releases/download/v23.10.0/nextflow-23.10.0-all && chmod +x nextflow-23.10.0-all && ln -s nextflow-23.10.0-all nextflow && export PATH=$PATH:/opt/nextflow && nextflow run nf-core/proteinfold -profile test,gpu --outdir s3://tracer-nxf-outputs/proteinfold"
+        "apt-get update && apt-get install -y curl git default-jdk && curl -s https://get.nextflow.io | bash && mkdir -p /opt/nextflow && cd /opt/nextflow && wget https://github.com/nextflow-io/nextflow/releases/download/v23.10.0/nextflow-23.10.0-all && chmod +x nextflow-23.10.0-all && ln -s nextflow-23.10.0-all nextflow && export PATH=$PATH:/opt/nextflow && nextflow run nf-core/rnaseq -profile test --outdir s3://tracer-nxf-outputs/rnaseq"
       ],
       "resourceRequirements": [
         {
@@ -15,11 +15,7 @@
         },
         {
           "type": "MEMORY",
-          "value": "12288"
-        },
-        {
-          "type": "GPU",
-          "value": "1"
+          "value": "8192"
         }
       ],
       "volumes": [
@@ -61,25 +57,6 @@
           "name": "NXF_WORK",
           "value": "s3://tracer-nxf-work/work"
         }
-      ],
-      "linuxParameters": {
-        "devices": [
-          {
-            "hostPath": "/dev/nvidia0",
-            "containerPath": "/dev/nvidia0",
-            "permissions": ["READ", "WRITE"]
-          },
-          {
-            "hostPath": "/dev/nvidiactl",
-            "containerPath": "/dev/nvidiactl",
-            "permissions": ["READ", "WRITE"]
-          },
-          {
-            "hostPath": "/dev/nvidia-uvm",
-            "containerPath": "/dev/nvidia-uvm",
-            "permissions": ["READ", "WRITE"]
-          }
-        ]
-      }
+      ]
     }
 }
