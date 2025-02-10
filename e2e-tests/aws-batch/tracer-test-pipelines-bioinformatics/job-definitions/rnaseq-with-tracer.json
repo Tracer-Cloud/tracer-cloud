@@ -2,7 +2,8 @@
     "jobDefinitionName": "rnaseq-with-tracer",
     "type": "container",
     "containerProperties": {
-      "image": "quay.io/nf-core/rnaseq:3.14.0",
+      "privileged": true,
+      "image": "nextflow/rnaseq:latest",
       "command": [
         "/bin/bash",
         "-c",
