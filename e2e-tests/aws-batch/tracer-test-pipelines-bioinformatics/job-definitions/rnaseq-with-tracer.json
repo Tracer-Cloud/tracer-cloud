@@ -2,7 +2,7 @@
     "jobDefinitionName": "rnaseq-with-tracer",
     "type": "container",
     "containerProperties": {
-      "image": "nfcore/rnaseq:3.14.0",
+      "image": "quay.io/nf-core/rnaseq:3.14.0",
       "command": [
         "/bin/bash",
         "-c",
