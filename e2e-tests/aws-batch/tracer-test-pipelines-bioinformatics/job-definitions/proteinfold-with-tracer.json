@@ -1,0 +1,107 @@
+{
+    "jobDefinitionName": "proteinfold-with-tracer",
+    "type": "container",
+    "containerProperties": {
+      "image": "quay.io/nf-core/proteinfold_alphafold2_standard:1.1.1",
+      "command": [
+        "nextflow",
+        "run",
+        "pipelines/nf-core/proteinfold/main.nf",
+        "-params-file",
+        "nextflow-config/proteinfold-params.json",
+        "-profile",
+        "test",
+        "--use_gpu"
+      ],
+      "resourceRequirements": [
+        {
+          "type": "VCPU",
+          "value": "4"
+        },
+        {
+          "type": "MEMORY",
+          "value": "12288"
+        },
+        {
+          "type": "GPU",
+          "value": "1"
+        }
+      ],
+      "volumes": [
+        {
+          "name": "docker-socket",
+          "host": {
+            "sourcePath": "/var/run/docker.sock"
+          }
+        },
+        {
+          "name": "aws-cli",
+          "host": {
+            "sourcePath": "/usr/local/aws-cli/v2/current"
+          }
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "docker-socket",
+          "containerPath": "/var/run/docker.sock",
+          "readOnly": true
+        },
+        {
+          "sourceVolume": "aws-cli",
+          "containerPath": "/usr/local/aws-cli/v2/current",
+          "readOnly": true
+        }
+      ],
+      "environment": [
+        {
+          "name": "AWS_REGION",
+          "value": "us-east-1"
+        }
+      ],
+      "linuxParameters": {
+        "devices": [
+          {
+            "hostPath": "/dev/nvidia0",
+            "containerPath": "/dev/nvidia0",
+            "permissions": ["READ", "WRITE"]
+          },
+          {
+            "hostPath": "/dev/nvidiactl",
+            "containerPath": "/dev/nvidiactl",
+            "permissions": ["READ", "WRITE"]
+          },
+          {
+            "hostPath": "/dev/nvidia-uvm",
+            "containerPath": "/dev/nvidia-uvm",
+            "permissions": ["READ", "WRITE"]
+          }
+        ]
+      },
+      "sidecars": [
+        {
+          "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/tracer-client:latest",
+          "command": [
+            "./tracer",
+            "monitor",
+            "--job-id",
+            "Ref::jobId"
+          ],
+          "environment": [
+            {
+              "name": "AWS_REGION",
+              "value": "us-east-1"
+            }
+          ],
+          "mountPoints": [
+            {
+              "sourceVolume": "docker-socket",
+              "containerPath": "/var/run/docker.sock",
+              "readOnly": true
+            }
+          ],
+          "essential": true
+        }
+      ]
+    }
+  }

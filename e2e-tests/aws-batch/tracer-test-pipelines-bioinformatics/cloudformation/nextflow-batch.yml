@@ -74,6 +74,15 @@ Resources:
                   - s3:headObject
                   - s3:listBucket
                 Resource: arn:aws:s3:::*
+              - Effect: Allow
+                Action:
+                  - s3:ListObjects
+                  - s3:ListObjectsV2
+                Resource: !Sub ${NextflowOutputsBucket.Arn}/*
+              - Effect: Allow
+                Action:
+                  - batch:RegisterJobDefinition
+                Resource: "*"
   InstanceConnectEndpointSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
