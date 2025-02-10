@@ -57,6 +57,10 @@
         {
           "name": "AWS_REGION",
           "value": "us-east-1"
+        },
+        {
+          "name": "TRACER_SIDECAR_IMAGE",
+          "value": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/tracer-client:latest"
         }
       ],
       "linuxParameters": {
@@ -77,31 +81,6 @@
             "permissions": ["READ", "WRITE"]
           }
         ]
-      },
-      "sidecars": [
-        {
-          "image": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/tracer-client:latest",
-          "command": [
-            "./tracer",
-            "monitor",
-            "--job-id",
-            "Ref::jobId"
-          ],
-          "environment": [
-            {
-              "name": "AWS_REGION",
-              "value": "us-east-1"
-            }
-          ],
-          "mountPoints": [
-            {
-              "sourceVolume": "docker-socket",
-              "containerPath": "/var/run/docker.sock",
-              "readOnly": true
-            }
-          ],
-          "essential": true
-        }
-      ]
+      }
     }
-  }
+}
