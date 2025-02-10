@@ -6,7 +6,7 @@
       "command": [
         "/bin/bash",
         "-c",
-        "curl -s https://get.nextflow.io | bash && git clone --recurse-submodules https://github.com/Tracer-Cloud/tracer-test-pipelines-bioinformatics.git && cd tracer-test-pipelines-bioinformatics && ../nextflow run pipelines/nf-core/proteinfold/main.nf -params-file nextflow-config/proteinfold-params.json -profile test --use_gpu"
+        "apt-get update && apt-get install -y curl git && curl -s https://get.nextflow.io | bash && mkdir -p /opt/nextflow && cd /opt/nextflow && wget https://github.com/nextflow-io/nextflow/releases/download/v23.10.0/nextflow-23.10.0-all && chmod +x nextflow-23.10.0-all && ln -s nextflow-23.10.0-all nextflow && export PATH=$PATH:/opt/nextflow && nextflow run nf-core/proteinfold -profile test,gpu --outdir s3://tracer-nxf-outputs/proteinfold"
       ],
       "resourceRequirements": [
         {
@@ -56,6 +56,10 @@
         {
           "name": "TRACER_SIDECAR_IMAGE",
           "value": "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/tracer-client:latest"
+        },
+        {
+          "name": "NXF_WORK",
+          "value": "s3://tracer-nxf-work/work"
         }
       ],
       "linuxParameters": {
