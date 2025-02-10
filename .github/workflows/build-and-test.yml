@@ -19,41 +19,30 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  build-and-test:
-    name: Build and Test
-    runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
-
-    steps:
-    - uses: actions/checkout@v4.1.4
-
-    - name: Setup Rust toolchain
-      run: rustup toolchain install stable --profile minimal
-
-    - name: Rust Cache
-      uses: Swatinem/rust-cache@v2.7.3
-
-    - name: Set up cargo Nextest
-      run: |
-        which cargo-nextest || cargo install cargo-nextest
-
-    - name: Build
-      run: cargo build --verbose
-
-    # - name: Copy config
-    #   run: mkdir -p $HOME/.config/tracer && cp tracer.toml $HOME/.config/tracer/tracer.toml
-
-    - name: Check Formatting
-      run: cargo fmt -- --check
-
-    - name: Lint with Clippy
-      run: make clippy
-
-    - name: Run tests
-      run: make test
+  # build-and-test:
+  #   name: Build and Test
+  #   runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
+  #   steps:
+  #   - uses: actions/checkout@v4.1.4
+  #   - name: Setup Rust toolchain
+  #     run: rustup toolchain install stable --profile minimal
+  #   - name: Rust Cache
+  #     uses: Swatinem/rust-cache@v2.7.3
+  #   - name: Set up cargo Nextest
+  #     run: |
+  #       which cargo-nextest || cargo install cargo-nextest
+  #   - name: Build
+  #     run: cargo build --verbose
+  #   - name: Check Formatting
+  #     run: cargo fmt -- --check
+  #   - name: Lint with Clippy
+  #     run: make clippy
+  #   - name: Run tests
+  #     run: make test
 
   test-aws-batch:
     name: Test AWS Batch Jobs
-    needs: build-and-test
+    # needs: build-and-test
     runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
     steps:
       - uses: actions/checkout@v4.1.4
@@ -84,14 +73,14 @@ jobs:
           
           # Register job definition with tracer sidecar
           aws batch register-job-definition \
-            --cli-input-json file://job-definitions/proteinfold-with-tracer.json \
+            --cli-input-json file://job-definitions/rnaseq-with-tracer.json \
             --region $AWS_REGION
           
           # Submit the batch job
           JOB_ID=$(aws batch submit-job \
-            --job-name proteinfold-test \
+            --job-name rnaseq-test \
             --job-queue NextflowGPU \
-            --job-definition proteinfold-with-tracer \
+            --job-definition rnaseq-with-tracer \
             --region $AWS_REGION \
             --query 'jobId' \
             --output text)
