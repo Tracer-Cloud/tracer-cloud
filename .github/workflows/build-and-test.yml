@@ -63,6 +63,11 @@ jobs:
       - name: Build and push container
         run: |
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          # Delete previous image if it exists
+          aws ecr batch-delete-image \
+            --repository-name tracer-client \
+            --image-ids imageTag=latest \
+            --region $AWS_REGION || true
           docker build -t tracer-client:latest .
           docker tag tracer-client:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
@@ -79,7 +84,7 @@ jobs:
           # Submit the batch job
           JOB_ID=$(aws batch submit-job \
             --job-name rnaseq-test \
-            --job-queue NextflowGPU \
+            --job-queue NextflowCPU \
             --job-definition rnaseq-with-tracer \
             --region $AWS_REGION \
             --query 'jobId' \
