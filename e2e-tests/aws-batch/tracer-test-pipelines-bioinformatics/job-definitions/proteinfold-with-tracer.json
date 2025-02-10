@@ -4,14 +4,9 @@
     "containerProperties": {
       "image": "quay.io/nf-core/proteinfold_alphafold2_standard:1.1.1",
       "command": [
-        "nextflow",
-        "run",
-        "pipelines/nf-core/proteinfold/main.nf",
-        "-params-file",
-        "nextflow-config/proteinfold-params.json",
-        "-profile",
-        "test",
-        "--use_gpu"
+        "/bin/bash",
+        "-c",
+        "curl -s https://get.nextflow.io | bash && git clone --recurse-submodules https://github.com/Tracer-Cloud/tracer-test-pipelines-bioinformatics.git && cd tracer-test-pipelines-bioinformatics && ../nextflow run pipelines/nf-core/proteinfold/main.nf -params-file nextflow-config/proteinfold-params.json -profile test --use_gpu"
       ],
       "resourceRequirements": [
         {
