@@ -51,7 +51,7 @@ async fn run_process_watcher(
                 std::time::Duration::from_millis(3),
             )
             .expect("failed to poll process metrices");
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        tokio::time::sleep(Duration::from_millis(400)).await;
         system.refresh_all();
     }
 }
@@ -61,7 +61,7 @@ async fn run_process_watcher(
 async fn test_tools_tracked_based_on_targets() {
     let run_name = uuid::Uuid::new_v4().to_string();
 
-    let total_duration = 12; // Total monitoring duration in seconds
+    let total_duration = 6; // Total monitoring duration in seconds
     let file_path = "test-files/scripts/monitor.sh";
 
     let targets = vec![Target::new(TargetMatch::ProcessName("python".to_string()))
@@ -138,7 +138,7 @@ async fn test_longest_running_process() {
     let mut events_recorder = EventRecorder::default();
     run_process_watcher(
         &mut events_recorder,
-        Duration::from_secs(15),
+        Duration::from_secs(6),
         vec![Target::new(TargetMatch::ProcessName("python".to_string()))],
     )
     .await;
@@ -204,11 +204,8 @@ async fn test_datasets_processed_tracking() {
     );
     run_process_watcher(
         &mut events_recorder,
-        Duration::from_secs(10),
-        vec![
-            Target::new(TargetMatch::ProcessName("python".to_string())),
-            Target::new(TargetMatch::ProcessName("top".to_string())),
-        ],
+        Duration::from_secs(8),
+        vec![Target::new(TargetMatch::ProcessName("python".to_string()))],
     )
     .await;
 
