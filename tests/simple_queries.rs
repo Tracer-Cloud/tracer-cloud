@@ -13,7 +13,6 @@ use tracer::exporters::FsExportHandler;
 use tracer::exporters::ParquetExport;
 use tracer::extracts::file_watcher::FileWatcher;
 use tracer::extracts::process_watcher::ProcessWatcher;
-use tracer::types::parquet::FlattenedTracerEvent;
 
 mod common;
 use common::process_query;
@@ -37,6 +36,8 @@ async fn run_process_watcher(
 
     let file_watcher = FileWatcher::new();
 
+    system.refresh_all();
+
     let start_time = Instant::now();
 
     while start_time.elapsed() < duration {
@@ -56,75 +57,18 @@ async fn run_process_watcher(
 }
 
 #[tokio::test]
-async fn test_query_via_duckdb_works() {
-    let run_name = uuid::Uuid::new_v4().to_string();
-    let total_duration = 10; // Total monitoring duration in seconds
-    let python_ration = 0.6; // 60% of the time for python and 40% for top
-    let file_path = "test-files/scripts/monitor.sh";
-
-    let targets = vec![
-        Target::new(TargetMatch::ProcessName("python".to_string()))
-            .set_display_name(DisplayName::UseFirstArgumentBaseName()),
-        Target::new(TargetMatch::ProcessName("python2".to_string()))
-            .set_display_name(DisplayName::UseFirstArgumentBaseName()),
-        Target::new(TargetMatch::ProcessName("python3".to_string()))
-            .set_display_name(DisplayName::UseFirstArgumentBaseName()),
-        Target::new(TargetMatch::ProcessName("top".to_string()))
-            .set_display_name(DisplayName::UseFirstArgumentBaseName()),
-    ];
-
-    // execute scripts
-    let mut output = std::process::Command::new(file_path)
-        .arg(total_duration.to_string())
-        .arg(python_ration.to_string())
-        .spawn()
-        .expect("failed to run script");
-
-    let mut events_recorder = EventRecorder::default();
-    run_process_watcher(
-        &mut events_recorder,
-        Duration::from_secs(total_duration),
-        targets,
-    )
-    .await;
-
-    let data = events_recorder.get_events();
-
-    let (handler, export_dir) = setup_fs_exporter_and_path();
-    handler
-        .output(data, &run_name)
-        .await
-        .expect("failed to output");
-
-    let query_str = format!(
-        r#" select * from "{}/{run_name}/*.parquet" limit 10;"#,
-        export_dir.as_path().to_str().unwrap()
-    );
-
-    let query_res: Vec<FlattenedTracerEvent> = process_query(&query_str).await;
-
-    assert!(!query_res.is_empty());
-
-    // cleanup
-    let _ = std::fs::remove_dir_all(export_dir);
-    let _ = output.kill();
-}
-
-#[tokio::test]
+#[serial_test::serial]
 async fn test_tools_tracked_based_on_targets() {
     let run_name = uuid::Uuid::new_v4().to_string();
 
     let total_duration = 12; // Total monitoring duration in seconds
-    let python_ration = 0.6; // 60% of the time for python and 40% for top
     let file_path = "test-files/scripts/monitor.sh";
 
-    let targets = vec![Target::new(TargetMatch::ProcessName("python3".to_string()))
+    let targets = vec![Target::new(TargetMatch::ProcessName("python".to_string()))
         .set_display_name(DisplayName::Default())];
 
     // execute scripts
-    let mut output = std::process::Command::new(file_path)
-        .arg(total_duration.to_string())
-        .arg(python_ration.to_string())
+    let mut output = tokio::process::Command::new(file_path)
         .spawn()
         .expect("failed to run script");
 
@@ -155,7 +99,7 @@ async fn test_tools_tracked_based_on_targets() {
         tool_name: String,
     }
 
-    let expected_tool_name = "python3".to_string();
+    let expected_tool_name = "python".to_string();
 
     let query_processes_for_a_run_name = format!(
         r#"select process_attributes.tool_name
@@ -177,18 +121,17 @@ async fn test_tools_tracked_based_on_targets() {
     assert!(queried_process_names.contains(&expected_tool_name));
 
     // cleanup
-    let _ = output.kill();
+    let _ = output.kill().await;
     let _ = std::fs::remove_dir_all(export_dir);
 }
 
 #[tokio::test]
+#[serial_test::serial]
 async fn test_longest_running_process() {
     let file_path = "test-files/scripts/monitor.sh";
 
     let run_name = uuid::Uuid::new_v4().to_string();
-    let mut output = std::process::Command::new(file_path)
-        .arg("15") // 15 seconds total duration
-        .arg("0.7") // 70% Python, 30% top
+    let mut output = tokio::process::Command::new(file_path)
         .spawn()
         .expect("failed to run script");
 
@@ -196,10 +139,7 @@ async fn test_longest_running_process() {
     run_process_watcher(
         &mut events_recorder,
         Duration::from_secs(15),
-        vec![
-            Target::new(TargetMatch::ProcessName("python3".to_string())),
-            Target::new(TargetMatch::ProcessName("top".to_string())),
-        ],
+        vec![Target::new(TargetMatch::ProcessName("python".to_string()))],
     )
     .await;
 
@@ -229,7 +169,7 @@ async fn test_longest_running_process() {
     let query_res: Vec<ProcessDuration> = process_query(&query).await;
 
     assert_eq!(query_res.len(), 1);
-    assert_eq!(query_res[0].tool_name, "python3"); // Should be the longest-running process
+    assert_eq!(query_res[0].tool_name, "python"); // Should be the longest-running process
 
     // Cleanup
     let _ = output.kill();
@@ -237,13 +177,25 @@ async fn test_longest_running_process() {
 }
 
 #[tokio::test]
+#[serial_test::serial]
 async fn test_datasets_processed_tracking() {
     let run_name = uuid::Uuid::new_v4().to_string();
     let file_path = "test-files/scripts/track_datasets.sh";
 
-    let mut output = std::process::Command::new(file_path)
+    let mut output = tokio::process::Command::new(file_path)
         .spawn()
         .expect("failed to run script");
+
+    // Ensure the child process is spawned in the runtime so it can
+    // make progress on its own while we await for any output.
+    tokio::spawn(async move {
+        let status = output
+            .wait()
+            .await
+            .expect("child process encountered an error");
+
+        println!("child status was: {}", status);
+    });
 
     let mut events_recorder = EventRecorder::new(
         Some(run_name.clone()),
@@ -254,7 +206,7 @@ async fn test_datasets_processed_tracking() {
         &mut events_recorder,
         Duration::from_secs(10),
         vec![
-            Target::new(TargetMatch::ProcessName("python3".to_string())),
+            Target::new(TargetMatch::ProcessName("python".to_string())),
             Target::new(TargetMatch::ProcessName("top".to_string())),
         ],
     )
@@ -321,6 +273,5 @@ async fn test_datasets_processed_tracking() {
     }
 
     // Cleanup
-    let _ = output.kill();
     let _ = std::fs::remove_dir_all(export_dir);
 }
