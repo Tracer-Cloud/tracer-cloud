@@ -15,6 +15,6 @@ if not os.path.exists(file_path):
 print(f"Processing dataset: {file_path}")
 
 with open(file_path, "r+", encoding="utf8") as f:
-    time.sleep(1)  # Simulate processing time
+    time.sleep(2)  # Simulate processing time
 
 print(f"Finished processing: {file_path}")

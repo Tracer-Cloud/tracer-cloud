@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Check if Python is available
-if ! command -v python &> /dev/null; then
+if ! command -v python3 &> /dev/null; then
     echo "Python is required but not installed. Exiting."
     exit 1
 fi
@@ -24,7 +24,7 @@ echo "Generated test datasets: test1.fa, test2.fa, test3.fa"
 
 # Process each dataset using Python script
 for file in "$DATASET_DIR"/*.fa; do
-    python "$SCRIPT_DIR/sim_fileopens.py" "$file"
+    python3 "$SCRIPT_DIR/sim_fileopens.py" "$file"
 done
 
 # Cleanup after processing

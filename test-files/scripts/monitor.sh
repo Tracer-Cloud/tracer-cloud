@@ -1,6 +1,6 @@
 #!/bin/bash
 
-python -c '
+python3 -c '
 import time
 
 for i in range(5):

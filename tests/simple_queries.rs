@@ -64,7 +64,7 @@ async fn test_tools_tracked_based_on_targets() {
     let total_duration = 6; // Total monitoring duration in seconds
     let file_path = "test-files/scripts/monitor.sh";
 
-    let targets = vec![Target::new(TargetMatch::ProcessName("python".to_string()))
+    let targets = vec![Target::new(TargetMatch::ProcessName("python3".to_string()))
         .set_display_name(DisplayName::Default())];
 
     // execute scripts
@@ -99,16 +99,18 @@ async fn test_tools_tracked_based_on_targets() {
         tool_name: String,
     }
 
-    let expected_tool_name = "python".to_string();
+    let expected_tool_name = "python3".to_string();
 
     let query_processes_for_a_run_name = format!(
         r#"select process_attributes.tool_name
-        from "{}/{run_name}/*.parquet"
+        from "{}/{run_name}/**.parquet"
         where process_attributes.tool_pid is not Null and run_name = '{run_name}'
         group by 
         process_attributes.tool_name;"#,
         export_dir.as_path().to_str().unwrap()
     );
+
+    tokio::time::sleep(Duration::from_millis(2)).await;
 
     let query_res: Vec<ProcessSubSet> = process_query(&query_processes_for_a_run_name).await;
 
@@ -139,7 +141,7 @@ async fn test_longest_running_process() {
     run_process_watcher(
         &mut events_recorder,
         Duration::from_secs(6),
-        vec![Target::new(TargetMatch::ProcessName("python".to_string()))],
+        vec![Target::new(TargetMatch::ProcessName("python3".to_string()))],
     )
     .await;
 
@@ -159,17 +161,19 @@ async fn test_longest_running_process() {
 
     let query = format!(
         r#"SELECT process_attributes.tool_name, MAX(process_attributes.process_run_time) as total_duration
-        FROM "{}/{run_name}/*.parquet"
+        FROM "{}/{run_name}/**.parquet"
         GROUP BY process_attributes.tool_name
         ORDER BY total_duration DESC
         LIMIT 1;"#,
         export_dir.as_path().to_str().unwrap()
     );
 
+    tokio::time::sleep(Duration::from_millis(2)).await;
+
     let query_res: Vec<ProcessDuration> = process_query(&query).await;
 
     assert_eq!(query_res.len(), 1);
-    assert_eq!(query_res[0].tool_name, "python"); // Should be the longest-running process
+    assert_eq!(query_res[0].tool_name, "python3"); // Should be the longest-running process
 
     // Cleanup
     let _ = output.kill();
@@ -204,8 +208,8 @@ async fn test_datasets_processed_tracking() {
     );
     run_process_watcher(
         &mut events_recorder,
-        Duration::from_secs(8),
-        vec![Target::new(TargetMatch::ProcessName("python".to_string()))],
+        Duration::from_secs(12),
+        vec![Target::new(TargetMatch::ProcessName("python3".to_string()))],
     )
     .await;
 
@@ -223,9 +227,11 @@ async fn test_datasets_processed_tracking() {
         total_samples: u64,
     }
 
+    tokio::time::sleep(Duration::from_millis(2)).await;
+
     let query = format!(
         r#"SELECT process_status, MAX(datasets_processed_attributes.total) AS total_samples
-        FROM "{}/{}/*.parquet"
+        FROM "{}/{}/**.parquet"
         WHERE process_status = 'datasets_in_process'
         GROUP BY process_status;"#,
         export_dir.as_path().to_str().unwrap(),
@@ -248,7 +254,7 @@ async fn test_datasets_processed_tracking() {
 
     let query = format!(
         r#"SELECT process_status, datasets_processed_attributes.datasets AS datasets
-        FROM "{}/{}/*.parquet"
+        FROM "{}/{}/**.parquet"
         WHERE process_status = 'datasets_in_process' AND  datasets_processed_attributes.total = {total_samples_opened}
         GROUP BY process_status, datasets_processed_attributes.datasets;"#,
         export_dir.as_path().to_str().unwrap(),
