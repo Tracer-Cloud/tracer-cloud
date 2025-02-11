@@ -101,6 +101,13 @@ impl ProcessWatcher {
                     )
                 });
                 if let Some(target) = target {
+                    println!(
+                        "about to insert pid {} and name {} with command {:?}",
+                        pid,
+                        proc.name(),
+                        proc.cmd()
+                    );
+
                     self.add_new_process(
                         *pid,
                         proc,

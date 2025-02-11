@@ -56,6 +56,25 @@ async fn run_process_watcher(
     }
 }
 
+async fn exectue_script(script_path: &str) {
+    let mut output = tokio::process::Command::new(script_path)
+        .spawn()
+        .expect("failed to run script");
+
+    //
+    //
+    // Ensure the child process is spawned in the runtime so it can
+    // make progress on its own while we await for any output.
+    tokio::spawn(async move {
+        let status = output
+            .wait()
+            .await
+            .expect("child process encountered an error");
+
+        println!("child status was: {}", status);
+    });
+}
+
 #[tokio::test]
 #[serial_test::serial]
 async fn test_tools_tracked_based_on_targets() {
@@ -67,16 +86,13 @@ async fn test_tools_tracked_based_on_targets() {
     let targets = vec![Target::new(TargetMatch::ProcessName("python3".to_string()))
         .set_display_name(DisplayName::Default())];
 
-    // execute scripts
-    let mut output = tokio::process::Command::new(file_path)
-        .spawn()
-        .expect("failed to run script");
-
     let mut events_recorder = EventRecorder::new(
         Some(run_name.clone()),
         Some(run_name.clone()),
         Some(run_name.clone()),
     );
+
+    exectue_script(file_path).await;
 
     run_process_watcher(
         &mut events_recorder,
@@ -123,7 +139,6 @@ async fn test_tools_tracked_based_on_targets() {
     assert!(queried_process_names.contains(&expected_tool_name));
 
     // cleanup
-    let _ = output.kill().await;
     let _ = std::fs::remove_dir_all(export_dir);
 }
 
@@ -138,6 +153,9 @@ async fn test_longest_running_process() {
         .expect("failed to run script");
 
     let mut events_recorder = EventRecorder::default();
+
+    exectue_script(file_path).await;
+
     run_process_watcher(
         &mut events_recorder,
         Duration::from_secs(6),
@@ -186,26 +204,14 @@ async fn test_datasets_processed_tracking() {
     let run_name = uuid::Uuid::new_v4().to_string();
     let file_path = "test-files/scripts/track_datasets.sh";
 
-    let mut output = tokio::process::Command::new(file_path)
-        .spawn()
-        .expect("failed to run script");
-
-    // Ensure the child process is spawned in the runtime so it can
-    // make progress on its own while we await for any output.
-    tokio::spawn(async move {
-        let status = output
-            .wait()
-            .await
-            .expect("child process encountered an error");
-
-        println!("child status was: {}", status);
-    });
-
     let mut events_recorder = EventRecorder::new(
         Some(run_name.clone()),
         Some(run_name.clone()),
         Some(run_name.clone()),
     );
+
+    exectue_script(file_path).await;
+
     run_process_watcher(
         &mut events_recorder,
         Duration::from_secs(12),

@@ -48,7 +48,7 @@ test-integrations: setup_nextest ## Run tests single threaded due to s3 race con
 	AWS_REGION=us-east-2 \
 	AWS_ENDPOINT=https://s3.us-east-2.amazonaws.com \
 	CARGO_NEXTEST_NO_CAPTURE=1 \
-	cargo nextest run --test-threads=1 -E 'not binary(tracer)'
+	cargo nextest run --no-capture -E 'not binary(tracer)' 
 
 	
 all: format check test clippy  ## format, check, test, clippy.
