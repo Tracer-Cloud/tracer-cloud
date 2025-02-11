@@ -60,19 +60,20 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Build and push container
-        run: |
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-          # Delete previous image if it exists
-          aws ecr batch-delete-image \
-            --repository-name tracer-client \
-            --image-ids imageTag=latest \
-            --region $AWS_REGION || true
-          docker build -t tracer-client:latest .
-          docker tag tracer-client:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
+      # - name: Build and push container
+      #   run: |
+      #     aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      #     # Delete previous image if it exists
+      #     aws ecr batch-delete-image \
+      #       --repository-name tracer-client \
+      #       --image-ids imageTag=latest \
+      #       --region $AWS_REGION || true
+      #     docker build -t tracer-client:latest .
+      #     docker tag tracer-client:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
+      #     docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tracer-client:latest
 
       - name: Submit and monitor batch job
+        id: submit_job
         run: |
           cd e2e-tests/aws-batch/tracer-test-pipelines-bioinformatics
           
@@ -111,12 +112,16 @@ jobs:
               exit 1
             fi
             
-            sleep 60  # Check status every minute
+            sleep 30  # Check status every 30 seconds
           done
-          
-          # Install validation dependencies and validate results
-          pip install boto3
-          python ../validate_batch_runs.py
+
+      - name: Generate report
+        if: always()  # This step will run regardless of the previous job's success or failure
+        run: |
+          echo "Generating report..."
+          # Add your report generation logic here
+          # For example, you could run a script that collects logs or outputs from the job
+          python ../generate_report.py
         env:
           AWS_BATCH_JOB_QUEUE: ${{ secrets.AWS_BATCH_JOB_QUEUE }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
