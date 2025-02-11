@@ -13,7 +13,7 @@ use crate::{
         target_process::target_matching::TargetMatch,
     },
     events::send_daemon_start_event,
-    types::{aws_region::AwsRegion, config::AwsConfig},
+    types::{aws::aws_region::AwsRegion, config::AwsConfig},
 };
 
 use crate::config_manager::target_process::Target;

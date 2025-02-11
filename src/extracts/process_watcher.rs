@@ -1,18 +1,20 @@
 // src/process_watcher.rs
-use crate::config_manager::target_process::Target;
-use crate::config_manager::target_process::TargetMatchable;
+use crate::config_manager::target_process::{
+    targets_list::DATA_SAMPLES_EXT, Target, TargetMatchable,
+};
 use crate::events::recorder::{EventRecorder, EventType};
 use crate::extracts::file_watcher::FileWatcher;
-use crate::types::event::attributes::process::CompletedProcess;
 use crate::types::event::attributes::process::InputFile;
 use crate::types::event::attributes::process::ProcessProperties;
+use crate::types::event::attributes::process::{CompletedProcess, DataSetsProcessed};
 use crate::types::event::attributes::EventAttributes;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
-use std::collections::hash_map::Entry::Vacant;
 use std::collections::HashMap;
+use std::collections::{hash_map::Entry::Vacant, HashSet};
 use std::path::Path;
 use std::time::Duration;
 use sysinfo::ProcessStatus;
@@ -22,6 +24,8 @@ pub struct ProcessWatcher {
     targets: Vec<Target>,
     seen: HashMap<Pid, Proc>,
     process_tree: HashMap<Pid, ProcessTreeNode>,
+    // We wanna track unique datasamples we come across when monitoring process args
+    datasamples_tracker: HashSet<String>,
 }
 
 enum ProcLastUpdate {
@@ -74,6 +78,7 @@ impl ProcessWatcher {
             targets,
             seen: HashMap::new(),
             process_tree: HashMap::new(),
+            datasamples_tracker: HashSet::new(),
         }
     }
 
@@ -96,6 +101,13 @@ impl ProcessWatcher {
                     )
                 });
                 if let Some(target) = target {
+                    println!(
+                        "about to insert pid {} and name {} with command {:?}",
+                        pid,
+                        proc.name(),
+                        proc.cmd()
+                    );
+
                     self.add_new_process(
                         *pid,
                         proc,
@@ -223,14 +235,19 @@ impl ProcessWatcher {
             let mut last_valid_parent = *process;
 
             while let Some(parent_node) = map.get(&parent) {
-                parent = parent_node.parent_id.unwrap();
-                if !valid_processes.contains(&parent) {
-                    if !force_ancestor_to_match {
-                        last_valid_parent = parent;
+                if let Some(parent_id) = parent_node.parent_id {
+                    parent = parent_id;
+                    if !valid_processes.contains(&parent) {
+                        if !force_ancestor_to_match {
+                            last_valid_parent = parent;
+                        }
+                        break;
                     }
+                    last_valid_parent = parent;
+                } else {
+                    // last_valid_parent = parent;
                     break;
                 }
-                last_valid_parent = parent;
             }
 
             if !result.contains(&last_valid_parent) {
@@ -430,6 +447,7 @@ impl ProcessWatcher {
         let mut properties = Self::gather_process_data(&pid, p, Some(display_name.clone()));
 
         let cmd_arguments = p.cmd();
+
         let mut input_files = vec![];
 
         let mut arguments_to_check = vec![];
@@ -470,6 +488,8 @@ impl ProcessWatcher {
             Some(EventAttributes::Process(properties)),
             None,
         );
+
+        self.log_datasets_in_process(event_logger, cmd_arguments);
 
         Ok(())
     }
@@ -601,6 +621,27 @@ impl ProcessWatcher {
         Ok(())
     }
 
+    /// Logs the unique datasets processed or in process
+    fn log_datasets_in_process(&mut self, event_logger: &mut EventRecorder, cmd: &[String]) {
+        for arg in cmd.iter() {
+            if DATA_SAMPLES_EXT.iter().any(|ext| arg.ends_with(ext)) {
+                self.datasamples_tracker.insert(arg.clone());
+            }
+        }
+
+        let properties = DataSetsProcessed {
+            datasets: self.datasamples_tracker.iter().join(", "),
+            total: self.datasamples_tracker.len() as u64,
+        };
+
+        event_logger.record_event(
+            EventType::DataSamplesEvent,
+            format!("[{}] Samples Processed So Far", Utc::now()),
+            Some(EventAttributes::ProcessDatasetStats(properties)),
+            None,
+        );
+    }
+
     pub fn reload_targets(&mut self, targets: Vec<Target>) {
         if targets == self.targets {
             return;
@@ -691,5 +732,28 @@ mod tests {
         process_watcher.build_process_trees(system.processes());
 
         Ok(())
+    }
+
+    #[test]
+    fn test_count_dataset_matches_works() {
+        let command: Vec<String> =
+            "kallisto quant -t 4 -i control_index -o ./control_quant_9 control1_1.fa control1_2.fa"
+                .split(" ")
+                .map(String::from)
+                .collect();
+        let mut events_logger = EventRecorder::default();
+
+        let mut process_watcher = ProcessWatcher::new(vec![]);
+        process_watcher.log_datasets_in_process(&mut events_logger, &command);
+        assert_eq!(process_watcher.datasamples_tracker.len(), 2);
+
+        let command: Vec<String> =
+            "kallisto quant -t 4 -i control_index -o ./control_quant_9 control1_3.fa control1_4.fa"
+                .split(" ")
+                .map(String::from)
+                .collect();
+
+        process_watcher.log_datasets_in_process(&mut events_logger, &command);
+        assert_eq!(process_watcher.datasamples_tracker.len(), 4);
     }
 }

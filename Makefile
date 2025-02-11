@@ -26,12 +26,30 @@ setup_nextest:
 	@which cargo-nextest >/dev/null || cargo install cargo-nextest
 
 test: setup_nextest ## Run tests single threaded due to s3 race conditions
-	AWS_REGION=us-east-2 \
-	AWS_ENDPOINT=https://s3.us-east-2.amazonaws.com \
-	RUST_LOG=debug \
-	RUST_BACKTRACE=1 \
 	CARGO_NEXTEST_NO_CAPTURE=1 \
 	cargo nextest run --test-threads=1
+
+
+test: setup_nextest ## Run tests single threaded due to s3 race conditions
+	AWS_REGION=us-east-2 \
+	AWS_ENDPOINT=https://s3.us-east-2.amazonaws.com \
+	CARGO_NEXTEST_NO_CAPTURE=1 \
+	cargo nextest run --test-threads=1 
+
+
+test-tracer: setup_nextest ## Run tests single threaded due to s3 race conditions
+	AWS_REGION=us-east-2 \
+	AWS_ENDPOINT=https://s3.us-east-2.amazonaws.com \
+	CARGO_NEXTEST_NO_CAPTURE=1 \
+	cargo nextest run --test-threads=1 -E 'binary(tracer)'
+
+
+test-integrations: setup_nextest ## Run tests single threaded due to s3 race conditions
+	AWS_REGION=us-east-2 \
+	AWS_ENDPOINT=https://s3.us-east-2.amazonaws.com \
+	CARGO_NEXTEST_NO_CAPTURE=1 \
+	cargo nextest run --no-capture -E 'not binary(tracer)' 
+
 	
 all: format check test clippy  ## format, check, test, clippy.
 
@@ -40,11 +58,6 @@ all: format check test clippy  ## format, check, test, clippy.
 #  .NOTPARALLEL: ; # wait for this target to finish
 .EXPORT_ALL_VARIABLES: ; # send all vars to shell
 
-# AWS Configuration for tests
-AWS_ACCESS_KEY_ID ?= $(shell echo $$AWS_ACCESS_KEY_ID)
-AWS_SECRET_ACCESS_KEY ?= $(shell echo $$AWS_SECRET_ACCESS_KEY)
-export AWS_ACCESS_KEY_ID
-export AWS_SECRET_ACCESS_KEY
 
 .PHONY: docs all # All targets are accessible for user
 	.DEFAULT: help # Running Make will run the help target

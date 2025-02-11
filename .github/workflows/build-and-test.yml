@@ -28,9 +28,6 @@ jobs:
       run: |
         which cargo-nextest || cargo install cargo-nextest
 
-    - name: Build
-      run: cargo build --verbose
-
     # - name: Copy config
     #   run: mkdir -p $HOME/.config/tracer && cp tracer.toml $HOME/.config/tracer/tracer.toml
 
@@ -48,4 +45,26 @@ jobs:
         AWS_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
         RUST_LOG: "debug"
         RUST_BACKTRACE: 1
-      run: make test
+      run: make test-tracer
+
+
+
+  run-integrations:
+      name: Build and Test Integrations
+      runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
+
+      steps:
+      - uses: actions/checkout@v4.1.4
+
+      - name: Setup Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Set up cargo Nextest
+        run: |
+          which cargo-nextest || cargo install cargo-nextest
+
+      - name: Run tests
+        run: make test-integrations

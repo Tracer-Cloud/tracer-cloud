@@ -53,9 +53,11 @@ dirs = "6.0.0"
 async-trait = "0.1.85"
 sha2 = "0.10.8"
 serde-query = "0.2.0"
+itertools = "0.14.0"
 
 [dev-dependencies]
 env_logger = "0.9"
 tempdir = "0.3.7"
 dotenv = "0.15"
 tokio-test = "0.4"
+duckdb = {version = "1.1.1", features = ["bundled"]}
