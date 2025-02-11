@@ -15,6 +15,7 @@ use anyhow::{Context, Ok, Result};
 use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
+use exporters::ParquetExport;
 use extracts::syslog::run_syslog_lines_read_thread;
 use std::borrow::BorrowMut;
 
@@ -144,7 +145,9 @@ pub async fn run(workflow_directory_path: String, pipeline_name: String) -> Resu
     Ok(())
 }
 
-pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
+pub async fn monitor_processes_with_tracer_client<T: ParquetExport>(
+    tracer_client: &mut TracerClient<T>,
+) -> Result<()> {
     tracer_client.remove_completed_processes().await?;
     tracer_client.poll_processes()?;
     // tracer_client.run_cleanup().await?;
