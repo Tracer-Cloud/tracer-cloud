@@ -7,10 +7,10 @@ pub mod daemon_communication;
 pub mod events;
 pub mod exporters;
 pub mod extracts;
+
 pub mod tracer_client;
 pub mod types;
 pub mod utils;
-
 use anyhow::{Context, Ok, Result};
 use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
 use daemon_communication::server::run_server;
@@ -158,10 +158,11 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::config_manager::ConfigManager;
+    use crate::config_manager::{Config, ConfigManager};
+    use crate::{
+        monitor_processes_with_tracer_client, FsExportHandler, S3ExportHandler, TracerClient,
+    };
     use aws_config::BehaviorVersion;
-    use config_manager::Config;
     use dotenv::dotenv;
     use tempdir::TempDir;
 

@@ -22,6 +22,7 @@ pub enum EventType {
     SyslogEvent,
     RunStatusMessage,
     Alert,
+    DataSamplesEvent,
     TestEvent, // Added TestEvent variant
 }
 
@@ -38,6 +39,7 @@ impl EventType {
             EventType::TestEvent => "test_event", // Handle TestEvent
             EventType::RunStatusMessage => "run_status_message",
             EventType::Alert => "alert",
+            EventType::DataSamplesEvent => "datasets_in_process",
         }
     }
 }
