@@ -15,7 +15,6 @@ use anyhow::{Context, Ok, Result};
 use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
 use daemon_communication::server::run_server;
 use daemonize::Daemonize;
-use exporters::ParquetExport;
 use extracts::syslog::run_syslog_lines_read_thread;
 use std::borrow::BorrowMut;
 
@@ -63,23 +62,29 @@ pub fn start_daemon() -> Result<()> {
 }
 
 #[tokio::main]
-pub async fn run(workflow_directory_path: String, pipeline_name: String) -> Result<()> {
+pub async fn run(
+    workflow_directory_path: String,
+    pipeline_name: String,
+    tag_name: Option<String>,
+) -> Result<()> {
     let raw_config = ConfigManager::load_config();
 
     let export_dir = ConfigManager::get_tracer_parquet_export_dir()?;
 
     let fs_handler = FsExportHandler::new(export_dir, None);
-    let s3_handler = S3ExportHandler::new(
-        fs_handler,
-        raw_config.aws_init_type.clone(),
-        raw_config.aws_region.as_str(),
-    )
-    .await;
+    let exporter = exporters::Exporter::S3(
+        S3ExportHandler::new(
+            fs_handler,
+            raw_config.aws_init_type.clone(),
+            raw_config.aws_region.as_str(),
+        )
+        .await,
+    );
 
     let client = TracerClient::new(
         raw_config.clone(),
         workflow_directory_path,
-        s3_handler,
+        exporter,
         pipeline_name,
     )
     .await
@@ -145,9 +150,7 @@ pub async fn run(workflow_directory_path: String, pipeline_name: String) -> Resu
     Ok(())
 }
 
-pub async fn monitor_processes_with_tracer_client<T: ParquetExport>(
-    tracer_client: &mut TracerClient<T>,
-) -> Result<()> {
+pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
     tracer_client.remove_completed_processes().await?;
     tracer_client.poll_processes()?;
     // tracer_client.run_cleanup().await?;
@@ -195,7 +198,9 @@ mod tests {
             .load()
             .await;
 
-        let s3_handler = S3ExportHandler::new_with_config(fs_handler, aws_config).await;
+        let s3_handler = crate::exporters::Exporter::S3(
+            S3ExportHandler::new_with_config(fs_handler, aws_config).await,
+        );
 
         let mut tracer_client = TracerClient::new(
             config,

@@ -1,6 +1,6 @@
 use std::{fmt::Debug, path::PathBuf};
 
-use crate::types::{event::Event, ParquetSchema};
+use crate::types::{event::Event, parquet::FlattenedTracerEvent, ParquetSchema};
 
 pub mod fs;
 pub mod s3;
@@ -17,4 +17,21 @@ where
 {
     type ExportableType;
     async fn output(&self, data: &[Event], run_name: &str) -> Result<PathBuf, String>;
+}
+
+pub enum Exporter {
+    FS(FsExportHandler),
+    S3(S3ExportHandler),
+}
+
+#[async_trait::async_trait]
+impl ParquetExport for Exporter {
+    type ExportableType = FlattenedTracerEvent;
+
+    async fn output(&self, data: &[Event], run_name: &str) -> Result<PathBuf, String> {
+        match self {
+            Self::FS(exporter) => exporter.output(data, run_name).await,
+            Self::S3(exporter) => exporter.output(data, run_name).await,
+        }
+    }
 }

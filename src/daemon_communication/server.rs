@@ -13,7 +13,6 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     config_manager::{Config, ConfigManager},
     events::{recorder::EventType, send_alert_event, send_log_event, send_update_tags_event},
-    exporters::ParquetExport,
     extracts::process_watcher::ShortLivedProcessLog,
     tracer_client::TracerClient,
     utils::{debug_log::Logger, upload::upload_from_file_path},
@@ -22,19 +21,19 @@ use crate::{
 type ProcessOutput<'a> =
     Option<Pin<Box<dyn Future<Output = Result<String, anyhow::Error>> + 'a + Send>>>;
 
-pub fn process_log_command<'a, T: ParquetExport + Send>(
+pub fn process_log_command<'a>(
     service_url: &'a str,
     api_key: &'a str,
     object: &serde_json::Map<String, serde_json::Value>,
-    tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
 ) -> ProcessOutput<'a> {
     if !object.contains_key("message") {
         return None;
     };
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
 
-    async fn fun<'a, T: ParquetExport + Send>(
-        tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+    async fn fun<'a>(
+        tracer_client: &'a Arc<Mutex<TracerClient>>,
         service_url: &'a str,
         api_key: &'a str,
         message: String,
@@ -55,11 +54,11 @@ pub fn process_log_command<'a, T: ParquetExport + Send>(
     Some(Box::pin(fun(tracer_client, api_key, service_url, message)))
 }
 
-pub fn process_alert_command<'a, T: ParquetExport + Send>(
+pub fn process_alert_command<'a>(
     service_url: &'a str,
     api_key: &'a str,
     object: &serde_json::Map<String, serde_json::Value>,
-    tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
 ) -> ProcessOutput<'a> {
     if !object.contains_key("message") {
         return None;
@@ -67,8 +66,8 @@ pub fn process_alert_command<'a, T: ParquetExport + Send>(
 
     let message = object.get("message").unwrap().as_str().unwrap().to_string();
 
-    async fn fun<'a, T: ParquetExport + Send>(
-        tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+    async fn fun<'a>(
+        tracer_client: &'a Arc<Mutex<TracerClient>>,
         service_url: &'a str,
         api_key: &'a str,
         message: String,
@@ -82,12 +81,12 @@ pub fn process_alert_command<'a, T: ParquetExport + Send>(
     Some(Box::pin(fun(tracer_client, service_url, api_key, message)))
 }
 
-pub fn process_start_run_command<'a, T: ParquetExport + Send>(
-    tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+pub fn process_start_run_command<'a>(
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
     stream: &'a mut UnixStream,
 ) -> ProcessOutput<'a> {
-    async fn fun<'a, T: ParquetExport + Send>(
-        tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+    async fn fun<'a>(
+        tracer_client: &'a Arc<Mutex<TracerClient>>,
         stream: &'a mut UnixStream,
     ) -> Result<String, anyhow::Error> {
         tracer_client.lock().await.start_new_run(None).await?;
@@ -122,12 +121,12 @@ pub fn process_start_run_command<'a, T: ParquetExport + Send>(
     Some(Box::pin(fun(tracer_client, stream)))
 }
 
-pub fn process_info_command<'a, T: ParquetExport + Send>(
-    tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+pub fn process_info_command<'a>(
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
     stream: &'a mut UnixStream,
 ) -> ProcessOutput<'a> {
-    async fn fun<'a, T: ParquetExport + Send>(
-        tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+    async fn fun<'a>(
+        tracer_client: &'a Arc<Mutex<TracerClient>>,
         stream: &'a mut UnixStream,
     ) -> Result<String, anyhow::Error> {
         let guard = tracer_client.lock().await;
@@ -161,9 +160,7 @@ pub fn process_info_command<'a, T: ParquetExport + Send>(
 }
 
 // NOTE: outputs data
-pub fn process_end_run_command<T: ParquetExport + Send>(
-    tracer_client: &Arc<Mutex<TracerClient<T>>>,
-) -> ProcessOutput<'_> {
+pub fn process_end_run_command(tracer_client: &Arc<Mutex<TracerClient>>) -> ProcessOutput<'_> {
     Some(Box::pin(async move {
         let mut tracer_client = tracer_client.lock().await;
         tracer_client.stop_run().await?;
@@ -171,14 +168,14 @@ pub fn process_end_run_command<T: ParquetExport + Send>(
     }))
 }
 
-pub fn process_refresh_config_command<'a, T: ParquetExport + Send>(
-    tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+pub fn process_refresh_config_command<'a>(
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
     config: &'a Arc<RwLock<Config>>,
 ) -> ProcessOutput<'a> {
     let config_file = ConfigManager::load_config();
 
-    async fn fun<'a, T: ParquetExport + Send>(
-        tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+    async fn fun<'a>(
+        tracer_client: &'a Arc<Mutex<TracerClient>>,
         config: &'a Arc<RwLock<Config>>,
         config_file: crate::config_manager::Config,
     ) -> Result<String, anyhow::Error> {
@@ -210,8 +207,8 @@ pub fn process_tag_command<'a>(
     Some(Box::pin(send_update_tags_event(service_url, api_key, tags)))
 }
 
-pub fn process_log_short_lived_process_command<'a, T: ParquetExport + Send>(
-    tracer_client: &'a Arc<Mutex<TracerClient<T>>>,
+pub fn process_log_short_lived_process_command<'a>(
+    tracer_client: &'a Arc<Mutex<TracerClient>>,
     object: &serde_json::Map<String, serde_json::Value>,
 ) -> ProcessOutput<'a> {
     if !object.contains_key("log") {
@@ -255,8 +252,8 @@ pub fn process_upload_command<'a>(
     }))
 }
 
-pub async fn run_server<T: ParquetExport + Send>(
-    tracer_client: Arc<Mutex<TracerClient<T>>>,
+pub async fn run_server(
+    tracer_client: Arc<Mutex<TracerClient>>,
     socket_path: &str,
     cancellation_token: CancellationToken,
     config: Arc<RwLock<Config>>,
