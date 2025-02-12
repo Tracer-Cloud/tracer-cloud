@@ -67,8 +67,6 @@ pub struct TracerClient {
     metrics_collector: SystemMetricsCollector,
     file_watcher: FileWatcher,
     workflow_directory: String,
-    api_key: String,
-    service_url: String,
     current_run: Option<RunMetadata>,
     syslog_lines_buffer: LinesBufferArc,
     stdout_lines_buffer: LinesBufferArc,
@@ -77,6 +75,7 @@ pub struct TracerClient {
     pipeline_name: String,
     pub pricing_client: PricingClient,
     tag_name: Option<String>,
+    config: Config,
 }
 
 impl TracerClient {
@@ -100,8 +99,6 @@ impl TracerClient {
 
         Ok(TracerClient {
             // fixed values
-            api_key: config.api_key.clone(),
-            service_url,
             interval: Duration::from_millis(config.process_polling_interval_ms),
             last_interaction_new_run_duration: Duration::from_millis(config.new_run_pause_ms),
             process_metrics_send_interval: Duration::from_millis(
@@ -123,20 +120,20 @@ impl TracerClient {
             syslog_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             stdout_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             stderr_lines_buffer: Arc::new(RwLock::new(Vec::new())),
-            process_watcher: ProcessWatcher::new(config.targets),
+            process_watcher: ProcessWatcher::new(config.targets.clone()),
             metrics_collector: SystemMetricsCollector::new(),
             exporter,
             pipeline_name,
             pricing_client,
             tag_name,
+            config,
         })
     }
 
     pub fn reload_config_file(&mut self, config: &Config) {
-        self.api_key.clone_from(&config.api_key);
-        self.service_url.clone_from(&config.service_url);
         self.interval = Duration::from_millis(config.process_polling_interval_ms);
         self.process_watcher.reload_targets(config.targets.clone());
+        self.config = config.clone()
     }
 
     pub fn fill_logs_with_short_lived_process(
@@ -313,8 +310,8 @@ impl TracerClient {
     pub async fn poll_files(&mut self) -> Result<()> {
         self.file_watcher
             .poll_files(
-                &self.service_url,
-                &self.api_key,
+                &self.config.service_url,
+                &self.config.api_key,
                 &self.workflow_directory,
                 FILE_CACHE_DIR,
                 self.last_file_size_change_time_delta,
@@ -337,11 +334,21 @@ impl TracerClient {
         let (stdout_lines_buffer, stderr_lines_buffer) = self.get_stdout_stderr_lines_buffer();
 
         self.stdout_watcher
-            .poll_stdout(&self.service_url, &self.api_key, stdout_lines_buffer, false)
+            .poll_stdout(
+                &self.config.service_url,
+                &self.config.api_key,
+                stdout_lines_buffer,
+                false,
+            )
             .await?;
 
         self.stdout_watcher
-            .poll_stdout(&self.service_url, &self.api_key, stderr_lines_buffer, true)
+            .poll_stdout(
+                &self.config.service_url,
+                &self.config.api_key,
+                stderr_lines_buffer,
+                true,
+            )
             .await
     }
 
@@ -354,7 +361,7 @@ impl TracerClient {
     }
 
     pub fn get_service_url(&self) -> &str {
-        &self.service_url
+        &self.config.service_url
     }
 
     pub fn get_pipeline_name(&self) -> &str {
@@ -362,11 +369,12 @@ impl TracerClient {
     }
 
     pub fn get_api_key(&self) -> &str {
-        &self.api_key
+        &self.config.api_key
     }
 
-    pub async fn run(self, config: config_manager::Config) -> Result<()> {
-        let config: Arc<RwLock<config_manager::Config>> = Arc::new(RwLock::new(config));
+    pub async fn run(self) -> Result<()> {
+        let config: Arc<RwLock<config_manager::Config>> =
+            Arc::new(RwLock::new(self.config.clone()));
 
         let tracer_client = Arc::new(Mutex::new(self));
 
