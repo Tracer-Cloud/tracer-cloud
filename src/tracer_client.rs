@@ -1,6 +1,6 @@
 // src/tracer_client.rs
 use crate::cloud_providers::aws::PricingClient;
-use crate::config_manager::Config;
+use crate::config_manager::{self, Config};
 use crate::events::{
     recorder::{EventRecorder, EventType},
     send_start_run_event,
@@ -11,18 +11,26 @@ use crate::extracts::{
     metrics::SystemMetricsCollector,
     process_watcher::{ProcessWatcher, ShortLivedProcessLog},
     stdout::StdoutWatcher,
-    syslog::SyslogWatcher,
+    syslog::{run_syslog_lines_read_thread, SyslogWatcher},
 };
 use crate::types::event::attributes::EventAttributes;
 use crate::utils::submit_batched_data::submit_batched_data;
-use crate::FILE_CACHE_DIR;
+use crate::{monitor_processes_with_tracer_client, FILE_CACHE_DIR};
+use crate::{SOCKET_PATH, SYSLOG_FILE};
 use anyhow::Result;
 use chrono::{DateTime, TimeDelta, Utc};
+use std::borrow::BorrowMut;
 use std::ops::Sub;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use sysinfo::{Pid, System};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
+
+use crate::daemon_communication::server::run_server;
+use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
+
+use tokio::time::sleep;
+use tokio_util::sync::CancellationToken;
 
 // NOTE: we might have to find a better alternative than passing the pipeline name to tracer client
 // directly. Currently with this approach, we do not need to generate a new pipeline name for every
@@ -92,7 +100,7 @@ impl TracerClient {
 
         Ok(TracerClient {
             // fixed values
-            api_key: config.api_key,
+            api_key: config.api_key.clone(),
             service_url,
             interval: Duration::from_millis(config.process_polling_interval_ms),
             last_interaction_new_run_duration: Duration::from_millis(config.new_run_pause_ms),
@@ -355,5 +363,70 @@ impl TracerClient {
 
     pub fn get_api_key(&self) -> &str {
         &self.api_key
+    }
+
+    pub async fn run(self, config: config_manager::Config) -> Result<()> {
+        let config: Arc<RwLock<config_manager::Config>> = Arc::new(RwLock::new(config));
+
+        let tracer_client = Arc::new(Mutex::new(self));
+
+        let cancellation_token = CancellationToken::new();
+
+        tokio::spawn(run_server(
+            tracer_client.clone(),
+            SOCKET_PATH,
+            cancellation_token.clone(),
+            config.clone(),
+        ));
+
+        let syslog_lines_task = tokio::spawn(run_syslog_lines_read_thread(
+            SYSLOG_FILE,
+            tracer_client.lock().await.get_syslog_lines_buffer(),
+        ));
+
+        let stdout_lines_task =
+            tokio::spawn(crate::extracts::stdout::run_stdout_lines_read_thread(
+                INTERCEPTOR_STDOUT_FILE,
+                INTERCEPTOR_STDERR_FILE,
+                tracer_client.lock().await.get_stdout_stderr_lines_buffer(),
+            ));
+
+        tracer_client
+            .lock()
+            .await
+            .borrow_mut()
+            .start_new_run(None)
+            .await?;
+
+        while !cancellation_token.is_cancelled() {
+            let start_time = Instant::now();
+            while start_time.elapsed()
+                < Duration::from_millis(config.read().await.batch_submission_interval_ms)
+            {
+                monitor_processes_with_tracer_client(tracer_client.lock().await.borrow_mut())
+                    .await?;
+                sleep(Duration::from_millis(
+                    config.read().await.process_polling_interval_ms,
+                ))
+                .await;
+                if cancellation_token.is_cancelled() {
+                    break;
+                }
+            }
+
+            tracer_client
+                .lock()
+                .await
+                .borrow_mut()
+                .submit_batched_data()
+                .await?;
+
+            tracer_client.lock().await.borrow_mut().poll_files().await?;
+        }
+
+        syslog_lines_task.abort();
+        stdout_lines_task.abort();
+
+        Ok(())
     }
 }
