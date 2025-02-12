@@ -118,10 +118,11 @@ jobs:
       - name: Generate report
         if: always()  # This step will run regardless of the previous job's success or failure
         run: |
+          cd e2e-tests/aws-batch
           echo "Generating report..."
           # Add your report generation logic here
           # For example, you could run a script that collects logs or outputs from the job
-          python ../generate_report.py
+          python3 validate_batch_runs.py
         env:
           AWS_BATCH_JOB_QUEUE: ${{ secrets.AWS_BATCH_JOB_QUEUE }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
