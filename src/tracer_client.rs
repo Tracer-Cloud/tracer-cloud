@@ -5,7 +5,7 @@ use crate::events::{
     recorder::{EventRecorder, EventType},
     send_start_run_event,
 };
-use crate::exporters::ParquetExport;
+use crate::exporters::{Exporter, ParquetExport};
 use crate::extracts::{
     file_watcher::FileWatcher,
     metrics::SystemMetricsCollector,
@@ -45,7 +45,7 @@ const WAIT_FOR_PROCESS_BEFORE_NEW_RUN: bool = false;
 
 pub type LinesBufferArc = Arc<RwLock<Vec<String>>>;
 
-pub struct TracerClient<T: ParquetExport> {
+pub struct TracerClient {
     system: System,
     last_sent: Option<Instant>,
     interval: Duration,
@@ -65,18 +65,18 @@ pub struct TracerClient<T: ParquetExport> {
     syslog_lines_buffer: LinesBufferArc,
     stdout_lines_buffer: LinesBufferArc,
     stderr_lines_buffer: LinesBufferArc,
-    pub exporter: T,
+    pub exporter: Exporter,
     pipeline_name: String,
     pub pricing_client: PricingClient,
 }
 
-impl<T: ParquetExport> TracerClient<T> {
+impl TracerClient {
     pub async fn new(
         config: Config,
         workflow_directory: String,
-        exporter: T,
+        exporter: Exporter,
         pipeline_name: String,
-    ) -> Result<TracerClient<T>> {
+    ) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
         println!("Initializing TracerClient with API Key: {}", config.api_key);
