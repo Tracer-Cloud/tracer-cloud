@@ -61,6 +61,10 @@ pub fn start_daemon() -> Result<()> {
         .context("Failed to start daemon.")
 }
 
+//FIXME: the tracerclient should be runnable using one method, instead of tying the initailization
+//and dependencies in a function `client.run().await` would be cleaner
+//Why? Then the client can be easily configured with other exporters or properties when testing
+
 #[tokio::main]
 pub async fn run(
     workflow_directory_path: String,
@@ -86,6 +90,7 @@ pub async fn run(
         workflow_directory_path,
         exporter,
         pipeline_name,
+        tag_name,
     )
     .await
     .context("Failed to create TracerClient")?;
@@ -207,6 +212,7 @@ mod tests {
             pwd.to_str().unwrap().to_string(),
             s3_handler,
             "testing".to_string(),
+            None,
         )
         .await
         .unwrap();

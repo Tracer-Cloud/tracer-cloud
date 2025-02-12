@@ -68,6 +68,7 @@ pub struct TracerClient {
     pub exporter: Exporter,
     pipeline_name: String,
     pub pricing_client: PricingClient,
+    tag_name: Option<String>,
 }
 
 impl TracerClient {
@@ -76,6 +77,7 @@ impl TracerClient {
         workflow_directory: String,
         exporter: Exporter,
         pipeline_name: String,
+        tag_name: Option<String>,
     ) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
@@ -118,6 +120,7 @@ impl TracerClient {
             exporter,
             pipeline_name,
             pricing_client,
+            tag_name,
         })
     }
 
@@ -213,8 +216,14 @@ impl TracerClient {
             self.stop_run().await?;
         }
 
-        let result =
-            send_start_run_event(&self.system, &self.pipeline_name, &self.pricing_client).await?;
+        let result = send_start_run_event(
+            &self.system,
+            &self.pipeline_name,
+            &self.pricing_client,
+            &self.tag_name,
+        )
+        .await?;
+
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),
             parent_pid: None,
@@ -223,17 +232,18 @@ impl TracerClient {
             id: result.run_id.clone(),
         });
 
-        self.logs.update_run_details(
-            Some(self.pipeline_name.clone()),
-            Some(result.run_name),
-            Some(result.run_id),
-        );
+        // NOTE: Do we need to output a totally new event if self.tag_name.is_some() ?
 
         self.logs.record_event(
             EventType::NewRun,
             "[CLI] Starting new pipeline run".to_owned(),
             Some(EventAttributes::SystemProperties(result.system_properties)),
             timestamp,
+        );
+        self.logs.update_run_details(
+            Some(self.pipeline_name.clone()),
+            Some(result.run_name),
+            Some(result.run_id),
         );
 
         Ok(())
