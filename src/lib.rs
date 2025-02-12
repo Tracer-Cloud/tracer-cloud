@@ -83,7 +83,7 @@ pub async fn run(
     .await
     .context("Failed to create TracerClient")?;
 
-    client.run(raw_config).await
+    client.run().await
 }
 
 pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
