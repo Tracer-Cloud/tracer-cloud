@@ -12,18 +12,10 @@ pub mod tracer_client;
 pub mod types;
 pub mod utils;
 use anyhow::{Context, Ok, Result};
-use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
-use daemon_communication::server::run_server;
 use daemonize::Daemonize;
-use extracts::syslog::run_syslog_lines_read_thread;
-use std::borrow::BorrowMut;
 
 use crate::exporters::{FsExportHandler, S3ExportHandler};
 use std::fs::File;
-use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
-use tokio::time::{sleep, Duration, Instant};
-use tokio_util::sync::CancellationToken;
 
 use crate::config_manager::ConfigManager;
 use crate::tracer_client::TracerClient;
@@ -61,10 +53,6 @@ pub fn start_daemon() -> Result<()> {
         .context("Failed to start daemon.")
 }
 
-//FIXME: the tracerclient should be runnable using one method, instead of tying the initailization
-//and dependencies in a function `client.run().await` would be cleaner
-//Why? Then the client can be easily configured with other exporters or properties when testing
-
 #[tokio::main]
 pub async fn run(
     workflow_directory_path: String,
@@ -94,65 +82,8 @@ pub async fn run(
     )
     .await
     .context("Failed to create TracerClient")?;
-    let tracer_client = Arc::new(Mutex::new(client));
-    let config: Arc<RwLock<config_manager::Config>> = Arc::new(RwLock::new(raw_config));
 
-    let cancellation_token = CancellationToken::new();
-
-    tokio::spawn(run_server(
-        tracer_client.clone(),
-        SOCKET_PATH,
-        cancellation_token.clone(),
-        config.clone(),
-    ));
-
-    let syslog_lines_task = tokio::spawn(run_syslog_lines_read_thread(
-        SYSLOG_FILE,
-        tracer_client.lock().await.get_syslog_lines_buffer(),
-    ));
-
-    let stdout_lines_task = tokio::spawn(extracts::stdout::run_stdout_lines_read_thread(
-        INTERCEPTOR_STDOUT_FILE,
-        INTERCEPTOR_STDERR_FILE,
-        tracer_client.lock().await.get_stdout_stderr_lines_buffer(),
-    ));
-
-    tracer_client
-        .lock()
-        .await
-        .borrow_mut()
-        .start_new_run(None)
-        .await?;
-
-    while !cancellation_token.is_cancelled() {
-        let start_time = Instant::now();
-        while start_time.elapsed()
-            < Duration::from_millis(config.read().await.batch_submission_interval_ms)
-        {
-            monitor_processes_with_tracer_client(tracer_client.lock().await.borrow_mut()).await?;
-            sleep(Duration::from_millis(
-                config.read().await.process_polling_interval_ms,
-            ))
-            .await;
-            if cancellation_token.is_cancelled() {
-                break;
-            }
-        }
-
-        tracer_client
-            .lock()
-            .await
-            .borrow_mut()
-            .submit_batched_data()
-            .await?;
-
-        tracer_client.lock().await.borrow_mut().poll_files().await?;
-    }
-
-    syslog_lines_task.abort();
-    stdout_lines_task.abort();
-
-    Ok(())
+    client.run(raw_config).await
 }
 
 pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
