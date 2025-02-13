@@ -1,6 +1,6 @@
+use crate::db::aurora_client::AuroraClient;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
-use crate::db::aurora_client::AuroraClient;
 
 pub static AURORA_CLIENT: OnceCell<Arc<AuroraClient>> = OnceCell::const_new();
 

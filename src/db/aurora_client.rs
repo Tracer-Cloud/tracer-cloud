@@ -1,30 +1,28 @@
-use sqlx::{PgPool};
-use sqlx::types::Json;
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
+use log::info;
 use serde_json::Value;
-use log::{info};
 use sqlx::pool::PoolOptions;
+use sqlx::types::Json;
+use sqlx::PgPool;
 
 pub struct AuroraClient {
-    pub pool: PgPool
+    pub pool: PgPool,
 }
 
 impl AuroraClient {
     pub async fn new() -> Result<Self, anyhow::Error> {
         // Hardcoded database connection string (to change)
         let db_url = "postgres://postgres:tracer-test@tracer-database.cdgizpzxtdp6.us-east-1.rds.amazonaws.com:5432/postgres";
-    
+
         // Use PgPoolOptions to set max_size
         let pool = PoolOptions::new()
-            .max_connections(100) 
+            .max_connections(100)
             .connect(db_url)
             .await?;
 
         info!("Successfully created connection pool");
 
-        Ok(AuroraClient {
-            pool
-        })
+        Ok(AuroraClient { pool })
     }
 
     pub async fn insert_row(&self, job_id: &str, data: Json<Value>) -> Result<()> {

@@ -1,14 +1,14 @@
 // src/submit_batched_data.rs
 use crate::extracts::metrics::SystemMetricsCollector;
-use crate::{events::recorder::EventRecorder, db::get_aurora_client};
-use sqlx::types::Json;
+use crate::{db::get_aurora_client, events::recorder::EventRecorder};
 use serde_json::json;
+use sqlx::types::Json;
 
 use anyhow::{Context, Result};
 
+use crate::config_manager::ConfigManager;
 use std::time::{Duration, Instant};
 use sysinfo::System;
-use crate::config_manager::ConfigManager;
 
 pub async fn submit_batched_data(
     _run_name: &str,
@@ -24,7 +24,7 @@ pub async fn submit_batched_data(
             .context("Failed to collect metrics")?;
 
         let data = logs.get_events();
-        
+
         // Get the AuroraClient instance from the singleton
         let aurora_client = get_aurora_client().await;
 
@@ -33,8 +33,11 @@ pub async fn submit_batched_data(
             let job_id = event.run_id.as_deref().unwrap_or("test-1234"); // Use a default if run_id is None
             let json_data = Json(serde_json::to_value(event)?); // Convert the event to JSON
 
-            aurora_client.insert_row(job_id, json_data).await.context("Failed to insert event into database")?;
-        }  
+            aurora_client
+                .insert_row(job_id, json_data)
+                .await
+                .context("Failed to insert event into database")?;
+        }
 
         *last_sent = Some(Instant::now());
         logs.clear();
@@ -48,17 +51,17 @@ pub async fn submit_batched_data(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config_manager::ConfigManager;
+    use crate::db::aurora_client::AuroraClient;
     use crate::events::recorder::{EventRecorder, EventType};
     use crate::exporters::FsExportHandler;
     use crate::extracts::metrics::SystemMetricsCollector;
     use anyhow::Result;
+    use serde_json::Value;
+    use sqlx::postgres::PgPool;
     use std::time::Duration;
     use sysinfo::System;
     use tempdir::TempDir;
-    use sqlx::postgres::PgPool;
-    use crate::db::aurora_client::AuroraClient;
-    use crate::config_manager::ConfigManager;
-    use serde_json::Value;
 
     #[tokio::test]
     async fn test_submit_batched_data() -> Result<()> {
@@ -103,10 +106,11 @@ mod tests {
         .await?;
 
         // Verify the row was inserted into the database
-        let result: (Json<Value>, String) = sqlx::query_as("SELECT data, job_id FROM batch_jobs_logs WHERE job_id = $1")
-            .bind(job_id)
-            .fetch_one(&aurora_client.pool) // Use the pool from the AuroraClient
-            .await?;
+        let result: (Json<Value>, String) =
+            sqlx::query_as("SELECT data, job_id FROM batch_jobs_logs WHERE job_id = $1")
+                .bind(job_id)
+                .fetch_one(&aurora_client.pool) // Use the pool from the AuroraClient
+                .await?;
 
         assert_eq!(result.0, Json(test_data)); // Compare with Json type
         assert_eq!(result.1, job_id);
