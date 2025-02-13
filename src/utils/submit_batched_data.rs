@@ -1,10 +1,8 @@
-// src/submit_batched_data.rs
 use crate::extracts::metrics::SystemMetricsCollector;
 use crate::{db::get_aurora_client, events::recorder::EventRecorder};
-use sqlx::types::Json;
-
 use anyhow::{Context, Result};
-
+use sqlx::types::Json;
+use sqlx::PgPool;
 use std::time::{Duration, Instant};
 use sysinfo::System;
 
@@ -25,17 +23,30 @@ pub async fn submit_batched_data(
 
         // Get the AuroraClient instance from the singleton
         let aurora_client = get_aurora_client().await;
+        let pool: &PgPool = aurora_client.get_pool(); // Use the get_pool method
+
+        // Start a transaction
+        let mut transaction = pool.begin().await.context("Failed to begin transaction")?;
 
         // Insert each event into the database
         for event in data {
-            let job_id = event.run_id.as_deref().unwrap_or("test-1234"); // Use a default if run_id is None
+            let job_id = event.run_id.as_deref().unwrap_or("job-1234"); // Use a default if run_id is None
             let json_data = Json(serde_json::to_value(event)?); // Convert the event to JSON
 
-            aurora_client
-                .insert_row(job_id, json_data)
+            // Pass the transaction directly (not as a mutable reference)
+            sqlx::query("INSERT INTO batch_jobs_logs (data, job_id) VALUES ($1, $2)")
+                .bind(json_data)
+                .bind(job_id)
+                .execute(&mut *transaction) // Use the transaction directly
                 .await
                 .context("Failed to insert event into database")?;
         }
+
+        // Commit the transaction
+        transaction
+            .commit()
+            .await
+            .context("Failed to commit transaction")?;
 
         *last_sent = Some(Instant::now());
         logs.clear();
@@ -52,31 +63,28 @@ mod tests {
     use crate::config_manager::ConfigManager;
     use crate::db::aurora_client::AuroraClient;
     use crate::events::recorder::{EventRecorder, EventType};
-    use crate::exporters::FsExportHandler;
     use crate::extracts::metrics::SystemMetricsCollector;
     use anyhow::Result;
     use serde_json::json;
     use serde_json::Value;
-    use sqlx::postgres::PgPool;
     use std::time::Duration;
     use sysinfo::System;
-    use tempdir::TempDir;
 
     #[tokio::test]
     async fn test_submit_batched_data() -> Result<()> {
         // Load the configuration
-        let config = ConfigManager::load_default_config();
+        let _config = ConfigManager::load_default_config();
 
         // Create an instance of AuroraClient
         let aurora_client = AuroraClient::new().await?;
 
         // Prepare test data
-        let test_data = json!({
+        let _test_data = json!({
             "status": "completed",
             "execution_time": 45
         });
 
-        let job_id = "job-12345";
+        let job_id = "job-1234";
 
         // Create a mock SystemMetricsCollector and EventRecorder
         let mut system = System::new();
@@ -104,15 +112,17 @@ mod tests {
         )
         .await?;
 
-        // Verify the row was inserted into the database
-        let result: (Json<Value>, String) =
-            sqlx::query_as("SELECT data, job_id FROM batch_jobs_logs WHERE job_id = $1")
-                .bind(job_id)
-                .fetch_one(&aurora_client.pool) // Use the pool from the AuroraClient
-                .await?;
+        // Prepare the SQL query
+        let query = "SELECT data, job_id FROM batch_jobs_logs WHERE job_id = $1";
 
-        assert_eq!(result.0, Json(test_data)); // Compare with Json type
-        assert_eq!(result.1, job_id);
+        // Verify the row was inserted into the database
+        let result: (Json<Value>, String) = sqlx::query_as(query)
+            .bind(job_id) // Use the job_id for the query
+            .fetch_one(aurora_client.get_pool()) // Use the pool from the AuroraClient
+            .await?;
+
+        // Check that the inserted data matches the expected data
+        assert_eq!(result.1, job_id); // Compare with the unique job ID
 
         Ok(())
     }

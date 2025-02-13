@@ -6,7 +6,7 @@ use sqlx::types::Json;
 use sqlx::PgPool;
 
 pub struct AuroraClient {
-    pub pool: PgPool,
+    pool: PgPool,
 }
 
 impl AuroraClient {
@@ -23,6 +23,10 @@ impl AuroraClient {
         info!("Successfully created connection pool");
 
         Ok(AuroraClient { pool })
+    }
+
+    pub fn get_pool(&self) -> &PgPool {
+        &self.pool
     }
 
     pub async fn insert_row(&self, job_id: &str, data: Json<Value>) -> Result<()> {
