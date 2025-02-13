@@ -60,6 +60,7 @@ mod tests {
     use std::time::Duration;
     use sysinfo::System;
     use tempdir::TempDir;
+    use serde_json::json;
 
     #[tokio::test]
     async fn test_submit_batched_data() -> Result<()> {
