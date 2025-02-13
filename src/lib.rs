@@ -4,6 +4,7 @@ pub mod cli;
 pub mod cloud_providers;
 pub mod config_manager;
 pub mod daemon_communication;
+pub mod db;
 pub mod events;
 pub mod exporters;
 pub mod extracts;
@@ -18,6 +19,7 @@ use crate::exporters::{FsExportHandler, S3ExportHandler};
 use std::fs::File;
 
 use crate::config_manager::ConfigManager;
+use crate::db::get_aurora_client;
 use crate::tracer_client::TracerClient;
 
 const PID_FILE: &str = "/tmp/tracerd.pid";
@@ -73,6 +75,9 @@ pub async fn run(
         .await,
     );
 
+    // create the conn pool to aurora
+    let aurora_client = get_aurora_client().await;
+
     let client = TracerClient::new(
         raw_config.clone(),
         workflow_directory_path,
@@ -82,8 +87,12 @@ pub async fn run(
     )
     .await
     .context("Failed to create TracerClient")?;
-
+   
     client.run().await
+  
+    // close the connection pool to aurora
+    aurora_client.close().await?;
+    Ok(())
 }
 
 pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
