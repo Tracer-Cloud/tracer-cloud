@@ -59,6 +59,9 @@ pub enum Commands {
     Init {
         /// pipeline name to init the daemon with
         pipeline_name: String,
+        /// Run Identifier: this is used for tag same runs on different computers.
+        /// Context: with aws batch,
+        tag_name: Option<String>,
     },
 
     /// Stop the daemon
@@ -105,7 +108,10 @@ pub fn process_cli() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Init { pipeline_name } => {
+        Commands::Init {
+            pipeline_name,
+            tag_name,
+        } => {
             let test_result = ConfigManager::test_service_config_sync();
             if test_result.is_err() {
                 print_config_info_sync()?;
@@ -121,6 +127,7 @@ pub fn process_cli() -> Result<()> {
             run(
                 current_working_directory.to_str().unwrap().to_string(),
                 pipeline_name.clone(),
+                tag_name.clone(),
             )?;
             clean_up_after_daemon()
         }

@@ -13,18 +13,10 @@ pub mod tracer_client;
 pub mod types;
 pub mod utils;
 use anyhow::{Context, Ok, Result};
-use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
-use daemon_communication::server::run_server;
 use daemonize::Daemonize;
-use extracts::syslog::run_syslog_lines_read_thread;
-use std::borrow::BorrowMut;
 
 use crate::exporters::{FsExportHandler, S3ExportHandler};
 use std::fs::File;
-use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
-use tokio::time::{sleep, Duration, Instant};
-use tokio_util::sync::CancellationToken;
 
 use crate::config_manager::ConfigManager;
 use crate::db::get_aurora_client;
@@ -64,18 +56,24 @@ pub fn start_daemon() -> Result<()> {
 }
 
 #[tokio::main]
-pub async fn run(workflow_directory_path: String, pipeline_name: String) -> Result<()> {
+pub async fn run(
+    workflow_directory_path: String,
+    pipeline_name: String,
+    tag_name: Option<String>,
+) -> Result<()> {
     let raw_config = ConfigManager::load_config();
 
     let export_dir = ConfigManager::get_tracer_parquet_export_dir()?;
 
     let fs_handler = FsExportHandler::new(export_dir, None);
-    let s3_handler = S3ExportHandler::new(
-        fs_handler,
-        raw_config.aws_init_type.clone(),
-        raw_config.aws_region.as_str(),
-    )
-    .await;
+    let exporter = exporters::Exporter::S3(
+        S3ExportHandler::new(
+            fs_handler,
+            raw_config.aws_init_type.clone(),
+            raw_config.aws_region.as_str(),
+        )
+        .await,
+    );
 
     // create the conn pool to aurora
     let aurora_client = get_aurora_client().await;
@@ -83,69 +81,15 @@ pub async fn run(workflow_directory_path: String, pipeline_name: String) -> Resu
     let client = TracerClient::new(
         raw_config.clone(),
         workflow_directory_path,
-        s3_handler,
+        exporter,
         pipeline_name,
+        tag_name,
     )
     .await
     .context("Failed to create TracerClient")?;
-    let tracer_client = Arc::new(Mutex::new(client));
-    let config: Arc<RwLock<config_manager::Config>> = Arc::new(RwLock::new(raw_config));
-
-    let cancellation_token = CancellationToken::new();
-
-    tokio::spawn(run_server(
-        tracer_client.clone(),
-        SOCKET_PATH,
-        cancellation_token.clone(),
-        config.clone(),
-    ));
-
-    let syslog_lines_task = tokio::spawn(run_syslog_lines_read_thread(
-        SYSLOG_FILE,
-        tracer_client.lock().await.get_syslog_lines_buffer(),
-    ));
-
-    let stdout_lines_task = tokio::spawn(extracts::stdout::run_stdout_lines_read_thread(
-        INTERCEPTOR_STDOUT_FILE,
-        INTERCEPTOR_STDERR_FILE,
-        tracer_client.lock().await.get_stdout_stderr_lines_buffer(),
-    ));
-
-    tracer_client
-        .lock()
-        .await
-        .borrow_mut()
-        .start_new_run(None)
-        .await?;
-
-    while !cancellation_token.is_cancelled() {
-        let start_time = Instant::now();
-        while start_time.elapsed()
-            < Duration::from_millis(config.read().await.batch_submission_interval_ms)
-        {
-            monitor_processes_with_tracer_client(tracer_client.lock().await.borrow_mut()).await?;
-            sleep(Duration::from_millis(
-                config.read().await.process_polling_interval_ms,
-            ))
-            .await;
-            if cancellation_token.is_cancelled() {
-                break;
-            }
-        }
-
-        tracer_client
-            .lock()
-            .await
-            .borrow_mut()
-            .submit_batched_data()
-            .await?;
-
-        tracer_client.lock().await.borrow_mut().poll_files().await?;
-    }
-
-    syslog_lines_task.abort();
-    stdout_lines_task.abort();
-
+   
+    client.run().await
+  
     // close the connection pool to aurora
     aurora_client.close().await?;
     Ok(())
@@ -199,13 +143,16 @@ mod tests {
             .load()
             .await;
 
-        let s3_handler = S3ExportHandler::new_with_config(fs_handler, aws_config).await;
+        let s3_handler = crate::exporters::Exporter::S3(
+            S3ExportHandler::new_with_config(fs_handler, aws_config).await,
+        );
 
         let mut tracer_client = TracerClient::new(
             config,
             pwd.to_str().unwrap().to_string(),
             s3_handler,
             "testing".to_string(),
+            None,
         )
         .await
         .unwrap();

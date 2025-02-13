@@ -109,6 +109,7 @@ pub async fn send_start_run_event(
     system: &System,
     pipeline_name: &str,
     pricing_client: &PricingClient,
+    tag_name: &Option<String>,
 ) -> Result<RunEventOut> {
     info!("Starting new pipeline...");
 
@@ -116,13 +117,20 @@ pub async fn send_start_run_event(
 
     let system_properties = gather_system_properties(system, pricing_client).await;
 
-    let run_name = generate_run_name();
-
-    let run_id = generate_run_id();
+    let (run_name, run_id) = if let Some(tag) = tag_name {
+        (tag.clone(), tag.clone())
+    } else {
+        (generate_run_name(), generate_run_id())
+    };
 
     logger
         .log(
-            format!("New pipeline {} run initiated", &pipeline_name).as_str(),
+            format!(
+                "Pipeline {} run initiated, with parallel run enabled = {}",
+                &pipeline_name,
+                tag_name.is_some()
+            )
+            .as_str(),
             None,
         )
         .await;

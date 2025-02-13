@@ -1,28 +1,36 @@
 // src/tracer_client.rs
 use crate::cloud_providers::aws::PricingClient;
-use crate::config_manager::Config;
+use crate::config_manager::{self, Config};
 use crate::events::{
     recorder::{EventRecorder, EventType},
     send_start_run_event,
 };
-use crate::exporters::{ParquetExport, S3ExportHandler};
+use crate::exporters::{Exporter, ParquetExport};
 use crate::extracts::{
     file_watcher::FileWatcher,
     metrics::SystemMetricsCollector,
     process_watcher::{ProcessWatcher, ShortLivedProcessLog},
     stdout::StdoutWatcher,
-    syslog::SyslogWatcher,
+    syslog::{run_syslog_lines_read_thread, SyslogWatcher},
 };
 use crate::types::event::attributes::EventAttributes;
 use crate::utils::submit_batched_data::submit_batched_data;
-use crate::FILE_CACHE_DIR;
+use crate::{monitor_processes_with_tracer_client, FILE_CACHE_DIR};
+use crate::{SOCKET_PATH, SYSLOG_FILE};
 use anyhow::Result;
 use chrono::{DateTime, TimeDelta, Utc};
+use std::borrow::BorrowMut;
 use std::ops::Sub;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use sysinfo::{Pid, System};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
+
+use crate::daemon_communication::server::run_server;
+use config_manager::{INTERCEPTOR_STDERR_FILE, INTERCEPTOR_STDOUT_FILE};
+
+use tokio::time::sleep;
+use tokio_util::sync::CancellationToken;
 
 // NOTE: we might have to find a better alternative than passing the pipeline name to tracer client
 // directly. Currently with this approach, we do not need to generate a new pipeline name for every
@@ -59,23 +67,24 @@ pub struct TracerClient {
     metrics_collector: SystemMetricsCollector,
     file_watcher: FileWatcher,
     workflow_directory: String,
-    api_key: String,
-    service_url: String,
     current_run: Option<RunMetadata>,
     syslog_lines_buffer: LinesBufferArc,
     stdout_lines_buffer: LinesBufferArc,
     stderr_lines_buffer: LinesBufferArc,
-    pub exporter: S3ExportHandler,
+    pub exporter: Exporter,
     pipeline_name: String,
     pub pricing_client: PricingClient,
+    tag_name: Option<String>,
+    config: Config,
 }
 
 impl TracerClient {
     pub async fn new(
         config: Config,
         workflow_directory: String,
-        exporter: S3ExportHandler,
+        exporter: Exporter,
         pipeline_name: String,
+        tag_name: Option<String>,
     ) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
@@ -90,8 +99,6 @@ impl TracerClient {
 
         Ok(TracerClient {
             // fixed values
-            api_key: config.api_key,
-            service_url,
             interval: Duration::from_millis(config.process_polling_interval_ms),
             last_interaction_new_run_duration: Duration::from_millis(config.new_run_pause_ms),
             process_metrics_send_interval: Duration::from_millis(
@@ -113,19 +120,20 @@ impl TracerClient {
             syslog_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             stdout_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             stderr_lines_buffer: Arc::new(RwLock::new(Vec::new())),
-            process_watcher: ProcessWatcher::new(config.targets),
+            process_watcher: ProcessWatcher::new(config.targets.clone()),
             metrics_collector: SystemMetricsCollector::new(),
             exporter,
             pipeline_name,
             pricing_client,
+            tag_name,
+            config,
         })
     }
 
     pub fn reload_config_file(&mut self, config: &Config) {
-        self.api_key.clone_from(&config.api_key);
-        self.service_url.clone_from(&config.service_url);
         self.interval = Duration::from_millis(config.process_polling_interval_ms);
         self.process_watcher.reload_targets(config.targets.clone());
+        self.config = config.clone()
     }
 
     pub fn fill_logs_with_short_lived_process(
@@ -212,8 +220,14 @@ impl TracerClient {
             self.stop_run().await?;
         }
 
-        let result =
-            send_start_run_event(&self.system, &self.pipeline_name, &self.pricing_client).await?;
+        let result = send_start_run_event(
+            &self.system,
+            &self.pipeline_name,
+            &self.pricing_client,
+            &self.tag_name,
+        )
+        .await?;
+
         self.current_run = Some(RunMetadata {
             last_interaction: Instant::now(),
             parent_pid: None,
@@ -222,17 +236,18 @@ impl TracerClient {
             id: result.run_id.clone(),
         });
 
-        self.logs.update_run_details(
-            Some(self.pipeline_name.clone()),
-            Some(result.run_name),
-            Some(result.run_id),
-        );
+        // NOTE: Do we need to output a totally new event if self.tag_name.is_some() ?
 
         self.logs.record_event(
             EventType::NewRun,
             "[CLI] Starting new pipeline run".to_owned(),
             Some(EventAttributes::SystemProperties(result.system_properties)),
             timestamp,
+        );
+        self.logs.update_run_details(
+            Some(self.pipeline_name.clone()),
+            Some(result.run_name),
+            Some(result.run_id),
         );
 
         Ok(())
@@ -294,8 +309,8 @@ impl TracerClient {
     pub async fn poll_files(&mut self) -> Result<()> {
         self.file_watcher
             .poll_files(
-                &self.service_url,
-                &self.api_key,
+                &self.config.service_url,
+                &self.config.api_key,
                 &self.workflow_directory,
                 FILE_CACHE_DIR,
                 self.last_file_size_change_time_delta,
@@ -318,11 +333,21 @@ impl TracerClient {
         let (stdout_lines_buffer, stderr_lines_buffer) = self.get_stdout_stderr_lines_buffer();
 
         self.stdout_watcher
-            .poll_stdout(&self.service_url, &self.api_key, stdout_lines_buffer, false)
+            .poll_stdout(
+                &self.config.service_url,
+                &self.config.api_key,
+                stdout_lines_buffer,
+                false,
+            )
             .await?;
 
         self.stdout_watcher
-            .poll_stdout(&self.service_url, &self.api_key, stderr_lines_buffer, true)
+            .poll_stdout(
+                &self.config.service_url,
+                &self.config.api_key,
+                stderr_lines_buffer,
+                true,
+            )
             .await
     }
 
@@ -335,7 +360,7 @@ impl TracerClient {
     }
 
     pub fn get_service_url(&self) -> &str {
-        &self.service_url
+        &self.config.service_url
     }
 
     pub fn get_pipeline_name(&self) -> &str {
@@ -343,6 +368,72 @@ impl TracerClient {
     }
 
     pub fn get_api_key(&self) -> &str {
-        &self.api_key
+        &self.config.api_key
+    }
+
+    pub async fn run(self) -> Result<()> {
+        let config: Arc<RwLock<config_manager::Config>> =
+            Arc::new(RwLock::new(self.config.clone()));
+
+        let tracer_client = Arc::new(Mutex::new(self));
+
+        let cancellation_token = CancellationToken::new();
+
+        tokio::spawn(run_server(
+            tracer_client.clone(),
+            SOCKET_PATH,
+            cancellation_token.clone(),
+            config.clone(),
+        ));
+
+        let syslog_lines_task = tokio::spawn(run_syslog_lines_read_thread(
+            SYSLOG_FILE,
+            tracer_client.lock().await.get_syslog_lines_buffer(),
+        ));
+
+        let stdout_lines_task =
+            tokio::spawn(crate::extracts::stdout::run_stdout_lines_read_thread(
+                INTERCEPTOR_STDOUT_FILE,
+                INTERCEPTOR_STDERR_FILE,
+                tracer_client.lock().await.get_stdout_stderr_lines_buffer(),
+            ));
+
+        tracer_client
+            .lock()
+            .await
+            .borrow_mut()
+            .start_new_run(None)
+            .await?;
+
+        while !cancellation_token.is_cancelled() {
+            let start_time = Instant::now();
+            while start_time.elapsed()
+                < Duration::from_millis(config.read().await.batch_submission_interval_ms)
+            {
+                monitor_processes_with_tracer_client(tracer_client.lock().await.borrow_mut())
+                    .await?;
+                sleep(Duration::from_millis(
+                    config.read().await.process_polling_interval_ms,
+                ))
+                .await;
+                if cancellation_token.is_cancelled() {
+                    break;
+                }
+            }
+
+            tracer_client
+                .lock()
+                .await
+                .borrow_mut()
+                .submit_batched_data()
+                .await?;
+
+            tracer_client.lock().await.borrow_mut().poll_files().await?;
+        }
+
+        syslog_lines_task.abort();
+        stdout_lines_task.abort();
+
+        Ok(())
     }
 }
