@@ -27,6 +27,7 @@ use tokio::time::{sleep, Duration, Instant};
 use tokio_util::sync::CancellationToken;
 
 use crate::config_manager::ConfigManager;
+use crate::db::get_aurora_client;
 use crate::tracer_client::TracerClient;
 
 const PID_FILE: &str = "/tmp/tracerd.pid";
@@ -75,6 +76,9 @@ pub async fn run(workflow_directory_path: String, pipeline_name: String) -> Resu
         raw_config.aws_region.as_str(),
     )
     .await;
+
+    // create the conn pool to aurora
+    let aurora_client = get_aurora_client().await;
 
     let client = TracerClient::new(
         raw_config.clone(),
@@ -142,6 +146,8 @@ pub async fn run(workflow_directory_path: String, pipeline_name: String) -> Resu
     syslog_lines_task.abort();
     stdout_lines_task.abort();
 
+    // close the connection pool to aurora
+    aurora_client.close().await?;
     Ok(())
 }
 

@@ -45,4 +45,11 @@ impl AuroraClient {
 
         Ok(())
     }
+
+    // close the connection pool
+    pub async fn close(&self) -> Result<()> {
+        self.pool.close().await;
+        info!("Successfully closed connection pool");
+        Ok(())
+    }
 }

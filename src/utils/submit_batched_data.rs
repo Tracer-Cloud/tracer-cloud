@@ -88,7 +88,12 @@ mod tests {
 
         // Create a mock SystemMetricsCollector and EventRecorder
         let mut system = System::new();
-        let mut logs = EventRecorder::default();
+        let mut logs = EventRecorder::new(
+            Some("test_name".to_string()),
+            Some(job_id.to_string()),
+            Some(job_id.to_string()),
+        );
+
         let mut metrics_collector = SystemMetricsCollector::new();
         let mut last_sent = None;
         let interval = Duration::from_secs(60);
