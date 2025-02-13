@@ -1,12 +1,10 @@
 // src/submit_batched_data.rs
 use crate::extracts::metrics::SystemMetricsCollector;
 use crate::{db::get_aurora_client, events::recorder::EventRecorder};
-use serde_json::json;
 use sqlx::types::Json;
 
 use anyhow::{Context, Result};
 
-use crate::config_manager::ConfigManager;
 use std::time::{Duration, Instant};
 use sysinfo::System;
 
