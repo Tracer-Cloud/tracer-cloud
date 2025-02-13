@@ -55,12 +55,12 @@ mod tests {
     use crate::exporters::FsExportHandler;
     use crate::extracts::metrics::SystemMetricsCollector;
     use anyhow::Result;
+    use serde_json::json;
     use serde_json::Value;
     use sqlx::postgres::PgPool;
     use std::time::Duration;
     use sysinfo::System;
     use tempdir::TempDir;
-    use serde_json::json;
 
     #[tokio::test]
     async fn test_submit_batched_data() -> Result<()> {
