@@ -31,6 +31,7 @@ url = "2.5.2"
 linemux = "0.3.0"
 tokio-stream = "0.1.15"
 futures-util = "0.3.30"
+sqlx = { version = "0.8.3", features = ["runtime-tokio-rustls", "postgres"] }
 
 parquet = "53.3.0"
 arrow = "53.3.0"

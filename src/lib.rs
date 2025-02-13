@@ -7,6 +7,8 @@ pub mod daemon_communication;
 pub mod events;
 pub mod exporters;
 pub mod extracts;
+pub mod db;
+
 
 pub mod tracer_client;
 pub mod types;
@@ -63,6 +65,7 @@ pub fn start_daemon() -> Result<()> {
 
 #[tokio::main]
 pub async fn run(workflow_directory_path: String, pipeline_name: String) -> Result<()> {
+
     let raw_config = ConfigManager::load_config();
 
     let export_dir = ConfigManager::get_tracer_parquet_export_dir()?;

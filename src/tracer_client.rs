@@ -156,7 +156,6 @@ impl TracerClient {
         };
         submit_batched_data(
             run_name,
-            &mut self.exporter,
             &mut self.system,
             &mut self.logs,
             &mut self.metrics_collector,
