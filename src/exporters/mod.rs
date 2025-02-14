@@ -2,6 +2,7 @@ use std::{fmt::Debug, path::PathBuf};
 
 use crate::types::{event::Event, parquet::FlattenedTracerEvent, ParquetSchema};
 
+pub mod db;
 pub mod fs;
 pub mod s3;
 

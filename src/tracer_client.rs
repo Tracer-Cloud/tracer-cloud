@@ -5,7 +5,7 @@ use crate::events::{
     recorder::{EventRecorder, EventType},
     send_start_run_event,
 };
-use crate::exporters::{Exporter, ParquetExport};
+use crate::exporters::db::AuroraClient;
 use crate::extracts::{
     file_watcher::FileWatcher,
     metrics::SystemMetricsCollector,
@@ -14,10 +14,9 @@ use crate::extracts::{
     syslog::{run_syslog_lines_read_thread, SyslogWatcher},
 };
 use crate::types::event::attributes::EventAttributes;
-use crate::utils::submit_batched_data::submit_batched_data;
 use crate::{monitor_processes_with_tracer_client, FILE_CACHE_DIR};
 use crate::{SOCKET_PATH, SYSLOG_FILE};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::{DateTime, TimeDelta, Utc};
 use std::borrow::BorrowMut;
 use std::ops::Sub;
@@ -71,7 +70,7 @@ pub struct TracerClient {
     syslog_lines_buffer: LinesBufferArc,
     stdout_lines_buffer: LinesBufferArc,
     stderr_lines_buffer: LinesBufferArc,
-    pub exporter: Exporter,
+    pub db_client: Arc<AuroraClient>,
     pipeline_name: String,
     pub pricing_client: PricingClient,
     tag_name: Option<String>,
@@ -82,9 +81,9 @@ impl TracerClient {
     pub async fn new(
         config: Config,
         workflow_directory: String,
-        exporter: Exporter,
         pipeline_name: String,
         tag_name: Option<String>,
+        db_client: Arc<AuroraClient>,
     ) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
@@ -122,7 +121,7 @@ impl TracerClient {
             stderr_lines_buffer: Arc::new(RwLock::new(Vec::new())),
             process_watcher: ProcessWatcher::new(config.targets.clone()),
             metrics_collector: SystemMetricsCollector::new(),
-            exporter,
+            db_client,
             pipeline_name,
             pricing_client,
             tag_name,
@@ -162,15 +161,23 @@ impl TracerClient {
         } else {
             "annoymous"
         };
-        submit_batched_data(
-            run_name,
-            &mut self.system,
-            &mut self.logs,
-            &mut self.metrics_collector,
-            &mut self.last_sent,
-            self.interval,
-        )
-        .await
+
+        if self.last_sent.is_none() || Instant::now() - self.last_sent.unwrap() >= self.interval {
+            self.metrics_collector
+                .collect_metrics(&mut self.system, &mut self.logs)
+                .context("Failed to collect metrics")?;
+
+            self.db_client
+                .batch_insert_events(run_name, self.logs.get_events())
+                .await?;
+
+            self.last_sent = Some(Instant::now());
+            self.logs.clear();
+
+            Ok(())
+        } else {
+            Ok(())
+        }
     }
 
     pub fn get_run_metadata(&self) -> Option<RunMetadata> {
@@ -264,8 +271,11 @@ impl TracerClient {
             // clear events containing this run
             let run_metadata = self.current_run.as_ref().unwrap();
 
-            let data = self.logs.get_events();
-            if let Err(err) = self.exporter.output(data, &run_metadata.name).await {
+            if let Err(err) = self
+                .db_client
+                .batch_insert_events(&run_metadata.name, self.logs.get_events())
+                .await
+            {
                 println!("Error outputing end run logs: {err}")
             };
             self.logs.clear();
@@ -433,6 +443,74 @@ impl TracerClient {
 
         syslog_lines_task.abort();
         stdout_lines_task.abort();
+
+        // close the connection pool to aurora
+        let guard = tracer_client.lock().await;
+        let _ = guard.db_client.close().await;
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config_manager::ConfigManager;
+    use crate::events::recorder::EventType;
+    use anyhow::Result;
+    use serde_json::Value;
+    use sqlx::types::Json;
+    use tempdir::TempDir;
+
+    #[tokio::test]
+    async fn test_submit_batched_data() -> Result<()> {
+        // Load the configuration
+        let config = ConfigManager::load_default_config();
+
+        let temp_dir = TempDir::new(".tracer").expect("cant create temp dir");
+
+        let work_dir = temp_dir.path().to_str().unwrap();
+
+        // Create an instance of AuroraClient
+        let db_client = Arc::new(AuroraClient::new(&config.db_url, Some(1)).await?);
+        let pipeline_name = String::from("test_pipeline");
+        let job_id = "job-1234";
+
+        let mut client = TracerClient::new(
+            config,
+            work_dir.to_string(),
+            pipeline_name,
+            Some(job_id.to_string()),
+            db_client,
+        )
+        .await
+        .expect("Failed to create tracerclient");
+
+        // Record a test event
+        client.logs.record_event(
+            EventType::TestEvent,
+            format!("[submit_batched_data.rs] Test event for job {}", job_id),
+            None,
+            None,
+        );
+
+        // submit_batched_data
+        let res = client.submit_batched_data().await;
+        assert!(res.is_ok());
+
+        // Prepare the SQL query
+        let query = "SELECT data, job_id FROM batch_jobs_logs WHERE job_id = $1";
+
+        let db_client = client.db_client.get_pool();
+
+        // Verify the row was inserted into the database
+        let result: (Json<Value>, String) = sqlx::query_as(query)
+            .bind(job_id) // Use the job_id for the query
+            .fetch_one(db_client) // Use the pool from the AuroraClient
+            .await?;
+
+        // Check that the inserted data matches the expected data
+        assert_eq!(result.1, job_id); // Compare with the unique job ID
 
         Ok(())
     }

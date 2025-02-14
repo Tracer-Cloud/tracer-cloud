@@ -4,7 +4,6 @@ pub mod cli;
 pub mod cloud_providers;
 pub mod config_manager;
 pub mod daemon_communication;
-pub mod db;
 pub mod events;
 pub mod exporters;
 pub mod extracts;
@@ -14,12 +13,12 @@ pub mod types;
 pub mod utils;
 use anyhow::{Context, Ok, Result};
 use daemonize::Daemonize;
+use exporters::db::AuroraClient;
 
-use crate::exporters::{FsExportHandler, S3ExportHandler};
 use std::fs::File;
+use std::sync::Arc;
 
 use crate::config_manager::ConfigManager;
-use crate::db::get_aurora_client;
 use crate::tracer_client::TracerClient;
 
 const PID_FILE: &str = "/tmp/tracerd.pid";
@@ -63,36 +62,20 @@ pub async fn run(
 ) -> Result<()> {
     let raw_config = ConfigManager::load_config();
 
-    let export_dir = ConfigManager::get_tracer_parquet_export_dir()?;
-
-    let fs_handler = FsExportHandler::new(export_dir, None);
-    let exporter = exporters::Exporter::S3(
-        S3ExportHandler::new(
-            fs_handler,
-            raw_config.aws_init_type.clone(),
-            raw_config.aws_region.as_str(),
-        )
-        .await,
-    );
-
     // create the conn pool to aurora
-    let aurora_client = get_aurora_client().await;
+    let db_client = Arc::new(AuroraClient::new(&raw_config.db_url, None).await?);
 
     let client = TracerClient::new(
         raw_config.clone(),
         workflow_directory_path,
-        exporter,
         pipeline_name,
         tag_name,
+        db_client,
     )
     .await
     .context("Failed to create TracerClient")?;
-   
+
     client.run().await
-  
-    // close the connection pool to aurora
-    aurora_client.close().await?;
-    Ok(())
 }
 
 pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClient) -> Result<()> {
@@ -109,13 +92,15 @@ pub async fn monitor_processes_with_tracer_client(tracer_client: &mut TracerClie
 
 #[cfg(test)]
 mod tests {
-    use crate::config_manager::{Config, ConfigManager};
     use crate::{
-        monitor_processes_with_tracer_client, FsExportHandler, S3ExportHandler, TracerClient,
+        config_manager::{Config, ConfigManager},
+        exporters::db::AuroraClient,
     };
-    use aws_config::BehaviorVersion;
+
+    use std::sync::Arc;
+
+    use crate::{monitor_processes_with_tracer_client, TracerClient};
     use dotenv::dotenv;
-    use tempdir::TempDir;
 
     fn load_test_config() -> Config {
         ConfigManager::load_default_config()
@@ -134,25 +119,18 @@ mod tests {
 
         setup_env_vars(region);
 
-        let temp_dir = TempDir::new("export").expect("failed to create tempdir");
-        let base_dir = temp_dir.path().join("./exports");
-        let fs_handler = FsExportHandler::new(base_dir, None);
-
-        let aws_config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region)
-            .load()
-            .await;
-
-        let s3_handler = crate::exporters::Exporter::S3(
-            S3ExportHandler::new_with_config(fs_handler, aws_config).await,
+        let aurora_client = Arc::new(
+            AuroraClient::new(&config.db_url, None)
+                .await
+                .expect("Failed to create client"),
         );
 
         let mut tracer_client = TracerClient::new(
             config,
             pwd.to_str().unwrap().to_string(),
-            s3_handler,
             "testing".to_string(),
             None,
+            aurora_client,
         )
         .await
         .unwrap();
