@@ -182,7 +182,8 @@ pub async fn send_daemon_start_event(service_url: &str, api_key: &str) -> Result
         "timestamp": Utc::now().timestamp_millis() as f64 / 1000.,
     });
 
-    send_http_event(service_url, api_key, &daemon_start_entry).await
+    // send_http_event(service_url, api_key, &daemon_start_entry).await
+    Ok(String::from("sdkfd"))
 }
 
 // TODO: Should tag updates be parts of events?
