@@ -25,8 +25,11 @@ FROM debian:bookworm-slim AS runtime
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl ca-certificates \
     libsasl2-modules-gssapi-mit libsasl2-dev \
+    python3 python3-pip python3-venv \
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \
@@ -34,6 +37,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 
 COPY --from=builder /app/tracer.toml /root/.config/tracer/tracer.toml
 COPY --from=builder /app/target/release/tracer /usr/local/bin/
+
+# copy test files
+COPY --from=builder /app/test-files/scripts /app/test-files/scripts
+COPY --from=builder /app/test-files/test-data-samples /app/test-files/test-data-samples
 
 ENTRYPOINT ["sh", "-c"]
 
