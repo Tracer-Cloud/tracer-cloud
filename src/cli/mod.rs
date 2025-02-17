@@ -58,9 +58,11 @@ pub enum Commands {
     /// Start the daemon
     Init {
         /// pipeline name to init the daemon with
+        #[clap(long, short)]
         pipeline_name: String,
         /// Run Identifier: this is used for tag same runs on different computers.
         /// Context: with aws batch,
+        #[clap(long, short)]
         tag_name: Option<String>,
     },
 

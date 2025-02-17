@@ -36,7 +36,7 @@ services:
       - "3000:3000"
     profiles: [ observe ]
 
-  integrations_tests:
+  parallel_tests:
     build:
       context: .
       dockerfile: deployments/tests/Dockerfile.parallel
@@ -46,11 +46,11 @@ services:
     env_file:
       - .env
     command: >
-      "tracer setup && tracer init testing && tail -F nothing"
+      "set -x && tracer setup && tracer init --pipeline-name testing \   --tag-name test-tag \ && ./test-files/scripts/monitor.sh && \  ./test-files/scripts/track_datasets.sh && tail -F nothing"
     depends_on:
       db:
         condition: service_healthy
-    profiles: [ integration_tests ]
+    profiles: [ parallel_tests ]
 
   db:
     image: postgres:13-alpine
@@ -67,4 +67,4 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    profiles: [ integration_tests ]
+    profiles: [ parallel_tests ]
