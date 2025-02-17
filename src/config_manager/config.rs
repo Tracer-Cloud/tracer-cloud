@@ -266,7 +266,7 @@ impl ConfigManager {
         Ok(())
     }
 
-    pub fn test_service_config_sync() -> Result<()> {
+    pub fn _test_service_config_sync() -> Result<()> {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         runtime.block_on(ConfigManager::test_service_config())
     }
