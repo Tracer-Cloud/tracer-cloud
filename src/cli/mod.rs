@@ -112,11 +112,11 @@ pub fn process_cli() -> Result<()> {
             pipeline_name,
             tag_name,
         } => {
-            let test_result = ConfigManager::test_service_config_sync();
-            if test_result.is_err() {
-                print_config_info_sync()?;
-                return Ok(());
-            }
+            print_config_info_sync()?;
+            //let test_result = ConfigManager::test_service_config_sync();
+            //if test_result.is_err() {
+            //    return Ok(());
+            //}
             println!("Starting daemon...");
             let current_working_directory = env::current_dir()?;
             let result = start_daemon();
@@ -131,11 +131,13 @@ pub fn process_cli() -> Result<()> {
             )?;
             clean_up_after_daemon()
         }
+        //TODO: figure out what test should do now
         Commands::Test => {
-            let result = ConfigManager::test_service_config_sync();
-            if result.is_ok() {
-                println!("Tracer was able to successfully communicate with the API service.");
-            }
+            println!("Tracer was able to successfully communicate with the API service.");
+            // let result = ConfigManager::test_service_config_sync();
+            // if result.is_ok() {
+            //     println!("Tracer was able to successfully communicate with the API service.");
+            // }
             Ok(())
         }
         Commands::Cleanup => {

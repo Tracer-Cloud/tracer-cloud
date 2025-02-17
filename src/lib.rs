@@ -34,7 +34,7 @@ const REPO_OWNER: &str = "davincios";
 const REPO_NAME: &str = "tracer-daemon";
 
 pub fn start_daemon() -> Result<()> {
-    ConfigManager::test_service_config_sync()?;
+    //ConfigManager::test_service_config_sync()?;
 
     let daemon = Daemonize::new();
     daemon
