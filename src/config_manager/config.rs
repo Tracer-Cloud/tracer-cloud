@@ -251,6 +251,7 @@ impl ConfigManager {
         Ok(())
     }
 
+    // TODO: remove dependencies away from frontend api
     pub async fn test_service_config() -> Result<()> {
         let config = ConfigManager::load_config();
 
