@@ -472,7 +472,7 @@ mod tests {
         let work_dir = temp_dir.path().to_str().unwrap();
 
         // Create an instance of AuroraClient
-        let db_client = Arc::new(AuroraClient::new(&config.db_url, Some(1)).await?);
+        let db_client = Arc::new(AuroraClient::new(&config.db_url, Some(1)).await);
         let pipeline_name = String::from("test_pipeline");
         let job_id = "job-1234";
 

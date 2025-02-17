@@ -12,18 +12,24 @@ pub struct AuroraClient {
 }
 
 impl AuroraClient {
-    pub async fn new(url: &str, pool_size: Option<u32>) -> Result<Self, anyhow::Error> {
+    pub async fn new(url: &str, pool_size: Option<u32>) -> Self {
         // Hardcoded database connection string (to change)
 
         // Use PgPoolOptions to set max_size
         let pool = PoolOptions::new()
             .max_connections(pool_size.unwrap_or(100))
             .connect(url)
-            .await?;
+            .await
+            .expect("Failed establish connection");
+
+        sqlx::migrate!("./migrations")
+            .run(&pool)
+            .await
+            .expect("Failed to migrate the database");
 
         info!("Successfully created connection pool");
 
-        Ok(AuroraClient { pool })
+        AuroraClient { pool }
     }
 
     pub fn get_pool(&self) -> &PgPool {
