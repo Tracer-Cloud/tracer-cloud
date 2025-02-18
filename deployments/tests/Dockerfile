@@ -45,4 +45,4 @@ COPY --from=builder /app/test-files/test-data-samples /app/test-files/test-data-
 ENTRYPOINT ["sh", "-c"]
 
 
-CMD ["tail -F Nothing"]
+CMD ["tracer"]
