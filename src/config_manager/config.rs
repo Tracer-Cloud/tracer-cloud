@@ -42,6 +42,7 @@ pub struct ConfigFile {
     pub aws_region: Option<String>,
     pub aws_role_arn: Option<String>,
     pub aws_profile: Option<String>,
+    pub db_url: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -56,6 +57,7 @@ pub struct Config {
     pub targets: Vec<Target>,
     pub aws_init_type: AwsConfig,
     pub aws_region: AwsRegion,
+    pub db_url: String,
 }
 
 pub struct ConfigManager;
@@ -84,6 +86,8 @@ impl ConfigManager {
             (None, None) => AwsConfig::Env,
         };
 
+        let db_url = "postgres://postgres:tracer-test@tracer-database.cdgizpzxtdp6.us-east-1.rds.amazonaws.com:5432/postgres".to_string();
+
         Ok(Config {
             api_key: config.api_key,
             process_polling_interval_ms: config
@@ -107,10 +111,13 @@ impl ConfigManager {
                 .unwrap_or_else(|| targets_list::TARGETS.to_vec()),
             aws_init_type,
             aws_region: AwsRegion::UsEast2,
+
+            db_url: config.db_url.unwrap_or(db_url),
         })
     }
 
     pub fn load_default_config() -> Config {
+        let db_url = "postgres://postgres:tracer-test@tracer-database.cdgizpzxtdp6.us-east-1.rds.amazonaws.com:5432/postgres";
         Config {
             api_key: DEFAULT_API_KEY.to_string(),
             process_polling_interval_ms: PROCESS_POLLING_INTERVAL_MS,
@@ -133,6 +140,8 @@ impl ConfigManager {
                 .to_string(),
             ),
             aws_region: "us-east-2".into(),
+
+            db_url: db_url.to_string(),
         }
     }
 
@@ -212,6 +221,7 @@ impl ConfigManager {
             aws_role_arn,
             aws_profile,
             aws_region: Some(config.aws_region.as_str().to_string()),
+            db_url: Some(config.db_url.clone()),
         };
         let config = toml::to_string(&config_out)?;
         std::fs::write(config_file_location, config)?;
@@ -241,6 +251,7 @@ impl ConfigManager {
         Ok(())
     }
 
+    // TODO: remove dependencies away from frontend api
     pub async fn test_service_config() -> Result<()> {
         let config = ConfigManager::load_config();
 
@@ -255,7 +266,7 @@ impl ConfigManager {
         Ok(())
     }
 
-    pub fn test_service_config_sync() -> Result<()> {
+    pub fn _test_service_config_sync() -> Result<()> {
         let runtime = tokio::runtime::Runtime::new().unwrap();
         runtime.block_on(ConfigManager::test_service_config())
     }
