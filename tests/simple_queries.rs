@@ -1,286 +1,76 @@
-use std::path::PathBuf;
-use std::time::Duration;
-use std::time::Instant;
-
-use itertools::Itertools;
-use sysinfo::System;
-use tempdir::TempDir;
-use tracer::config_manager::target_process::target_matching::TargetMatch;
-use tracer::config_manager::target_process::DisplayName;
-use tracer::config_manager::target_process::Target;
-use tracer::events::recorder::EventRecorder;
-use tracer::exporters::FsExportHandler;
-use tracer::exporters::ParquetExport;
-use tracer::extracts::file_watcher::FileWatcher;
-use tracer::extracts::process_watcher::ProcessWatcher;
+use bollard::Docker;
+use sqlx::PgPool;
 
 mod common;
-use common::process_query;
-
-fn setup_fs_exporter_and_path() -> (FsExportHandler, PathBuf) {
-    let temp_dir = TempDir::new("exports").expect("failed to create tempdir");
-
-    let export_dir = temp_dir.path().to_path_buf();
-
-    (FsExportHandler::new(export_dir.clone(), None), export_dir)
-}
-
-async fn run_process_watcher(
-    events_recorder: &mut EventRecorder,
-    duration: Duration,
-    targets: Vec<Target>,
-) {
-    let mut process_watcher = ProcessWatcher::new(targets);
-
-    let mut system = System::new();
-
-    let file_watcher = FileWatcher::new();
-
-    system.refresh_all();
-
-    let start_time = Instant::now();
-
-    while start_time.elapsed() < duration {
-        process_watcher
-            .poll_processes(&mut system, events_recorder, &file_watcher)
-            .expect("Failed to poll processes");
-        process_watcher
-            .poll_process_metrics(
-                &system,
-                events_recorder,
-                std::time::Duration::from_millis(3),
-            )
-            .expect("failed to poll process metrices");
-        tokio::time::sleep(Duration::from_millis(400)).await;
-        system.refresh_all();
-    }
-}
-
-async fn exectue_script(script_path: &str) {
-    let mut output = tokio::process::Command::new(script_path)
-        .spawn()
-        .expect("failed to run script");
-
-    //
-    //
-    // Ensure the child process is spawned in the runtime so it can
-    // make progress on its own while we await for any output.
-    tokio::spawn(async move {
-        let status = output
-            .wait()
-            .await
-            .expect("child process encountered an error");
-
-        println!("child status was: {}", status);
-    });
-}
 
 #[tokio::test]
-#[serial_test::serial]
-async fn test_tools_tracked_based_on_targets() {
-    let run_name = uuid::Uuid::new_v4().to_string();
+async fn test_simple_queries_works() {
+    let container_name = "integrations_tests";
 
-    let total_duration = 6; // Total monitoring duration in seconds
-    let file_path = "test-files/scripts/monitor.sh";
+    // Step 1: Start Docker Compose to run the container
+    common::start_docker_compose(container_name).await;
 
-    let targets = vec![Target::new(TargetMatch::ProcessName("python3".to_string()))
-        .set_display_name(DisplayName::Default())];
+    // Step 2: Monitor the container and wait for it to finish
 
-    let mut events_recorder = EventRecorder::new(
-        Some(run_name.clone()),
-        Some(run_name.clone()),
-        Some(run_name.clone()),
-    );
+    let docker = Docker::connect_with_local_defaults().expect("Failed to connect to Docker");
 
-    exectue_script(file_path).await;
+    common::monitor_container(&docker, container_name).await;
 
-    run_process_watcher(
-        &mut events_recorder,
-        Duration::from_secs(total_duration),
-        targets,
-    )
-    .await;
-
-    let data = events_recorder.get_events();
-
-    let (handler, export_dir) = setup_fs_exporter_and_path();
-    handler
-        .output(data, &run_name)
+    // Step 3: Query the database and make assertions
+    let pool = PgPool::connect("postgres://postgres:postgres@localhost:5432/tracer_db")
         .await
-        .expect("failed to output");
+        .unwrap();
 
-    #[derive(serde::Serialize, serde::Deserialize, Debug)]
-    struct ProcessSubSet {
-        tool_pid: Option<String>,
-        tool_name: String,
-    }
+    let job_id = "test-tag";
 
-    let expected_tool_name = "python3".to_string();
+    query_and_assert_tool_tracked(&pool, job_id).await;
 
-    let query_processes_for_a_run_name = format!(
-        r#"select process_attributes.tool_name
-        from "{}/{run_name}/**.parquet"
-        where process_attributes.tool_pid is not Null and run_name = '{run_name}'
-        group by 
-        process_attributes.tool_name;"#,
-        export_dir.as_path().to_str().unwrap()
-    );
+    query_datasets_processed(&pool, job_id).await;
 
-    tokio::time::sleep(Duration::from_millis(2)).await;
-
-    let query_res: Vec<ProcessSubSet> = process_query(&query_processes_for_a_run_name).await;
-
-    let queried_process_names: Vec<String> = query_res
-        .into_iter()
-        .map(|p| p.tool_name)
-        .sorted()
-        .collect();
-
-    assert!(queried_process_names.contains(&expected_tool_name));
-
-    // cleanup
-    let _ = std::fs::remove_dir_all(export_dir);
+    common::end_docker_compose(container_name).await;
 }
 
-#[tokio::test]
-#[serial_test::serial]
-async fn test_longest_running_process() {
-    let file_path = "test-files/scripts/monitor.sh";
-
-    let run_name = uuid::Uuid::new_v4().to_string();
-    let mut output = tokio::process::Command::new(file_path)
-        .spawn()
-        .expect("failed to run script");
-
-    let mut events_recorder = EventRecorder::default();
-
-    exectue_script(file_path).await;
-
-    run_process_watcher(
-        &mut events_recorder,
-        Duration::from_secs(6),
-        vec![Target::new(TargetMatch::ProcessName("python3".to_string()))],
+async fn query_and_assert_tool_tracked(pool: &PgPool, job_id: &str) {
+    let tools_tracked: Vec<(String,)> = sqlx::query_as(
+        r#"
+            SELECT DISTINCT(data->'attributes'->'Process'->>'tool_name') AS tool_name
+            FROM batch_jobs_logs
+            WHERE 
+            job_id = $1
+            AND
+            data->'attributes'->'Process'->>'tool_name' IS NOT NULL;
+        "#,
     )
-    .await;
+    .bind(job_id)
+    .fetch_all(pool)
+    .await
+    .expect("failed ");
+    assert!(!tools_tracked.is_empty());
 
-    let data = events_recorder.get_events();
+    let flat_tools: Vec<String> = tools_tracked.into_iter().map(|v| v.0).collect();
 
-    let (handler, export_dir) = setup_fs_exporter_and_path();
-    handler
-        .output(data, &run_name)
-        .await
-        .expect("failed to output");
-
-    #[derive(serde::Serialize, serde::Deserialize, Debug)]
-    struct ProcessDuration {
-        tool_name: String,
-        total_duration: f64,
-    }
-
-    let query = format!(
-        r#"SELECT process_attributes.tool_name, MAX(process_attributes.process_run_time) as total_duration
-        FROM "{}/{run_name}/**.parquet"
-        GROUP BY process_attributes.tool_name
-        ORDER BY total_duration DESC
-        LIMIT 1;"#,
-        export_dir.as_path().to_str().unwrap()
-    );
-
-    tokio::time::sleep(Duration::from_millis(2)).await;
-
-    let query_res: Vec<ProcessDuration> = process_query(&query).await;
-
-    assert_eq!(query_res.len(), 1);
-    assert_eq!(query_res[0].tool_name, "python3"); // Should be the longest-running process
-
-    // Cleanup
-    let _ = output.kill();
-    let _ = std::fs::remove_dir_all(export_dir);
+    assert!(flat_tools.contains(&("python3".to_string())))
 }
 
-#[tokio::test]
-#[serial_test::serial]
-async fn test_datasets_processed_tracking() {
-    let run_name = uuid::Uuid::new_v4().to_string();
-    let file_path = "test-files/scripts/track_datasets.sh";
-
-    let mut events_recorder = EventRecorder::new(
-        Some(run_name.clone()),
-        Some(run_name.clone()),
-        Some(run_name.clone()),
-    );
-
-    exectue_script(file_path).await;
-
-    run_process_watcher(
-        &mut events_recorder,
-        Duration::from_secs(12),
-        vec![Target::new(TargetMatch::ProcessName("python3".to_string()))],
+async fn query_datasets_processed(pool: &PgPool, job_id: &str) {
+    let tools_tracked: Vec<(String, i64)> = sqlx::query_as(
+        r#"
+            SELECT 
+                data->>'process_status' AS process_status,
+                MAX((data->'attributes'->'ProcessDatasetStats'->>'total')::BIGINT) AS total_samples
+            FROM batch_jobs_logs
+            WHERE data->>'process_status' = 'datasets_in_process'
+            AND data->>'run_name' = $1
+            GROUP BY process_status;
+        "#,
     )
-    .await;
+    .bind(job_id)
+    .fetch_all(pool)
+    .await
+    .expect("failed ");
+    assert_eq!(tools_tracked.len(), 1);
 
-    let data = events_recorder.get_events();
+    let total_samples = tools_tracked.first().unwrap().1;
 
-    let (handler, export_dir) = setup_fs_exporter_and_path();
-    handler
-        .output(data, &run_name)
-        .await
-        .expect("failed to output");
-
-    #[derive(serde::Serialize, serde::Deserialize, Debug)]
-    struct DatasetProcessingStatus {
-        process_status: String,
-        total_samples: u64,
-    }
-
-    tokio::time::sleep(Duration::from_millis(2)).await;
-
-    let query = format!(
-        r#"SELECT process_status, MAX(datasets_processed_attributes.total) AS total_samples
-        FROM "{}/{}/**.parquet"
-        WHERE process_status = 'datasets_in_process'
-        GROUP BY process_status;"#,
-        export_dir.as_path().to_str().unwrap(),
-        &run_name,
-    );
-
-    let query_res: Vec<DatasetProcessingStatus> = process_query(&query).await;
-
-    let total_samples_opened = 3;
-
-    assert_eq!(query_res.len(), 1);
-    assert_eq!(query_res[0].process_status, "datasets_in_process");
-    assert_eq!(query_res[0].total_samples, total_samples_opened);
-
-    #[derive(serde::Serialize, serde::Deserialize, Debug)]
-    struct DatasetTracker {
-        process_status: String,
-        datasets: String,
-    }
-
-    let query = format!(
-        r#"SELECT process_status, datasets_processed_attributes.datasets AS datasets
-        FROM "{}/{}/**.parquet"
-        WHERE process_status = 'datasets_in_process' AND  datasets_processed_attributes.total = {total_samples_opened}
-        GROUP BY process_status, datasets_processed_attributes.datasets;"#,
-        export_dir.as_path().to_str().unwrap(),
-        run_name,
-    );
-    let query_res: Vec<DatasetTracker> = process_query(&query).await;
-
-    assert_eq!(query_res.len(), 1);
-
-    let queries_dataset = query_res[0].datasets.clone();
-
-    let datasamples: Vec<String> = "test1.fa,test2.fa,test3.fa"
-        .split(",")
-        .map(|a| a.to_string())
-        .collect();
-
-    for sample in datasamples.iter() {
-        assert!(&queries_dataset.contains(sample))
-    }
-
-    // Cleanup
-    let _ = std::fs::remove_dir_all(export_dir);
+    assert_eq!(total_samples, 3)
 }

@@ -36,17 +36,31 @@ services:
       - "3000:3000"
     profiles: [ observe ]
 
+  integrations_tests:
+    build:
+      context: .
+      dockerfile: deployments/tests/Dockerfile.parallel
+    env_file:
+      - .env
+    command: >
+      "set -x && tracer setup && tracer init --pipeline-name testing \   --tag-name test-tag \ && ./test-files/scripts/monitor.sh && \  ./test-files/scripts/track_datasets.sh && sleep 5"
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: [ integrations_tests ]
+
   parallel_tests:
     build:
       context: .
       dockerfile: deployments/tests/Dockerfile.parallel
-    environment:
-      - RUST_LOG=debug
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/tracer_db
+
+    deploy:
+      replicas: 2
+
     env_file:
       - .env
     command: >
-      "set -x && tracer setup && tracer init --pipeline-name testing \   --tag-name test-tag \ && ./test-files/scripts/monitor.sh && \  ./test-files/scripts/track_datasets.sh && tail -F nothing"
+      "set -x && tracer setup && tracer init --pipeline-name testing \   --tag-name parallel-tag \ && ./test-files/scripts/monitor.sh && \  ./test-files/scripts/track_datasets.sh && sleep 5"
     depends_on:
       db:
         condition: service_healthy
@@ -67,4 +81,4 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    profiles: [ parallel_tests ]
+    profiles: [ parallel_tests, integrations_tests ]
