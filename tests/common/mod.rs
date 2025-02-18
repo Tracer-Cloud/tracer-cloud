@@ -59,7 +59,8 @@ pub async fn monitor_container(docker: &Docker, container_prefix: &str) {
 }
 
 pub async fn start_docker_compose(profile: &str) {
-    let output = Command::new("docker-compose")
+    let output = Command::new("docker")
+        .arg("compose")
         .arg("--profile")
         .arg(profile)
         .arg("up")
@@ -76,7 +77,8 @@ pub async fn start_docker_compose(profile: &str) {
 }
 
 pub async fn end_docker_compose(profile: &str) {
-    let output = Command::new("docker-compose")
+    let output = Command::new("docker")
+        .arg("compose")
         .arg("--profile")
         .arg(profile)
         .arg("down")
