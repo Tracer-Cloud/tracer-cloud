@@ -76,7 +76,7 @@ jobs:
 
       - name: Build Test Images
         run: |
-          docker compose build integrations_tests parallel_tests
+          docker compose build integrations_tests parallel_tests && pwd && ls -la
 
       - name: Run Simple Queries tests
         run: make test-simple_queries

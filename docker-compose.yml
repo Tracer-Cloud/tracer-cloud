@@ -39,7 +39,7 @@ services:
   integrations_tests:
     build:
       context: .
-      dockerfile: deployments/tests/Dockerfile.parallel
+      dockerfile: deployments/tests/Dockerfile
     env_file:
       - .env
     command: >
@@ -52,7 +52,7 @@ services:
   parallel_tests:
     build:
       context: .
-      dockerfile: deployments/tests/Dockerfile.parallel
+      dockerfile: deployments/tests/Dockerfile
 
     deploy:
       replicas: 2
