@@ -242,6 +242,11 @@ impl TracerClient {
             name: result.run_name.clone(),
             id: result.run_id.clone(),
         });
+        self.logs.update_run_details(
+            Some(self.pipeline_name.clone()),
+            Some(result.run_name),
+            Some(result.run_id),
+        );
 
         // NOTE: Do we need to output a totally new event if self.tag_name.is_some() ?
 
@@ -250,11 +255,6 @@ impl TracerClient {
             "[CLI] Starting new pipeline run".to_owned(),
             Some(EventAttributes::SystemProperties(result.system_properties)),
             timestamp,
-        );
-        self.logs.update_run_details(
-            Some(self.pipeline_name.clone()),
-            Some(result.run_name),
-            Some(result.run_id),
         );
 
         Ok(())
