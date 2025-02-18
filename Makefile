@@ -44,11 +44,17 @@ test-tracer: setup_nextest ## Run tests single threaded due to s3 race condition
 	cargo nextest run --test-threads=1 -E 'binary(tracer)'
 
 
-test-integrations: setup_nextest ## Run tests single threaded due to s3 race conditions
+test-simple_queries: setup_nextest ## Run Docker Based Tests(Simple Queries)
 	AWS_REGION=us-east-2 \
 	AWS_ENDPOINT=https://s3.us-east-2.amazonaws.com \
 	CARGO_NEXTEST_NO_CAPTURE=1 \
-	cargo nextest run --no-capture -E 'not binary(tracer)' 
+	cargo nextest run --no-capture  --test simple_queries
+
+test-parallel: setup_nextest ## Run Docker Based Tests(Parallel)
+	AWS_REGION=us-east-2 \
+	AWS_ENDPOINT=https://s3.us-east-2.amazonaws.com \
+	CARGO_NEXTEST_NO_CAPTURE=1 \
+	cargo nextest run --no-capture  --test parallel
 
 	
 all: format check test clippy  ## format, check, test, clippy.

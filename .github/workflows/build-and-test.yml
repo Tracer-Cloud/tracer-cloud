@@ -48,7 +48,6 @@ jobs:
       run: make test-tracer
 
 
-
   run-integrations:
       name: Build and Test Integrations
       runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
@@ -66,5 +65,21 @@ jobs:
         run: |
           which cargo-nextest || cargo install cargo-nextest
 
-      - name: Run tests
-        run: make test-integrations
+      - name: Create .env file from GitHub Secrets
+        run: |
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> .env
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> .env
+          echo "AWS_REGION=us-east-2" >> .env
+          echo "AWS_ENDPOINT=https://s3.us-east-2.amazonaws.com" >> .env
+          echo "RUST_LOG=debug" >> .env
+          echo "DATABASE_URL=postgres://postgres:postgres@db:5432/tracer_db" >> .env
+
+      - name: Build Test Images
+        run: |
+          docker compose build integrations_tests parallel_tests
+
+      - name: Run Simple Queries tests
+        run: make test-simple_queries
+
+      - name: Run Parallel tests
+        run: make test-parallel
