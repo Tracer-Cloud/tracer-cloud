@@ -1,4 +1,21 @@
-Terraform Configuration Plan for AWS Cloud9 Environment
+# Gameplan for fast startup
+## Notes So Far
+- We use Graviton3 for instance type because they have superfast startup times.
+- When enabling IAM rules it takes much much longer. We can consider doing only web based instance connect. 
+
+## Notes on installation duration
+
+
+## Roadmap:
+- add a git ignore file for the terraform state.
+- Single EC2 instance takes 14 seconds to provision with ubuntu 22.04 on a t3 micro, the same on a c7. 
+- It has been possible to spin up a whole instance in 14 seconds. 
+- Modifying can take 70 seconds (1m10s)
+- Destroying the instance takes 40 seconds.
+
+
+
+# Terraform Configuration Plan for AWS Cloud9 Environment
 This Terraform configuration is designed to quickly provision a complete development environment on AWS Cloud9. It includes an EC2 instance with a custom image that comes pre-installed with essential tools and libraries, along with additional storage, automated GitHub integration, and a quick-access URL.
 
 Features
