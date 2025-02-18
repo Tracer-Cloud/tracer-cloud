@@ -1,5 +1,13 @@
 # Tracer Daemon Instructions
 
+## How to Test Tracer:
+- Ensure you have docker running
+- Use cargo nextest run to run the tests
+   ```rust
+   cargo nextest run
+   ```
+
+
 ## How to check if Tracer Daemon Is Running:
 
 ```bash
@@ -223,3 +231,62 @@ This ensures Tracer runs continuously in the background.
 
 ## **And Voila! 🎉**
 Your Tracer agent should now be running as a daemon on your Linux machine. If you encounter issues, check logs in `/tmp/tracerd.err`. 🚀
+
+
+
+## Managing the Database with sqlx
+
+To manage our PostgreSQL database schema and apply migrations, we use sqlx.
+
+1. Install sqlx CLI
+
+If you haven’t already, install sqlx with:
+
+```bash
+cargo install sqlx-cli --no-default-features --features rustls,postgres
+```
+
+2. Creating a New Migration
+
+To create a new migration, run:
+```bash
+sqlx migrate add <migration_name>
+```
+
+This will generate two SQL files in the migrations/ directory:
+	•	{timestamp}_<migration_name>.up.sql → Contains the SQL commands to apply the migration.
+	•	{timestamp}_<migration_name>.down.sql → Contains the SQL commands to roll back the migration.
+
+3. Running Migrations
+
+To apply all pending migrations to your database:
+
+```bash
+sqlx migrate run
+```
+
+To revert the last applied migration:
+
+sqlx migrate revert
+
+### Important Note
+
+Note that the compiler won’t pick up new migrations if no Rust source files have changed.
+You can create a Cargo build script to work around this with:
+
+This ensures that migrations are always detected and applied when building the project.
+
+Here’s an improved version of the note with the clarification about embedding migrations:
+
+4. Embedding Migrations in Your Application
+
+Did you know you can embed your migrations in your application binary?
+This allows your application to apply migrations automatically on startup.
+
+After creating your database connection or pool, add:
+```rust
+sqlx::migrate!().run(<&your_pool OR &mut your_connection>).await?;
+```
+#### Important Note:
+When embedding migrations, the compiler won’t detect new migrations unless a Rust source file has changed.
+To ensure new migrations are always included, use a Cargo build script.
