@@ -2,9 +2,10 @@
 
 ## How to Test Tracer:
 - Ensure you have docker running
-- Use cargo nextest run to run the tests
+- Run: make test-tracer
+- Use make file to run to run the tests
    ```rust
-   cargo nextest run
+   make test-tracer
    ```
 
 
