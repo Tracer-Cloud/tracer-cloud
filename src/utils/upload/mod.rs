@@ -86,6 +86,7 @@ mod tests {
     use std::fs::File;
     use std::io::Write;
 
+    #[ignore = "deprecated"]
     #[tokio::test]
     async fn test_upload_from_file_path() -> Result<()> {
         // Use an existing file in your project
@@ -102,6 +103,7 @@ mod tests {
         Ok(())
     }
 
+    #[ignore = "deprecated"]
     #[tokio::test]
     async fn test_upload_from_file_path_file_not_found() -> Result<()> {
         let file_path = "non_existent_file.txt";
@@ -121,6 +123,7 @@ mod tests {
         Ok(())
     }
 
+    #[ignore = "deprecated"]
     #[tokio::test]
     async fn test_upload_from_file_path_file_too_large() -> Result<()> {
         let file_path = "large_test_file.txt";

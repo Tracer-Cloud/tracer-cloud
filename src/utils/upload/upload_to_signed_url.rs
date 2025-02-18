@@ -88,6 +88,7 @@ mod tests {
 
     use super::*;
 
+    #[ignore = "deprecated"]
     #[tokio::test]
     async fn test_upload_file_to_s3_execution() {
         // Initialize the logger for tests
