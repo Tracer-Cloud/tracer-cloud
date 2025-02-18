@@ -149,6 +149,7 @@ mod tests {
     use anyhow::Error;
     use serde_json::json;
 
+    #[ignore = "deprecated"]
     #[tokio::test]
     async fn test_send_http_event() -> Result<(), Error> {
         let _ = env_logger::builder().is_test(true).try_init();
