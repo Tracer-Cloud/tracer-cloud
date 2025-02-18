@@ -162,8 +162,6 @@ impl TracerClient {
             "annoymous"
         };
 
-        println!("current_run_name .. {run_name}");
-
         if self.last_sent.is_none() || Instant::now() - self.last_sent.unwrap() >= self.interval {
             self.metrics_collector
                 .collect_metrics(&mut self.system, &mut self.logs)
@@ -473,7 +471,6 @@ mod tests {
 
         let work_dir = temp_dir.path().to_str().unwrap();
 
-        println!("db url .... {}", &config.db_url);
         // Create an instance of AuroraClient
         let db_client = Arc::new(AuroraClient::new(&config.db_url, Some(1)).await);
         let pipeline_name = String::from("test_pipeline");
