@@ -4,7 +4,7 @@ use sqlx::PgPool;
 mod common;
 
 #[tokio::test]
-async fn test_simple_queries_works() {
+async fn test_queries_works() {
     let container_name = "integrations_tests";
 
     // Step 1: Start Docker Compose to run the container
