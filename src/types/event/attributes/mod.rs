@@ -7,7 +7,6 @@ pub mod syslog;
 pub mod system_metrics;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-#[serde(untagged)]
 pub enum EventAttributes {
     Process(ProcessProperties),
     CompletedProcess(CompletedProcess),

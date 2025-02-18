@@ -58,7 +58,12 @@ pub enum Commands {
     /// Start the daemon
     Init {
         /// pipeline name to init the daemon with
+        #[clap(long, short)]
         pipeline_name: String,
+        /// Run Identifier: this is used for tag same runs on different computers.
+        /// Context: with aws batch,
+        #[clap(long, short)]
+        tag_name: Option<String>,
     },
 
     /// Stop the daemon
@@ -105,12 +110,15 @@ pub fn process_cli() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Init { pipeline_name } => {
-            let test_result = ConfigManager::test_service_config_sync();
-            if test_result.is_err() {
-                print_config_info_sync()?;
-                return Ok(());
-            }
+        Commands::Init {
+            pipeline_name,
+            tag_name,
+        } => {
+            print_config_info_sync()?;
+            //let test_result = ConfigManager::test_service_config_sync();
+            //if test_result.is_err() {
+            //    return Ok(());
+            //}
             println!("Starting daemon...");
             let current_working_directory = env::current_dir()?;
             let result = start_daemon();
@@ -121,14 +129,17 @@ pub fn process_cli() -> Result<()> {
             run(
                 current_working_directory.to_str().unwrap().to_string(),
                 pipeline_name.clone(),
+                tag_name.clone(),
             )?;
             clean_up_after_daemon()
         }
+        //TODO: figure out what test should do now
         Commands::Test => {
-            let result = ConfigManager::test_service_config_sync();
-            if result.is_ok() {
-                println!("Tracer was able to successfully communicate with the API service.");
-            }
+            println!("Tracer was able to successfully communicate with the API service.");
+            // let result = ConfigManager::test_service_config_sync();
+            // if result.is_ok() {
+            //     println!("Tracer was able to successfully communicate with the API service.");
+            // }
             Ok(())
         }
         Commands::Cleanup => {

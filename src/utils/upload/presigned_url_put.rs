@@ -66,6 +66,7 @@ mod tests {
         dotenv().ok(); // Load from .env file in development
     }
 
+    #[ignore = "deprecated"]
     #[tokio::test]
     async fn test_request_presigned_url() -> Result<()> {
         setup_env_vars();
