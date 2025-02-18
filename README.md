@@ -1,5 +1,13 @@
 # Tracer Daemon Instructions
 
+## How to Test Tracer:
+- Ensure you have docker running
+- Use cargo nextest run to run the tests
+   ```rust
+   cargo nextest run
+   ```
+
+
 ## How to check if Tracer Daemon Is Running:
 
 ```bash
