@@ -134,17 +134,11 @@ resource "aws_instance" "rust_server" {
   }
 
 
-  user_data = <<-EOT
-    #!/bin/bash
-    set -eux
+  user_data = templatefile("${path.module}/user-data.sh.tpl", {
+  script1 = file("${path.module}/script-install-deps.sh")
+  script2 = file("${path.module}/script-second-script.sh")
+})
 
-    # Run the first script
-    $(cat ${path.module}/script-install-deps.sh)
-
-    # Run the second script
-    $(cat ${path.module}/script-second-script.sh)
-
-EOT
 }
 
 # -----------------------------------------------------------
@@ -230,12 +224,17 @@ resource "aws_iam_policy" "ec2_general_access" {
   })
 }
 
-# Create an AMI from the running instance
-resource "aws_ami_from_instance" "rust_server_ami" {
-  name               = "rust-server-ami-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
-  source_instance_id = aws_instance.rust_server.id
-  description        = "AMI with Rust and dependencies preinstalled"
-  tags = {
-    Name = "RustServerAMI"
-  }
-}
+# # Create an AMI from the running instance
+# resource "aws_ami_from_instance" "rust_server_ami" {
+#   name               = "rust-server-ami-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
+#   source_instance_id = aws_instance.rust_server.id
+#   description        = "AMI with Rust and dependencies preinstalled"
+
+#   lifecycle {
+#       create_before_destroy = true
+#     }
+
+#   tags = {
+#     Name = "RustServerAMI"
+#   }
+# }
