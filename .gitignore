@@ -36,3 +36,4 @@ target/
 infrastructure/.terraform/
 *.rlib
 libduckdb.a
+infrastructure/.terraform/
