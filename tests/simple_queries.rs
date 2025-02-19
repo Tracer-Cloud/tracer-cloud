@@ -33,12 +33,12 @@ async fn test_queries_works() {
 async fn query_and_assert_tool_tracked(pool: &PgPool, job_id: &str) {
     let tools_tracked: Vec<(String,)> = sqlx::query_as(
         r#"
-            SELECT DISTINCT(data->'attributes'->'Process'->>'tool_name') AS tool_name
+            SELECT DISTINCT(data->'attributes'->'process'->>'tool_name') AS tool_name
             FROM batch_jobs_logs
             WHERE 
             job_id = $1
             AND
-            data->'attributes'->'Process'->>'tool_name' IS NOT NULL;
+            data->'attributes'->'process'->>'tool_name' IS NOT NULL;
         "#,
     )
     .bind(job_id)
@@ -57,7 +57,7 @@ async fn query_datasets_processed(pool: &PgPool, job_id: &str) {
         r#"
             SELECT 
                 data->>'process_status' AS process_status,
-                MAX((data->'attributes'->'ProcessDatasetStats'->>'total')::BIGINT) AS total_samples
+                MAX((data->'attributes'->'process_dataset_stats'->>'total')::BIGINT) AS total_samples
             FROM batch_jobs_logs
             WHERE data->>'process_status' = 'datasets_in_process'
             AND data->>'run_name' = $1

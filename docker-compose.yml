@@ -43,7 +43,7 @@ services:
     env_file:
       - .env
     command: >
-      "set -x && tracer setup && tracer init --pipeline-name testing \   --tag-name test-tag \ && ./test-files/scripts/monitor.sh && \  ./test-files/scripts/track_datasets.sh && sleep 5"
+      "set -x && tracer setup && tracer init --pipeline-name testing \   --run-id test-tag \ && ./test-files/scripts/monitor.sh && \  ./test-files/scripts/track_datasets.sh && sleep 5"
     depends_on:
       db:
         condition: service_healthy
@@ -60,7 +60,7 @@ services:
     env_file:
       - .env
     command: >
-      "set -x && tracer setup && tracer init --pipeline-name testing \   --tag-name parallel-tag \ && ./test-files/scripts/monitor.sh && \  ./test-files/scripts/track_datasets.sh && sleep 5"
+      "set -x && tracer setup && tracer init --pipeline-name testing \   --run-id parallel-tag \ && ./test-files/scripts/monitor.sh && \  ./test-files/scripts/track_datasets.sh && sleep 5"
     depends_on:
       db:
         condition: service_healthy
@@ -82,3 +82,13 @@ services:
       timeout: 5s
       retries: 5
     profiles: [ parallel_tests, integrations_tests ]
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: youngstizy@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: incorrect
+
+    profiles: [ integrations_tests ]
