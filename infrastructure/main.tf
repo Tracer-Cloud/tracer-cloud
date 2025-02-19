@@ -133,12 +133,8 @@ resource "aws_instance" "rust_server" {
     Name = "Rust-EC2-Instance"
   }
 
-
-  user_data = templatefile("${path.module}/user-data.sh.tpl", {
-  script1 = file("${path.module}/script-install-deps.sh")
-  script2 = file("${path.module}/script-second-script.sh")
-})
-
+  user_data = file("./script-second-script.sh")
+ 
 }
 
 # -----------------------------------------------------------
@@ -183,7 +179,8 @@ resource "aws_iam_policy" "ec2_general_access" {
           "logs:CreateLogStream",
           "logs:PutLogEvents",
           "logs:DescribeLogStreams",
-          "logs:GetLogEvents"
+          "logs:GetLogEvents",
+          "logs:DescribeLogGroups"
         ]
         Resource = "*"
       },
@@ -224,7 +221,7 @@ resource "aws_iam_policy" "ec2_general_access" {
   })
 }
 
-# # Create an AMI from the running instance
+# # Create an AMI from the running instance ------>>>>> At the moment we don't have benefits from the AMI
 # resource "aws_ami_from_instance" "rust_server_ami" {
 #   name               = "rust-server-ami-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
 #   source_instance_id = aws_instance.rust_server.id

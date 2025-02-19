@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e  # Exit immediately if a command exits with a non-zero status
 
 LOG_FILE="/home/ubuntu/install_log.txt"
 exec > >(tee -a "$LOG_FILE") 2>&1  # Log both stdout & stderr

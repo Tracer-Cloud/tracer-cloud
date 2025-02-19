@@ -4,6 +4,8 @@ terraform.tfstate.backup
 *.tfstate*
 .terraform/
 .terraform.lock.hcl
+.terraform/*
+
 
 # Environment files (sensitive credentials)
 .env
