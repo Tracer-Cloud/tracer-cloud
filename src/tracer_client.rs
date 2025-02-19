@@ -460,14 +460,14 @@ mod tests {
     use anyhow::Result;
     use serde_json::Value;
     use sqlx::types::Json;
-    use tempdir::TempDir;
+    use tempfile::tempdir;
 
     #[tokio::test]
     async fn test_submit_batched_data() -> Result<()> {
         // Load the configuration
         let config = ConfigManager::load_default_config();
 
-        let temp_dir = TempDir::new(".tracer").expect("cant create temp dir");
+        let temp_dir = tempdir().expect("cant create temp dir");
 
         let work_dir = temp_dir.path().to_str().unwrap();
 
