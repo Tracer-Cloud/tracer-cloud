@@ -13,6 +13,7 @@ use crate::extracts::{
     stdout::StdoutWatcher,
     syslog::{run_syslog_lines_read_thread, SyslogWatcher},
 };
+use crate::types::cli::TracerCliInitArgs;
 use crate::types::event::attributes::EventAttributes;
 use crate::{monitor_processes_with_tracer_client, FILE_CACHE_DIR};
 use crate::{SOCKET_PATH, SYSLOG_FILE};
@@ -73,17 +74,17 @@ pub struct TracerClient {
     pub db_client: Arc<AuroraClient>,
     pipeline_name: String,
     pub pricing_client: PricingClient,
-    tag_name: Option<String>,
+    initialization_id: Option<String>,
     config: Config,
+    tags: Vec<String>,
 }
 
 impl TracerClient {
     pub async fn new(
         config: Config,
         workflow_directory: String,
-        pipeline_name: String,
-        tag_name: Option<String>,
         db_client: Arc<AuroraClient>,
+        cli_args: TracerCliInitArgs,
     ) -> Result<TracerClient> {
         let service_url = config.service_url.clone();
 
@@ -122,10 +123,11 @@ impl TracerClient {
             process_watcher: ProcessWatcher::new(config.targets.clone()),
             metrics_collector: SystemMetricsCollector::new(),
             db_client,
-            pipeline_name,
+            pipeline_name: cli_args.pipeline_name,
             pricing_client,
-            tag_name,
+            initialization_id: cli_args.run_id,
             config,
+            tags: cli_args.tags,
         })
     }
 
@@ -231,7 +233,7 @@ impl TracerClient {
             &self.system,
             &self.pipeline_name,
             &self.pricing_client,
-            &self.tag_name,
+            &self.initialization_id,
         )
         .await?;
 
@@ -246,10 +248,10 @@ impl TracerClient {
             Some(self.pipeline_name.clone()),
             Some(result.run_name),
             Some(result.run_id),
+            self.tags.clone(),
         );
 
-        // NOTE: Do we need to output a totally new event if self.tag_name.is_some() ?
-
+        // NOTE: Do we need to output a totally new event if self.initialization_id.is_some() ?
         self.logs.record_event(
             EventType::NewRun,
             "[CLI] Starting new pipeline run".to_owned(),
@@ -280,8 +282,12 @@ impl TracerClient {
             };
             self.logs.clear();
 
-            self.logs
-                .update_run_details(Some(self.pipeline_name.clone()), None, None);
+            self.logs.update_run_details(
+                Some(self.pipeline_name.clone()),
+                None,
+                None,
+                self.tags.clone(),
+            );
             self.current_run = None;
         }
         Ok(())
@@ -473,18 +479,13 @@ mod tests {
 
         // Create an instance of AuroraClient
         let db_client = Arc::new(AuroraClient::new(&config.db_url, Some(1)).await);
-        let pipeline_name = String::from("test_pipeline");
         let job_id = "job-1234";
 
-        let mut client = TracerClient::new(
-            config,
-            work_dir.to_string(),
-            pipeline_name,
-            Some(job_id.to_string()),
-            db_client,
-        )
-        .await
-        .expect("Failed to create tracerclient");
+        let cli_config = TracerCliInitArgs::default();
+
+        let mut client = TracerClient::new(config, work_dir.to_string(), db_client, cli_config)
+            .await
+            .expect("Failed to create tracerclient");
 
         client
             .start_new_run(None)

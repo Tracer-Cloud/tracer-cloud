@@ -17,6 +17,7 @@ pub struct Event {
     pub run_name: Option<String>,
     pub run_id: Option<String>,
     pub attributes: Option<EventAttributes>,
+    pub tags: Vec<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]

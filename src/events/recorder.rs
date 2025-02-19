@@ -9,6 +9,7 @@ pub struct EventRecorder {
     run_id: Option<String>,
     // NOTE: Tying a pipeline_name to the events recorder because, you can only start one pipeline at a time
     pipeline_name: Option<String>,
+    tags: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
@@ -55,6 +56,7 @@ impl EventRecorder {
             run_id,
             run_name,
             pipeline_name,
+            tags: Vec::new(),
         }
     }
 
@@ -63,10 +65,12 @@ impl EventRecorder {
         pipeline_name: Option<String>,
         run_name: Option<String>,
         run_id: Option<String>,
+        tags: Vec<String>,
     ) {
         self.run_name = run_name;
         self.run_id = run_id;
-        self.pipeline_name = pipeline_name
+        self.pipeline_name = pipeline_name;
+        self.tags = tags
     }
 
     pub fn record_event(
@@ -87,6 +91,7 @@ impl EventRecorder {
             run_name: self.run_name.clone(),
             run_id: self.run_id.clone(),
             pipeline_name: self.pipeline_name.clone(),
+            tags: self.tags.clone(),
         };
         self.events.push(event);
     }
