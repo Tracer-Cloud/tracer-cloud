@@ -1,9 +1,16 @@
+variable "region" {
+  description = "The AWS region to deploy resources"
+  default     = "us-east-1"
+}
+
 provider "aws" {
-  region  = "us-east-1"  # Change as needed
+  region  = var.region
   profile = "default"
 }
 
-# IAM Role for EC2 Instance Connect
+# -----------------------------------------------------------
+# IAM Role for EC2 Instance Connect (For SSH Access Only)
+# -----------------------------------------------------------
 resource "aws_iam_role" "ec2_instance_connect" {
   name = "EC2InstanceConnectRole"
 
@@ -17,7 +24,6 @@ resource "aws_iam_role" "ec2_instance_connect" {
   })
 }
 
-# Create IAM policy for EC2 Instance Connect
 resource "aws_iam_role_policy" "ec2_instance_connect" {
   name = "EC2InstanceConnectPolicy"
   role = aws_iam_role.ec2_instance_connect.id
@@ -36,18 +42,46 @@ resource "aws_iam_role_policy" "ec2_instance_connect" {
   })
 }
 
-# Create IAM instance profile
 resource "aws_iam_instance_profile" "ec2_instance_connect" {
   name = "EC2InstanceConnectProfile"
   role = aws_iam_role.ec2_instance_connect.name
 }
 
-# Get the default VPC dynamically
+# -----------------------------------------------------------
+# IAM Role for General AWS Access (EC2, S3, Pricing, etc.)
+# -----------------------------------------------------------
+resource "aws_iam_role" "ec2_general_access_role" {
+  name = "EC2GeneralAccessRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+# Attach IAM Policy to the Correct Role
+resource "aws_iam_role_policy_attachment" "ec2_general_access_attachment" {
+  role       = aws_iam_role.ec2_general_access_role.name
+  policy_arn = aws_iam_policy.ec2_general_access.arn
+}
+
+# IAM Instance Profile for EC2 General Access Role
+resource "aws_iam_instance_profile" "ec2_general_access_profile" {
+  name = "EC2GeneralAccessProfile"
+  role = aws_iam_role.ec2_general_access_role.name
+}
+
+# -----------------------------------------------------------
+# Security Group for SSH & EC2 Instance Connect
+# -----------------------------------------------------------
 data "aws_vpc" "default" {
   default = true
 }
 
-# Security Group for SSH & EC2 Instance Connect
 resource "aws_security_group" "rust_server_sg" {
   name_prefix = "rust-sg-"
   description = "Allow SSH and EC2 Instance Connect"
@@ -74,20 +108,20 @@ resource "aws_security_group" "rust_server_sg" {
   }
 }
 
-# EC2 Instance with SSH and EC2 Instance Connect
+# -----------------------------------------------------------
+# EC2 Instance with Full AWS Access
+# -----------------------------------------------------------
 resource "aws_instance" "rust_server" {
-  ## Do not change the ami because this one works for graviton 3 and is faster to start up
-    ami           = "ami-06f77771310e204b7"  # Ubuntu 22.04 LTS (Adjust for your region)
-
-  instance_type        = "c7g.large"
-  key_name            = "rapid-ec2-v1"
-  iam_instance_profile = aws_iam_instance_profile.ec2_instance_connect.name
+  ami                    = "ami-06f77771310e204b7"  # Ubuntu 22.04 LTS
+  instance_type          = "c7g.12xlarge"
+  key_name               = "rapid-ec2-v1"
+  iam_instance_profile   = aws_iam_instance_profile.ec2_general_access_profile.name
   vpc_security_group_ids = [aws_security_group.rust_server_sg.id]
 
   metadata_options {
     http_tokens                 = "optional"
     http_put_response_hop_limit = 1
-    http_endpoint              = "enabled"
+    http_endpoint               = "enabled"
   }
 
   root_block_device {
@@ -99,64 +133,109 @@ resource "aws_instance" "rust_server" {
     Name = "Rust-EC2-Instance"
   }
 
-  user_data = <<-EOF
+
+  user_data = <<-EOT
     #!/bin/bash
-    sudo apt update -y
-    sudo apt install -y curl git unzip build-essential pkg-config
+    set -eux
 
-    # Install dependencies
-    sudo apt-get update
-    sudo apt-get install -y \
-    build-essential \
-    pkg-config \
-    libssl-dev \
-    clang \
-    cmake \
-    gcc \
-    g++ \
-    zlib1g-dev \
-    libclang-dev
+    # Run the first script
+    $(cat ${path.module}/script-install-deps.sh)
 
-    # Install Rust for ubuntu user
-    su - ubuntu -c '
-    curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs > /home/ubuntu/rustup-init.sh && \
-    chmod +x /home/ubuntu/rustup-init.sh && \
-    /home/ubuntu/rustup-init.sh -y && \
-    echo "source \$HOME/.cargo/env" >> /home/ubuntu/.bashrc && \
-    . /home/ubuntu/.cargo/env'
+    # Run the second script
+    $(cat ${path.module}/script-second-script.sh)
 
-    # Install GitHub CLI
-    type -p curl >/dev/null || sudo apt install curl -y
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-    sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-    echo "deb [signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-    sudo apt update -y
-    sudo apt install gh -y
+EOT
+}
 
-    # Add Rust to system-wide path for immediate use
-    echo "export PATH=/home/ubuntu/.cargo/bin:\$PATH" | sudo tee /etc/profile.d/rust.sh
-    sudo chmod +x /etc/profile.d/rust.sh
+# -----------------------------------------------------------
+# IAM Policy for Full AWS Access (EC2, S3, Pricing API, etc.)
+# -----------------------------------------------------------
+resource "aws_iam_policy" "ec2_general_access" {
+  name        = "EC2GeneralAccessPolicy"
+  description = "Allows EC2 instance to interact with AWS services"
 
-    # Verify installation (log to a file since user_data runs non-interactively)
-    echo "Installation verification:" | sudo tee /home/ubuntu/install_log.txt
-    sudo -u ubuntu bash -c 'source /home/ubuntu/.cargo/env && rustc --version' >> /home/ubuntu/install_log.txt
-    sudo -u ubuntu bash -c 'source /home/ubuntu/.cargo/env && cargo --version' >> /home/ubuntu/install_log.txt
-    git --version >> /home/ubuntu/install_log.txt
-    gh --version >> /home/ubuntu/install_log.txt
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      # Allow full access to EC2 metadata and describe operations
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:*"  # Allow all EC2 actions
+        ]
+        Resource = "*"
+      },
+      # Allow read/write access to S3
+      {
+        Effect = "Allow"
+       Action = [
+          "s3:*"  # Allow all S3 actions
+        ]
+        Resource = "*"
+      },
+      # Allow access to Pricing API
+      {
+        Effect = "Allow"
+       Action = [
+          "pricing:*"  # Allow all S3 actions
+        ]
+        Resource = "*"
+      },
+      # Allow CloudWatch Logs Access
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams",
+          "logs:GetLogEvents"
+        ]
+        Resource = "*"
+      },
+      # Allow access to Secrets Manager
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:ListSecrets"
+        ]
+        Resource = "*"
+      },
+      # Allow access to AWS Systems Manager (SSM) for Parameter Store and Session Manager
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:DescribeParameters",
+          "ssm:GetParameterHistory",
+          "ssm:GetParametersByPath",
+          "ssm:StartSession",
+          "ssm:TerminateSession",
+          "ssm:DescribeSessions",
+          "ssm:DescribeInstanceInformation"
+        ]
+        Resource = "*"
+      },
+      # Allow STS Assume Role (useful for cross-account access)
+      {
+        Effect = "Allow"
+        Action = [
+          "sts:AssumeRole"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
 
-    # Install the tracer github repository 
-    git clone https://github.com/Tracer-Cloud/tracer-client.git
-    cd tracer-client
-
-    # Install nextest
-    cargo install --locked cargo-nextest
-
-    # Run a nextest test to verify the installation
-    cargo run nextest 
-
-    # Install the binary
-    cargo build --release
-    sudo cp target/release/tracer-client /usr/local/bin/
-
-  EOF
+# Create an AMI from the running instance
+resource "aws_ami_from_instance" "rust_server_ami" {
+  name               = "rust-server-ami-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
+  source_instance_id = aws_instance.rust_server.id
+  description        = "AMI with Rust and dependencies preinstalled"
+  tags = {
+    Name = "RustServerAMI"
+  }
 }

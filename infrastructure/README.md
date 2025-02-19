@@ -1,9 +1,10 @@
 # Gameplan for fast startup
+Infrastructure works:
+- docker-compose build integrations_tests parallel_tests
+
 ## Notes So Far
 - We use Graviton3 for instance type because they have superfast startup times.
 - When enabling IAM rules it takes much much longer. We can consider doing only web based instance connect. 
-
-## Notes on installation duration
 
 
 ## Roadmap:
