@@ -5,8 +5,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.86"
-assert_cmd = "2.0.15"
-async-recursion = "1.1.1"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.7", features = ["derive"] }
 daemonize = "0.5"
@@ -15,7 +13,6 @@ lazy_static = "1.5.0"
 log = "0.4.21"
 octocrab = "0.38.0"
 predicates = "3.1.2"
-regex = "1.10.6"
 random-string = "1.1.0"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0", features = ["std", "derive", "serde_derive"] }
@@ -30,11 +27,7 @@ tracing = {version = "0.1.40"}
 url = "2.5.2"
 linemux = "0.3.0"
 tokio-stream = "0.1.15"
-futures-util = "0.3.30"
 sqlx = { version = "0.8.3", features = ["runtime-tokio-rustls", "postgres"] }
-
-parquet = "53.3.0"
-arrow = "53.3.0"
 
 ec2_instance_metadata = "0.3.0"
 rand = "0.8.5"
@@ -51,8 +44,6 @@ tracing-loki = "0.2.5"
 
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "json"] }
 dirs = "6.0.0"
-async-trait = "0.1.85"
-sha2 = "0.10.8"
 serde-query = "0.2.0"
 itertools = "0.14.0"
 

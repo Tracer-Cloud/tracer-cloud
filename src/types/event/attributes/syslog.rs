@@ -1,9 +1,4 @@
-use std::sync::Arc;
-
-use crate::types::ParquetSchema;
-
 use super::system_metrics::SystemMetric;
-use arrow::datatypes::{DataType, Field, Schema};
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct SyslogProperties {
@@ -13,23 +8,4 @@ pub struct SyslogProperties {
     pub error_line: String,
     pub file_line_number: u64,
     pub file_previous_logs: Vec<String>,
-}
-
-impl ParquetSchema for SyslogProperties {
-    fn schema() -> Schema {
-        let system_metrics_dt = DataType::Struct(SystemMetric::schema().fields);
-        let fields = vec![
-            Field::new("system_metrics", system_metrics_dt, false),
-            Field::new("error_display_name", DataType::Utf8, false),
-            Field::new("error_id", DataType::Utf8, false),
-            Field::new("error_line", DataType::Utf8, false),
-            Field::new("file_line_number", DataType::UInt64, false),
-            Field::new(
-                "file_previous_logs",
-                DataType::List(Arc::new(Field::new("log", DataType::Utf8, false))),
-                false,
-            ),
-        ];
-        Schema::new(fields)
-    }
 }
