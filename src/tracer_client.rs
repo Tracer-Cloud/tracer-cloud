@@ -520,4 +520,51 @@ mod tests {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn test_tags_attribution_works() {
+        // Load the configuration
+        let config = ConfigManager::load_default_config();
+
+        let temp_dir = tempdir().expect("cant create temp dir");
+
+        let work_dir = temp_dir.path().to_str().unwrap();
+        let job_id = "job-1234";
+
+        // Create an instance of AuroraClient
+        let db_client = Arc::new(AuroraClient::new(&config.db_url, Some(1)).await);
+
+        let tags = vec!["Hello".to_string(), "Test".to_string()];
+
+        let cli_config = TracerCliInitArgs {
+            pipeline_name: "Test Pipeline".to_string(),
+            run_id: None,
+            tags: tags.clone(),
+        };
+
+        let mut client = TracerClient::new(config, work_dir.to_string(), db_client, cli_config)
+            .await
+            .expect("Failed to create tracerclient");
+
+        client
+            .start_new_run(None)
+            .await
+            .expect("Error starting new run");
+
+        // Record a test event
+        client.logs.record_event(
+            EventType::TestEvent,
+            format!("[submit_batched_data.rs] Test event for job {}", job_id),
+            None,
+            None,
+        );
+
+        // assertions
+        let events = client.logs.get_events();
+        assert!(!events.is_empty());
+        let event_tags = events.first().unwrap().tags.clone();
+        assert_eq!(event_tags, tags);
+
+        assert_eq!(client.tags, tags);
+    }
 }
