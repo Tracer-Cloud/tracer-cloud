@@ -133,6 +133,7 @@ resource "aws_instance" "rust_server" {
     Name = "Rust-EC2-Instance"
   }
 
+  // This is the script that will be executed on the instance after the instance is created
   user_data = file("./script-second-script.sh")
  
 }
@@ -222,16 +223,16 @@ resource "aws_iam_policy" "ec2_general_access" {
 }
 
 # # Create an AMI from the running instance ------>>>>> At the moment we don't have benefits from the AMI
-resource "aws_ami_from_instance" "rust_server_ami" {
-  name               = "rust-server-ami-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
-  source_instance_id = aws_instance.rust_server.id
-  description        = "AMI with Rust and dependencies preinstalled"
+# resource "aws_ami_from_instance" "rust_server_ami" {
+#   name               = "rust-server-ami-${formatdate("YYYYMMDD-hhmmss", timestamp())}"
+#   source_instance_id = aws_instance.rust_server.id
+#   description        = "AMI with Rust and dependencies preinstalled"
 
-  lifecycle {
-      create_before_destroy = true
-    }
+#   lifecycle {
+#       create_before_destroy = true
+#     }
 
-  tags = {
-    Name = "RustServerAMI"
-  }
-}
+#   tags = {
+#     Name = "RustServerAMI"
+#   }
+# }
