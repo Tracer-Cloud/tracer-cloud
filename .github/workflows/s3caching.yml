@@ -11,6 +11,7 @@ env:
   CARGO_TERM_COLOR: always
   S3_BUCKET: cargo-actions-build-cache
   AWS_REGION: "us-east-1"
+  CACHE_TAR: rust-cache.tar.gz
 
 jobs:
   build-and-test:
@@ -21,7 +22,12 @@ jobs:
       - uses: actions/checkout@v4.1.4
 
       - name: Setup Rust toolchain
-        run: rustup toolchain install stable --profile minimal
+        run: |
+          rustup toolchain install stable --profile minimal
+          # Fix cargo permissions
+          sudo chown -R $(whoami):$(whoami) ~/.cargo
+          sudo chmod -R u+rwX ~/.cargo
+          sudo chmod +x ~/.cargo/bin/cargo
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -37,6 +43,8 @@ jobs:
           mkdir -p ~/.cargo/registry/src
           mkdir -p ~/.cargo/git/db
           mkdir -p ~/.cargo/git/checkouts
+          # Ensure correct permissions
+          chmod -R u+rwX ~/.cargo
 
       - name: Load Rust build cache from S3
         run: |
@@ -51,6 +59,9 @@ jobs:
             echo "Extracting cache..."
             tar -xzf "$CACHE_TAR" -C ~/.cargo
             echo "Cache extracted successfully"
+            # Fix permissions after extraction
+            chmod -R u+rwX ~/.cargo
+            chmod +x ~/.cargo/bin/cargo
           else
             echo "No cache found, continuing without restoring."
           fi
@@ -58,9 +69,9 @@ jobs:
       - name: Check cache structure and permissions
         run: |
           echo "Content and permissions of ~/.cargo:"
-          find ~/.cargo -type d -exec chmod 755 {} \;
-          find ~/.cargo -type f -exec chmod 644 {} \;
           ls -la ~/.cargo
+          echo "Content and permissions of ~/.cargo/bin:"
+          ls -la ~/.cargo/bin
           echo "Content of ~/.cargo/registry:"
           ls -la ~/.cargo/registry || echo "Registry directory not found"
           echo "Content of ~/.cargo/git:"
@@ -72,16 +83,11 @@ jobs:
           echo "Cargo.lock content:"
           cat Cargo.lock
 
-      - name: Install cargo-cache
-        run: cargo install cargo-cache
-
-      - name: Check cache status
-        run: cargo cache --show-stats
-
       - name: Build
         run: cargo build
 
       - name: Save Rust build cache to S3
+        if: always()  # Save cache even if build fails
         run: |
           echo "Creating new cache archive..."
           tar -czf "$CACHE_TAR" -C ~/.cargo .
@@ -91,4 +97,4 @@ jobs:
       - name: Debug - List ~/.cargo after build
         run: |
           echo "Final content of ~/.cargo:"
-          tree -a ~/.cargo || ls -laR ~/.cargo
+          ls -laR ~/.cargo
