@@ -15,12 +15,12 @@
 #---  PARAMETERS  --------------------------------------------------------------
 #   DESCRIPTION:  Parameters used in the rest of this script
 #-------------------------------------------------------------------------------
-# https://github.com/davincios/tracer-daemon/releases/download/v0.0.8/tracer-daemon-universal-apple-darwin.tar.gz
+# https://github.com/Tracer-Cloud/tracer-client/releases/download/v0.0.8/tracer-universal-apple-darwin.tar.gz
 SCRIPT_VERSION="v0.0.1"
 TRACER_VERSION="v0.0.30"
 TRACER_LINUX_URL="https://github.com/Tracer-Cloud/tracer-client/releases/download/${TRACER_VERSION}/tracer-x86_64-unknown-linux-gnu.tar.gz"
 TRACER_MACOS_AARCH_URL="https://github.com/Tracer-Cloud/tracer-client/releases/download/${TRACER_VERSION}/tracer-aarch64-apple-darwin.tar.gz"
-TRACER_MACOS_UNIVERSAL_URL="https://github.com/Tracer-Cloud/tracer-client/releases/download/${TRACER_VERSION}/tracer-universal-apple-darwin.tar.gz"
+TRACER_MACOS_X86_URL="https://github.com/Tracer-Cloud/tracer-client/releases/download/${TRACER_VERSION}/tracer-x86_64-apple-darwin.tar.gz"
 
 
 TRACER_HOME="$HOME/.tracerbio"
@@ -187,8 +187,8 @@ check_os() {
             printinfo "Detected macOS ARM64 architecture"
             TRACER_URL=$TRACER_MACOS_AARCH_URL
         else
-            printinfo "Detected macOS universal architecture"
-            TRACER_URL=$TRACER_MACOS_UNIVERSAL_URL
+            printinfo "Detected macOS x86 architecture"
+            TRACER_URL=$TRACER_MACOS_X86_URL
         fi
         ;;
     *)
