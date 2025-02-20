@@ -14,14 +14,36 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Create Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update version in Cargo.toml
         run: |
-          gh release create ${{ github.ref_name }} \
-            --draft \
-            --title "${{ github.ref_name }}" \
-            --notes "Release ${{ github.ref_name }}"
+          if [[ "${{ github.ref_name }}" == *"-dev" ]] ; then
+            export TRACER_VERSION_DEVELOP="${{ github.ref_name }}"
+            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
+            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
+            sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{ github.ref_name }}\"/" installation-script.sh
+          else
+            sed -i.bak "s/^version = .*/version = \"${{ github.ref_name }}\"/" Cargo.toml
+            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
+            sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{ github.ref_name }}\"/" installation-script.sh
+          fi
+
+      - name: Setup Github user
+        run: |
+          git config --local user.name actions-user
+          git config --local user.email "actions@github.com"
+
+      - name: Add files to commit
+        run: git add Cargo.toml installation-script.sh
+
+      - name: Commit changes
+        run: git commit -m "Update version to ${{ github.ref_name }}"
+
+      - name: Push changes
+        run: git push origin HEAD:main
+
+      - uses: taiki-e/create-gh-release-action@v1.8.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   upload-assets:
     needs: create-release
@@ -35,14 +57,19 @@ jobs:
             os: ubuntu-latest
           - target: x86_64-apple-darwin
             os: macos-latest
-#          - target: universal-apple-darwin
-#            os: macos-latest
+          - target: universal-apple-darwin
+            os: macos-latest
 
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
 
       - name: Restore Cache
         uses: actions/cache/restore@v3
