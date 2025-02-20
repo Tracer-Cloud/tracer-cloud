@@ -36,7 +36,13 @@ jobs:
           if aws s3 ls "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION >/dev/null 2>&1; then
             aws s3 cp "s3://$S3_BUCKET/$CACHE_TAR" . --region $AWS_REGION
             tar -xzf "$CACHE_TAR" -C .
-            mv .cargo ~/.cargo
+            if [ -d ".cargo" ]; then
+              mv .cargo ~/.cargo
+            else
+              echo ".cargo directory does not exist, creating necessary directories."
+              mkdir -p ~/.cargo
+              mv .cargo ~/.cargo
+            fi
           else
             echo "No cache found, continuing without restoring."
           fi
