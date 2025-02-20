@@ -97,4 +97,3 @@ jobs:
             ~/.cargo/git
             target
           key: permanent-cargo-cache-${{ runner.os }}-${{ matrix.target }}
-g
