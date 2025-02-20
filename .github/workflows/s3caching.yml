@@ -44,6 +44,15 @@ jobs:
             echo "No cache found, continuing without restoring."
           fi
 
+      - name: Debug - List ~/.cargo
+        run: |
+          echo "Content of ~/.cargo:"
+          ls -la ~/.cargo
+          echo "Content of ~/.cargo/registry:"
+          ls -la ~/.cargo/registry || echo "registry Directory not found"
+          echo "Content of ~/.cargo/git:"
+          ls -la ~/.cargo/git || echo "Directory not found"
+
       - name: Build
         run: cargo build
 
