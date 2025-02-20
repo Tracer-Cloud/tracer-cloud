@@ -40,9 +40,6 @@ jobs:
             echo "No cache found, continuing without restoring."
           fi
 
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.7.3
-
       - name: Build
         run: cargo build
 
