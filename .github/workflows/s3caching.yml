@@ -31,14 +31,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install AWS CLI
-        run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-          aws --version
-      
-
       - name: Load Rust build cache from S3
         run: |
           if aws s3 ls "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION >/dev/null 2>&1; then
