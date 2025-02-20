@@ -7,23 +7,12 @@ on:
 
 jobs:
   create-release:
-    runs-on: ubuntu-latest  # this is the fastest runner
+    runs-on: ubuntu-latest
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1  # fast checkout
-
-      - name: Cache Cargo Dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          fetch-depth: 1
 
       - name: Update version in Cargo.toml
         run: |
@@ -68,47 +57,18 @@ jobs:
             os: ubuntu-latest
           - target: x86_64-apple-darwin
             os: macos-latest
-          - target: universal-apple-darwin
-            os: macos-latest
-
+            
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1  # fast checkout
-
-      - name: Cache Cargo Dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Update version in Cargo.toml
-        run: |
-          if [[ "${{ github.ref_name }}" == *"-dev" ]] ; then
-            export TRACER_VERSION_DEVELOP="${{ github.ref_name }}"
-            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
-            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-            sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{ github.ref_name }}\"/" installation-script.sh
-          else
-            sed -i.bak "s/^version = .*/version = \"${{ github.ref_name }}\"/" Cargo.toml
-            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-            sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{ github.ref_name }}\"/" installation-script.sh
-          fi
+          fetch-depth: 1
 
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:
           target: ${{ matrix.target }}
         if: startsWith(matrix.os, 'ubuntu')
-
-      - name: Build Rust Binary with Stripped Debug Symbols
-        run: cargo build --release --strip
 
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
