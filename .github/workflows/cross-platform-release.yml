@@ -7,7 +7,7 @@ on:
 
 jobs:
   create-release:
-    runs-on: 64c-linux-enterprise
+    runs-on: ubuntu-latest
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
@@ -51,31 +51,20 @@ jobs:
     strategy:
       matrix:
         include:
-          #          - target: aarch64-apple-darwin
-          #            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-    #          - target: x86_64-apple-darwin
-    #            os: macos-latest
-    #          - target: universal-apple-darwin
-    #            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: universal-apple-darwin
+            os: macos-latest
 
-    runs-on: 64c-linux-enterprise
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
-      - name: Restore Cache
-        uses: actions/cache/restore@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: permanent-cargo-cache-${{ runner.os }}-${{ matrix.target }}
-          restore-keys: |
-            permanent-cargo-cache-${{ runner.os }}-${{ matrix.target }}
 
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
@@ -88,12 +77,3 @@ jobs:
           bin: tracer
           target: ${{ matrix.target }}
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Save Cache after Build and Upload
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: permanent-cargo-cache-${{ runner.os }}-${{ matrix.target }}
