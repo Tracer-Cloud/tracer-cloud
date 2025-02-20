@@ -1,7 +1,4 @@
-use arrow::datatypes::{DataType, Field, Schema};
 use ec2_instance_metadata::InstanceMetadata;
-
-use crate::types::ParquetSchema;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct AwsInstanceMetaData {
@@ -29,22 +26,5 @@ impl From<InstanceMetadata> for AwsInstanceMetaData {
             hostname: value.hostname,
             public_hostname: value.public_hostname,
         }
-    }
-}
-
-impl ParquetSchema for AwsInstanceMetaData {
-    fn schema() -> Schema {
-        let fields = vec![
-            Field::new("region", DataType::Utf8, false),
-            Field::new("availability_zone", DataType::Utf8, false),
-            Field::new("instance_id", DataType::Utf8, false),
-            Field::new("account_id", DataType::Utf8, false),
-            Field::new("ami_id", DataType::Utf8, false),
-            Field::new("instance_type", DataType::Utf8, false),
-            Field::new("local_hostname", DataType::Utf8, false),
-            Field::new("hostname", DataType::Utf8, false),
-            Field::new("public_hostname", DataType::Utf8, true),
-        ];
-        Schema::new(fields)
     }
 }

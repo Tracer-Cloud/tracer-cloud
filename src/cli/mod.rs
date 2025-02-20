@@ -8,7 +8,9 @@ use crate::{
         send_update_tags_request, send_upload_file_request,
     },
     extracts::process_watcher::ProcessWatcher,
-    run, start_daemon, SOCKET_PATH,
+    run, start_daemon,
+    types::cli::TracerCliInitArgs,
+    SOCKET_PATH,
 };
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -56,15 +58,7 @@ pub enum Commands {
     Alert { message: String },
 
     /// Start the daemon
-    Init {
-        /// pipeline name to init the daemon with
-        #[clap(long, short)]
-        pipeline_name: String,
-        /// Run Identifier: this is used for tag same runs on different computers.
-        /// Context: with aws batch,
-        #[clap(long, short)]
-        tag_name: Option<String>,
-    },
+    Init(TracerCliInitArgs),
 
     /// Stop the daemon
     Terminate,
@@ -109,11 +103,8 @@ pub enum Commands {
 pub fn process_cli() -> Result<()> {
     let cli = Cli::parse();
 
-    match &cli.command {
-        Commands::Init {
-            pipeline_name,
-            tag_name,
-        } => {
+    match cli.command {
+        Commands::Init(args) => {
             print_config_info_sync()?;
             //let test_result = ConfigManager::test_service_config_sync();
             //if test_result.is_err() {
@@ -128,8 +119,7 @@ pub fn process_cli() -> Result<()> {
             }
             run(
                 current_working_directory.to_str().unwrap().to_string(),
-                pipeline_name.clone(),
-                tag_name.clone(),
+                args,
             )?;
             clean_up_after_daemon()
         }

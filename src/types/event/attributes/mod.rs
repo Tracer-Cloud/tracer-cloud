@@ -7,6 +7,7 @@ pub mod syslog;
 pub mod system_metrics;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")] // or "snake_case"
 pub enum EventAttributes {
     Process(ProcessProperties),
     CompletedProcess(CompletedProcess),
