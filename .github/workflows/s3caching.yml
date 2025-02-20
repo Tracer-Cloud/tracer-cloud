@@ -66,23 +66,6 @@ jobs:
             echo "No cache found, continuing without restoring."
           fi
 
-      - name: Check cache structure and permissions
-        run: |
-          echo "Content and permissions of ~/.cargo:"
-          ls -la ~/.cargo
-          echo "Content and permissions of ~/.cargo/bin:"
-          ls -la ~/.cargo/bin
-          echo "Content of ~/.cargo/registry:"
-          ls -la ~/.cargo/registry || echo "Registry directory not found"
-          echo "Content of ~/.cargo/git:"
-          ls -la ~/.cargo/git || echo "Git directory not found"
-
-      - name: Show cargo metadata
-        run: |
-          cargo metadata --format-version=1
-          echo "Cargo.lock content:"
-          cat Cargo.lock
-
       - name: Build
         run: cargo build
 
