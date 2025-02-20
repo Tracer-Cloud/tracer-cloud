@@ -34,15 +34,15 @@ jobs:
       - name: Load Rust build cache from S3
         run: |
           if aws s3 ls "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION >/dev/null 2>&1; then
+            echo "Cache found. Downloading from S3..."
             aws s3 cp "s3://$S3_BUCKET/$CACHE_TAR" . --region $AWS_REGION
+            # Crea la directory di destinazione se non esiste
             mkdir -p ~/.cargo
+            # Estrai il tarball direttamente in ~/.cargo
             tar -xzf "$CACHE_TAR" -C ~/.cargo
           else
             echo "No cache found, continuing without restoring."
           fi
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.7.3
 
       - name: Build
         run: cargo build
