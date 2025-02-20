@@ -1,0 +1,57 @@
+name: Rust Cache S3
+on:
+  push:
+    branches:
+      - "staging"
+  pull_request:
+    branches:
+      - "**"
+
+env:
+  CARGO_TERM_COLOR: always # Ensures colored output in GitHub Actions logs
+  S3_BUCKET: cargo-actions-build-cache
+  CACHE_TAR: rust-cache.tar.gz
+  AWS_REGION: "us-east-1"
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4.1.4
+
+      - name: Setup Rust toolchain
+        run: rustup toolchain install stable --profile minimal
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install AWS CLI
+        run: |
+          sudo apt update
+          sudo apt install -y awscli
+
+      - name: Load Rust build cache from S3
+        run: |
+          if aws s3 ls "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION >/dev/null 2>&1; then
+            aws s3 cp "s3://$S3_BUCKET/$CACHE_TAR" . --region $AWS_REGION
+            tar -xzf "$CACHE_TAR" -C ~/.cargo
+          else
+            echo "No cache found, continuing without restoring."
+          fi
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.3
+
+      - name: Build
+        run: cargo build
+
+      - name: Save Rust build cache to S3
+        run: |
+          tar -czf "$CACHE_TAR" -C ~/.cargo .
+          aws s3 cp "$CACHE_TAR" "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION
