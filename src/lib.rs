@@ -14,6 +14,7 @@ pub mod utils;
 use anyhow::{Context, Ok, Result};
 use daemonize::Daemonize;
 use exporters::db::AuroraClient;
+use types::cli::TracerCliInitArgs;
 
 use std::fs::File;
 use std::sync::Arc;
@@ -57,8 +58,7 @@ pub fn start_daemon() -> Result<()> {
 #[tokio::main]
 pub async fn run(
     workflow_directory_path: String,
-    pipeline_name: String,
-    tag_name: Option<String>,
+    cli_config_args: TracerCliInitArgs,
 ) -> Result<()> {
     let raw_config = ConfigManager::load_config();
 
@@ -68,9 +68,8 @@ pub async fn run(
     let client = TracerClient::new(
         raw_config.clone(),
         workflow_directory_path,
-        pipeline_name,
-        tag_name,
         db_client,
+        cli_config_args,
     )
     .await
     .context("Failed to create TracerClient")?;
@@ -95,6 +94,7 @@ mod tests {
     use crate::{
         config_manager::{Config, ConfigManager},
         exporters::db::AuroraClient,
+        types::cli::TracerCliInitArgs,
     };
 
     use std::sync::Arc;
@@ -124,9 +124,8 @@ mod tests {
         let mut tracer_client = TracerClient::new(
             config,
             pwd.to_str().unwrap().to_string(),
-            "testing".to_string(),
-            None,
             aurora_client,
+            TracerCliInitArgs::default(),
         )
         .await
         .unwrap();
