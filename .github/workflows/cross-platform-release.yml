@@ -86,11 +86,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
       - name: Restore Cache
         uses: actions/cache/restore@v3
         with:
