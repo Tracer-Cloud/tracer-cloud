@@ -8,9 +8,8 @@ on:
       - "**"
 
 env:
-  CARGO_TERM_COLOR: always # Ensures colored output in GitHub Actions logs
+  CARGO_TERM_COLOR: always
   S3_BUCKET: cargo-actions-build-cache
-  CACHE_TAR: rust-cache.tar.gz
   AWS_REGION: "us-east-1"
 
 jobs:
@@ -31,37 +30,65 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-#      - name: Load Rust build cache from S3
-#        run: |
-#          if aws s3 ls "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION >/dev/null 2>&1; then
-#            echo "Cache found. Downloading from S3..."
-#            aws s3 cp "s3://$S3_BUCKET/$CACHE_TAR" . --region $AWS_REGION
-#            # Crea la directory di destinazione se non esiste
-#            mkdir -p ~/.cargo
-#            # Estrai il tarball direttamente in ~/.cargo
-#            tar -xzf "$CACHE_TAR" -C ~/.cargo
-#          else
-#            echo "No cache found, continuing without restoring."
-#          fi
-#
-#      - name: Debug - List ~/.cargo
-#        run: |
-#          echo "Content of ~/.cargo:"
-#          ls -la ~/.cargo
-#          echo "Content of ~/.cargo/registry:"
-#          ls -la ~/.cargo/registry || echo "registry Directory not found"
-#          echo "Content of ~/.cargo/git:"
-#          ls -la ~/.cargo/git || echo "Directory not found"
+      - name: Initialize cargo directories
+        run: |
+          mkdir -p ~/.cargo/registry/cache
+          mkdir -p ~/.cargo/registry/index
+          mkdir -p ~/.cargo/registry/src
+          mkdir -p ~/.cargo/git/db
+          mkdir -p ~/.cargo/git/checkouts
+
+      - name: Load Rust build cache from S3
+        run: |
+          if aws s3 ls "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION >/dev/null 2>&1; then
+            echo "Cache found. Downloading from S3..."
+            aws s3 cp "s3://$S3_BUCKET/$CACHE_TAR" . --region $AWS_REGION
+            echo "Verifying cache integrity..."
+            if ! tar -tzf "$CACHE_TAR" > /dev/null; then
+              echo "Cache archive is corrupted, skipping restore"
+              exit 0
+            fi
+            echo "Extracting cache..."
+            tar -xzf "$CACHE_TAR" -C ~/.cargo
+            echo "Cache extracted successfully"
+          else
+            echo "No cache found, continuing without restoring."
+          fi
+
+      - name: Check cache structure and permissions
+        run: |
+          echo "Content and permissions of ~/.cargo:"
+          find ~/.cargo -type d -exec chmod 755 {} \;
+          find ~/.cargo -type f -exec chmod 644 {} \;
+          ls -la ~/.cargo
+          echo "Content of ~/.cargo/registry:"
+          ls -la ~/.cargo/registry || echo "Registry directory not found"
+          echo "Content of ~/.cargo/git:"
+          ls -la ~/.cargo/git || echo "Git directory not found"
+
+      - name: Show cargo metadata
+        run: |
+          cargo metadata --format-version=1
+          echo "Cargo.lock content:"
+          cat Cargo.lock
+
+      - name: Install cargo-cache
+        run: cargo install cargo-cache
+
+      - name: Check cache status
+        run: cargo cache --show-stats
 
       - name: Build
         run: cargo build
 
       - name: Save Rust build cache to S3
         run: |
+          echo "Creating new cache archive..."
           tar -czf "$CACHE_TAR" -C ~/.cargo .
+          echo "Uploading cache to S3..."
           aws s3 cp "$CACHE_TAR" "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION
 
       - name: Debug - List ~/.cargo after build
         run: |
-          echo "Content of ~/.cargo:"
+          echo "Final content of ~/.cargo:"
           tree -a ~/.cargo || ls -laR ~/.cargo
