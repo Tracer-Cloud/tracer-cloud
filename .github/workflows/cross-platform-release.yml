@@ -107,8 +107,8 @@ jobs:
           target: ${{ matrix.target }}
         if: startsWith(matrix.os, 'ubuntu')
 
-      - name: Build Rust Binary with Stripped Debug Symbols
-        run: cargo build --release --strip
+      - name: Build Rust Binary
+        run: cargo build --release
 
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
