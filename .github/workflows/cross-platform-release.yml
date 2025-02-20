@@ -7,7 +7,7 @@ on:
 
 jobs:
   create-release:
-    runs-on: 64cores-ubuntu-x64
+    runs-on: 64c-linux-enterprise
     # runs-on:
     #   group: org-default-group
     #   labels: org-16c-64r-arm64-ubuntu22
