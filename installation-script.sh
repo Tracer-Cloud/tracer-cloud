@@ -19,8 +19,8 @@
 SCRIPT_VERSION="v0.0.1"
 TRACER_VERSION="v0.0.28"
 TRACER_LINUX_URL="https://github.com/Tracer-Cloud/tracer-client/releases/download/${TRACER_VERSION}/tracer-x86_64-unknown-linux-gnu.tar.gz"
-TRACER_MACOS_AARCH_URL="https://github.com/Tracer-Cloud/tracer-client/releases/download/${TRACER_VERSION}/tracer-daemon-aarch64-apple-darwin.tar.gz"
-TRACER_MACOS_UNIVERSAL_URL="https://github.com/Tracer-Cloud/tracer-client/releases/download/${TRACER_VERSION}/tracer-daemon-universal-apple-darwin.tar.gz"
+TRACER_MACOS_AARCH_URL="https://github.com/Tracer-Cloud/tracer-client/releases/download/${TRACER_VERSION}/tracer-aarch64-apple-darwin.tar.gz"
+TRACER_MACOS_UNIVERSAL_URL="https://github.com/Tracer-Cloud/tracer-client/releases/download/${TRACER_VERSION}/tracer-universal-apple-darwin.tar.gz"
 
 
 TRACER_HOME="$HOME/.tracerbio"
