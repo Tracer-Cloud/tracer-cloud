@@ -60,7 +60,7 @@ jobs:
           - target: universal-apple-darwin
             os: macos-latest
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
         with:
