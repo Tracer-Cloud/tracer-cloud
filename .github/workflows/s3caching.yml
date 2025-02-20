@@ -31,27 +31,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Load Rust build cache from S3
-        run: |
-          if aws s3 ls "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION >/dev/null 2>&1; then
-            echo "Cache found. Downloading from S3..."
-            aws s3 cp "s3://$S3_BUCKET/$CACHE_TAR" . --region $AWS_REGION
-            # Crea la directory di destinazione se non esiste
-            mkdir -p ~/.cargo
-            # Estrai il tarball direttamente in ~/.cargo
-            tar -xzf "$CACHE_TAR" -C ~/.cargo
-          else
-            echo "No cache found, continuing without restoring."
-          fi
-
-      - name: Debug - List ~/.cargo
-        run: |
-          echo "Content of ~/.cargo:"
-          ls -la ~/.cargo
-          echo "Content of ~/.cargo/registry:"
-          ls -la ~/.cargo/registry || echo "registry Directory not found"
-          echo "Content of ~/.cargo/git:"
-          ls -la ~/.cargo/git || echo "Directory not found"
+#      - name: Load Rust build cache from S3
+#        run: |
+#          if aws s3 ls "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION >/dev/null 2>&1; then
+#            echo "Cache found. Downloading from S3..."
+#            aws s3 cp "s3://$S3_BUCKET/$CACHE_TAR" . --region $AWS_REGION
+#            # Crea la directory di destinazione se non esiste
+#            mkdir -p ~/.cargo
+#            # Estrai il tarball direttamente in ~/.cargo
+#            tar -xzf "$CACHE_TAR" -C ~/.cargo
+#          else
+#            echo "No cache found, continuing without restoring."
+#          fi
+#
+#      - name: Debug - List ~/.cargo
+#        run: |
+#          echo "Content of ~/.cargo:"
+#          ls -la ~/.cargo
+#          echo "Content of ~/.cargo/registry:"
+#          ls -la ~/.cargo/registry || echo "registry Directory not found"
+#          echo "Content of ~/.cargo/git:"
+#          ls -la ~/.cargo/git || echo "Directory not found"
 
       - name: Build
         run: cargo build
@@ -60,3 +60,8 @@ jobs:
         run: |
           tar -czf "$CACHE_TAR" -C ~/.cargo .
           aws s3 cp "$CACHE_TAR" "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION
+
+      - name: Debug - List ~/.cargo after build
+        run: |
+          echo "Content of ~/.cargo:"
+          tree -a ~/.cargo || ls -laR ~/.cargo
