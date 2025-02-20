@@ -14,17 +14,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Restore Cache
-        uses: actions/cache/restore@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: permanent-cargo-cache-${{ runner.os }}
-          restore-keys: |
-            permanent-cargo-cache-${{ runner.os }}
-
       - name: Update version in Cargo.toml
         run: |
           if [[ "${{ github.ref_name }}" == *"-dev" ]] ; then
@@ -51,15 +40,6 @@ jobs:
 
       - name: Push changes
         run: git push origin HEAD:main
-
-      - name: Save Cache
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: permanent-cargo-cache-${{ runner.os }}
 
       - uses: taiki-e/create-gh-release-action@v1.8.2
         with:
@@ -102,9 +82,6 @@ jobs:
         with:
           target: ${{ matrix.target }}
         if: startsWith(matrix.os, 'ubuntu')
-
-      - name: Build Rust Binary
-        run: cargo build --release
 
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
