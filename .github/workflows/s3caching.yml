@@ -33,8 +33,8 @@ jobs:
 
       - name: Install AWS CLI
         run: |
-          sudo apt update
-          sudo apt install -y awscli
+          sudo apt update -y
+          sudo DEBIAN_FRONTEND=noninteractive apt install -y awscli
 
       - name: Load Rust build cache from S3
         run: |
