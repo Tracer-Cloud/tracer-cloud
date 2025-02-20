@@ -3,16 +3,16 @@ name: Release
 on:
   push:
     tags:
-    - "v*"
+      - "v*"
 
 jobs:
   create-release:
-    runs-on: ubuntu-latest  # Changed from 64c-linux-enterprise to a faster default runner
+    runs-on: ubuntu-latest  # this is the fastest runner
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1  # Faster checkout
+          fetch-depth: 1  # fast checkout
 
       - name: Cache Cargo Dependencies
         uses: actions/cache@v3
@@ -27,15 +27,15 @@ jobs:
 
       - name: Update version in Cargo.toml
         run: |
-          if [[ "${{github.ref_name}}" == *"-dev" ]] ; then
-            export TRACER_VERSION_DEVELOP="${{github.ref_name}}"
+          if [[ "${{ github.ref_name }}" == *"-dev" ]] ; then
+            export TRACER_VERSION_DEVELOP="${{ github.ref_name }}"
             sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
             sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-            sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{github.ref_name}}\"/" installation-script.sh
+            sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{ github.ref_name }}\"/" installation-script.sh
           else
-            sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
+            sed -i.bak "s/^version = .*/version = \"${{ github.ref_name }}\"/" Cargo.toml
             sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-            sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{github.ref_name}}\"/" installation-script.sh
+            sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{ github.ref_name }}\"/" installation-script.sh
           fi
 
       - name: Setup Github user
@@ -47,7 +47,7 @@ jobs:
         run: git add Cargo.toml installation-script.sh
 
       - name: Commit changes
-        run: git commit -m "Update version to ${{github.ref_name}}"
+        run: git commit -m "Update version to ${{ github.ref_name }}"
 
       - name: Push changes
         run: git push origin HEAD:main
@@ -75,24 +75,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1  # Faster checkout
+          fetch-depth: 1  # fast checkout
 
-      - name: Install sccache
-        run: |
-          cargo install sccache
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+      - name: Cache Cargo Dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Update version in Cargo.toml
         run: |
-          if [[ "${{github.ref_name}}" == *"-dev" ]] ; then
-            export TRACER_VERSION_DEVELOP="${{github.ref_name}}"
+          if [[ "${{ github.ref_name }}" == *"-dev" ]] ; then
+            export TRACER_VERSION_DEVELOP="${{ github.ref_name }}"
             sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
             sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-            sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{github.ref_name}}\"/" installation-script.sh
+            sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{ github.ref_name }}\"/" installation-script.sh
           else
-            sed -i.bak "s/^version = .*/version = \"${{github.ref_name}}\"/" Cargo.toml
+            sed -i.bak "s/^version = .*/version = \"${{ github.ref_name }}\"/" Cargo.toml
             sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-            sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{github.ref_name}}\"/" installation-script.sh
+            sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{ github.ref_name }}\"/" installation-script.sh
           fi
 
       - name: Install cross-compilation tools
