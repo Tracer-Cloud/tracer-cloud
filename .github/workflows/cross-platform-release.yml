@@ -103,7 +103,16 @@ jobs:
           target: ${{ matrix.target }}
         if: startsWith(matrix.os, 'ubuntu')
 
-      - name: Save Cache
+      - name: Build Rust Binary
+        run: cargo build --release
+
+      - uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: tracer
+          target: ${{ matrix.target }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save Cache after Build and Upload
         uses: actions/cache/save@v3
         with:
           path: |
@@ -111,9 +120,3 @@ jobs:
             ~/.cargo/git
             target
           key: permanent-cargo-cache-${{ runner.os }}-${{ matrix.target }}
-
-      - uses: taiki-e/upload-rust-binary-action@v1
-        with:
-          bin: tracer
-          target: ${{ matrix.target }}
-          token: ${{ secrets.GITHUB_TOKEN }}
