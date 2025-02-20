@@ -7,54 +7,21 @@ on:
 
 jobs:
   create-release:
-    runs-on: ubuntu-latest  # this is the fastest runner
+    runs-on: ubuntu-latest
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1  # fast checkout
+          fetch-depth: 1
 
-      - name: Cache Cargo Dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Update version in Cargo.toml
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ "${{ github.ref_name }}" == *"-dev" ]] ; then
-            export TRACER_VERSION_DEVELOP="${{ github.ref_name }}"
-            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
-            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-            sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{ github.ref_name }}\"/" installation-script.sh
-          else
-            sed -i.bak "s/^version = .*/version = \"${{ github.ref_name }}\"/" Cargo.toml
-            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-            sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{ github.ref_name }}\"/" installation-script.sh
-          fi
-
-      - name: Setup Github user
-        run: |
-          git config --local user.name actions-user
-          git config --local user.email "actions@github.com"
-
-      - name: Add files to commit
-        run: git add Cargo.toml installation-script.sh
-
-      - name: Commit changes
-        run: git commit -m "Update version to ${{ github.ref_name }}"
-
-      - name: Push changes
-        run: git push origin HEAD:main
-
-      - uses: taiki-e/create-gh-release-action@v1.8.2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          gh release create ${{ github.ref_name }} \
+            --draft \
+            --title "${{ github.ref_name }}" \
+            --notes "Release ${{ github.ref_name }}"
 
   upload-assets:
     needs: create-release
@@ -75,31 +42,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1  # fast checkout
+          fetch-depth: 1
 
-      - name: Cache Cargo Dependencies
-        uses: actions/cache@v3
+      - name: Restore Cache
+        uses: actions/cache/restore@v3
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: permanent-cargo-cache-${{ runner.os }}-${{ matrix.target }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Update version in Cargo.toml
-        run: |
-          if [[ "${{ github.ref_name }}" == *"-dev" ]] ; then
-            export TRACER_VERSION_DEVELOP="${{ github.ref_name }}"
-            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
-            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-            sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${{ github.ref_name }}\"/" installation-script.sh
-          else
-            sed -i.bak "s/^version = .*/version = \"${{ github.ref_name }}\"/" Cargo.toml
-            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
-            sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${{ github.ref_name }}\"/" installation-script.sh
-          fi
+            permanent-cargo-cache-${{ runner.os }}-${{ matrix.target }}
 
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
@@ -107,11 +61,26 @@ jobs:
           target: ${{ matrix.target }}
         if: startsWith(matrix.os, 'ubuntu')
 
-      - name: Build Rust Binary
-        run: cargo build --release
+      - name: Build Binary
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - uses: taiki-e/upload-rust-binary-action@v1
+      - name: Package Binary
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar -czf ../../../tracer-${{ matrix.target }}.tar.gz tracer
+          cd ../../..
+
+      - name: Upload Binary
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.ref_name }} tracer-${{ matrix.target }}.tar.gz
+
+      - name: Save Cache
+        uses: actions/cache/save@v3
         with:
-          bin: tracer
-          target: ${{ matrix.target }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: permanent-cargo-cache-${{ runner.os }}-${{ matrix.target }}
