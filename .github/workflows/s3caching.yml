@@ -32,9 +32,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Install AWS CLI
-        run: |
-          sudo apt update -y
-          sudo DEBIAN_FRONTEND=noninteractive apt install -y awscli
+        uses: aws-actions/setup-cli@v2
+        with:
+          cli-version: latest
 
       - name: Load Rust build cache from S3
         run: |
