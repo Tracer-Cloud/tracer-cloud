@@ -87,7 +87,7 @@ impl PricingClient {
     async fn attempt_get_ec2_price(
         &self,
         filters: Vec<PricingFilters>,
-    ) -> Result<Option<FlattenedData>, Box<dyn error::Error + Send + Sync>> {
+    ) -> Result<Option<FlattenedData>, Box<dyn std::error::Error + Send + Sync>> {
         // Create paginated request to AWS Pricing API
         debug!("Filters used for pricing query: {:?}", filters);
         println!("Filters used for pricing query: {:?}", filters);
