@@ -94,13 +94,15 @@ sudo chmod +x /etc/profile.d/rust.sh
 # Clone the Tracer repository
 echo "Cloning Tracer repository..."
 if [ ! -d "/home/ubuntu/tracer-client" ]; then
-    git clone https://github.com/Tracer-Cloud/tracer-client.git /home/ubuntu/tracer-client
+    su - ubuntu -c "git clone https://github.com/Tracer-Cloud/tracer-client.git /home/ubuntu/tracer-client"
 else
     echo "Tracer repo already exists, pulling latest changes..."
-    cd /home/ubuntu/tracer-client && git pull
+    su - ubuntu -c "cd /home/ubuntu/tracer-client && git pull"
 fi
 
 cd /home/ubuntu/tracer-client
+# issues with running git checkout and pull
+# git config --global --add safe.directory /home/ubuntu/tracer-client
 
 # Install cargo-nextest
 echo "Installing cargo-nextest..."
@@ -119,10 +121,10 @@ echo "Installing Tracer binary..."
 sudo cp /home/ubuntu/tracer-client/target/release/tracer-client /usr/local/bin/
 
 echo "Setting Up test Environment $(date)"
-cd /home/ubuntu/tracer-client && git fetch && git checkout feature/infra_v2
+su - ubuntu -c "cd /home/ubuntu/tracer-client && git fetch && git checkout feature/infra_v2 && git pull"
 
 echo "Running Env Setup Script"
-./deployments/scripts/prepare_test_env.sh
+su - ubuntu -c "./deployments/scripts/prepare_test_env.sh"
 
 
 echo "Installation completed successfully at $(date)"
