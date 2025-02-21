@@ -3,6 +3,13 @@ variable "region" {
   default     = "us-east-1"
 }
 
+variable "api_key" {
+  description = "API key for Tracer service"
+  type        = string
+  sensitive   = true # This prevents it from being logged in Terraform outputs
+  default     = "your-secret-api-key"
+}
+
 provider "aws" {
   region  = var.region
   profile = "default"
@@ -133,8 +140,14 @@ resource "aws_instance" "rust_server" {
     Name = "Rust-EC2-Instance"
   }
 
-  // This is the script that will be executed on the instance after the instance is created
-  user_data = file("./script-install-deps.sh")
+
+  # Use templatefile() instead of file()
+  user_data = templatefile("${path.module}/script-install-deps.sh", {
+    role_arn = aws_iam_role.tracer_client_service_role.arn
+    api_key  = var.api_key
+  })
+
+
 
 }
 
@@ -221,6 +234,43 @@ resource "aws_iam_policy" "ec2_general_access" {
     ]
   })
 }
+
+# create a service role ec2 instance can assume.
+
+resource "aws_iam_role" "tracer_client_service_role" {
+  name        = "TracerClientServiceRole"
+  description = "Allows EC2 instance to interact with AWS services, including full S3 access"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = aws_iam_role.ec2_general_access_role.arn #Allow ec2_general_access to assume this role
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "s3_full_access" {
+  name = "S3FullAccessPolicy"
+  role = aws_iam_role.tracer_client_service_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:*", "s3-object-lambda:*"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 
 # # Create an AMI from the running instance ------>>>>> At the moment we don't have benefits from the AMI
 # resource "aws_ami_from_instance" "rust_server_ami" {

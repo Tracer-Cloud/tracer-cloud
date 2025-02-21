@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Accept role ARN and API key from terraform
+ROLE_ARN="${role_arn}"
+API_KEY="${api_key}"
+
 LOG_FILE="/home/ubuntu/install_log.txt"
 exec > >(tee -a "$LOG_FILE") 2>&1  # Log both stdout & stderr
 
@@ -38,8 +42,8 @@ sudo chmod a+r /etc/apt/keyrings/docker.asc
 
 # Add the repository to Apt sources:
 echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  "deb [arch=$$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $$(. /etc/os-release && echo "$${UBUNTU_CODENAME:-$${VERSION_CODENAME}}") stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
 
@@ -64,16 +68,15 @@ echo 'export OPENSSL_INCLUDE_DIR=/usr/include' | sudo tee -a /etc/profile
 echo 'export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig' | sudo tee -a /etc/profile
 source /etc/profile
 
-
 # Install Rust for ubuntu user
 echo "Installing Rust..."
 su - ubuntu -c '
 curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-echo "source \$HOME/.cargo/env" >> /home/ubuntu/.bashrc && \
-. /home/ubuntu/.cargo/env'
+echo "source $$HOME/.cargo/env" >> /home/ubuntu/.bashrc && \
+. $$HOME/.cargo/env'
 
 # Ensure Rust is installed correctly
-su - ubuntu -c "source /home/ubuntu/.cargo/env && rustc --version"
+su - ubuntu -c "source $$HOME/.cargo/env && rustc --version"
 
 # Install GitHub CLI
 echo "Installing GitHub CLI..."
@@ -88,7 +91,7 @@ sudo apt install -y gh
 gh --version || echo "Error: GitHub CLI not installed correctly" >> "$LOG_FILE"
 
 # Add Rust to system-wide path for immediate use
-echo "export PATH=/home/ubuntu/.cargo/bin:\$PATH" | sudo tee /etc/profile.d/rust.sh
+echo "export PATH=/home/ubuntu/.cargo/bin:\$${PATH}" | sudo tee /etc/profile.d/rust.sh
 sudo chmod +x /etc/profile.d/rust.sh
 
 # Clone the Tracer repository
@@ -101,12 +104,10 @@ else
 fi
 
 cd /home/ubuntu/tracer-client
-# issues with running git checkout and pull
-# git config --global --add safe.directory /home/ubuntu/tracer-client
 
 # Install cargo-nextest
 echo "Installing cargo-nextest..."
-su - ubuntu -c "source /home/ubuntu/.cargo/env && cargo install --locked cargo-nextest"
+su - ubuntu -c "source $$HOME/.cargo/env && cargo install --locked cargo-nextest"
 
 # Run a nextest test to verify the installation
 # echo "Running nextest..."
@@ -126,5 +127,28 @@ su - ubuntu -c "cd /home/ubuntu/tracer-client && git stash && git fetch && git c
 echo "Running Env Setup Script"
 su - ubuntu -c "cd /home/ubuntu/tracer-client && ./deployments/scripts/prepare_test_env.sh"
 
+echo "Installation completed successfully"
 
-echo "Installation completed successfully at $(date)"
+
+echo "Setting up Tracer"
+# Create the directory for the config file
+mkdir -p /home/ubuntu/.config/tracer/
+
+# Write the configuration to tracer.toml
+cat <<EOL > /home/ubuntu/.config/tracer/tracer.toml
+polling_interval_ms = 1500
+api_key = "$API_KEY"
+service_url = "https://app.tracer.bio/api"
+process_polling_interval_ms = 5
+batch_submission_interval_ms = 10000
+new_run_pause_ms = 600000
+file_size_not_changing_period_ms = 60000
+process_metrics_send_interval_ms = 10000
+aws_region = "us-east-2"
+aws_role_arn = "$ROLE_ARN"
+db_url = "postgres://postgres:tracer-test@tracer-database.cdgizpzxtdp6.us-east-1.rds.amazonaws.com:5432/postgres"
+EOL
+
+echo "Configuration file created at /home/ubuntu/.config/tracer/tracer.toml"
+
+echo "Tracer setup successfully $(date)"
