@@ -42,21 +42,26 @@ sudo apt install --quiet --yes openjdk-17-jdk
 
 # Install Miniconda
 echo "Installing Miniconda..."
-# wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-# sudo bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda
-# rm Miniconda3-latest-Linux-x86_64.sh
-# # export PATH="/opt/conda/bin:$PATH"
-# echo 'export PATH="/opt/conda/bin:$PATH"' >> ~/.bashrc
-# source ~/.bashrc
+
+# Detect system architecture
+ARCH=$(uname -m)
+
+if [[ "$ARCH" == "x86_64" ]]; then
+    INSTALLER="Miniconda3-latest-Linux-x86_64.sh"
+elif [[ "$ARCH" == "aarch64" ]]; then
+    INSTALLER="Miniconda3-latest-Linux-aarch64.sh"
+else
+    echo "Unsupported architecture: $ARCH"
+    exit 1
+fi
 
 mkdir -p ~/miniconda3
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O ~/miniconda3/miniconda.sh
+wget "https://repo.anaconda.com/miniconda/$INSTALLER" -O ~/miniconda3/miniconda.sh
 bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
 rm ~/miniconda3/miniconda.sh
 source ~/miniconda3/bin/activate
 conda init --all
 echo "Completed Miniconda Installation..."
-
 # sudo chown -R $USER:$USER /opt/conda/
 
 
@@ -156,10 +161,10 @@ sudo chmod -R 777 "$R_LIBS_USER"
 
 # Install R packages Would need to use 4.4 and above because 
 # ‘MASS’ version 7.3-64 is in the repositories but depends on R (>= 4.4.0) so this doesn't quite work
-echo "Installing R packages..."
-R -e "install.packages(c('BiocManager', 'ggplot2'), repos='http://cran.rstudio.com/')"
-R -e "BiocManager::install(c('DESeq2', 'tximport', 'apeglm', 'edgeR', 'limma', 'EnhancedVolcano'))"
 
+echo "Installing R packages..."
+R -e "install.packages(c('BiocManager', 'ggplot2'), repos='http://cran.rstudio.com/')" || echo "R package installation (CRAN) failed, continuing..."
+R -e "BiocManager::install(c('DESeq2', 'tximport', 'apeglm', 'edgeR', 'limma', 'EnhancedVolcano'))" || echo "R package installation (Bioconductor) failed, continuing..."
 
 # Pin Nextflow version and verify
 # export NXF_EDGE=1
