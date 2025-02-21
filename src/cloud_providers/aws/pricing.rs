@@ -1,6 +1,5 @@
 use aws_sdk_pricing as pricing;
 use aws_sdk_pricing::types::Filter as PricingFilters;
-use log::{debug, error, warn};
 use tokio::time::{sleep, Duration};
 
 use crate::types::{
@@ -54,7 +53,7 @@ impl PricingClient {
         while retry_count < MAX_RETRIES {
             if retry_count > 0 {
                 let delay = INITIAL_RETRY_DELAY * (2_u64.pow(retry_count - 1)); // Exponential backoff
-                debug!("Retry {} after {} seconds", retry_count, delay);
+                println!("Retry {} after {} seconds", retry_count, delay);
                 sleep(Duration::from_secs(delay)).await;
             }
 
@@ -65,12 +64,12 @@ impl PricingClient {
                 Err(e) => {
                     last_error = Some(e);
                     retry_count += 1;
-                    warn!("Attempt {} failed, will retry", retry_count);
+                    println!("Attempt {} failed, will retry", retry_count);
                 }
             }
         }
 
-        error!("All retries failed. Last error: {:?}", last_error);
+        println!("All retries failed. Last error: {:?}", last_error);
         None
     }
 
@@ -88,7 +87,7 @@ impl PricingClient {
         &self,
         filters: Vec<PricingFilters>,
     ) -> Result<Option<FlattenedData>, Box<dyn std::error::Error + Send + Sync>> {
-        debug!("Filters used for pricing query: {:?}", filters);
+        println!("Filters used for pricing query: {:?}", filters);
 
         let mut response = self
             .client
@@ -105,7 +104,7 @@ impl PricingClient {
             // Propagate any AWS API errors
             // Useful for retrying the request in the method get_ec2_instance_price()
             let output = output?;
-            debug!("Raw API response: {:?}", output);
+            println!("Raw API response: {:?}", output);
 
             // Process each product in the current page
             for product in output.price_list() {
@@ -114,18 +113,18 @@ impl PricingClient {
                     Ok(pricing) => {
                         // Convert the complex pricing data into a flattened format
                         let flat_data = FlattenedData::flatten_data(&pricing.into());
-                        debug!("Flattened pricing data: {:?}", flat_data);
+                        println!("Flattened pricing data: {:?}", flat_data);
                         data.push(flat_data);
                     }
                     Err(e) => {
-                        error!("Failed to parse product data: {:?}", e);
+                        println!("Failed to parse product data: {:?}", e);
                         continue; // Skip invalid products
                     }
                 }
             }
         }
 
-        debug!("Processed pricing data length: {}", data.len());
+        println!("Processed pricing data length: {}", data.len());
 
         // Return the most expensive instance from the results
         // if data is empty the reduce will return OK(None)
