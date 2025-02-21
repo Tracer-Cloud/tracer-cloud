@@ -146,12 +146,13 @@ sudo apt-get install --quiet --yes --no-install-recommends \
 sudo rm -rf /var/lib/apt/lists/*
 
 # Configure writable R library path
-# export R_LIBS_USER=/usr/local/lib/R/site-library
-echo 'export R_LIBS_USER=/usr/local/lib/R/site-library' >> ~/.bashrc
-source ~/.bashrc
+export R_LIBS_USER=/usr/local/lib/R/site-library
 
-sudo mkdir -p $R_LIBS_USER
-sudo chmod -R 777 $R_LIBS_USER
+# Persist the setting for future sessions
+echo 'export R_LIBS_USER=/usr/local/lib/R/site-library' >> ~/.bashrc
+# Ensure the directory exists and has correct permissions
+sudo mkdir -p "$R_LIBS_USER"
+sudo chmod -R 777 "$R_LIBS_USER"
 
 # Install R packages Would need to use 4.4 and above because 
 # ‘MASS’ version 7.3-64 is in the repositories but depends on R (>= 4.4.0) so this doesn't quite work
