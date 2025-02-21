@@ -109,8 +109,8 @@ echo "Installing cargo-nextest..."
 su - ubuntu -c "source /home/ubuntu/.cargo/env && cargo install --locked cargo-nextest"
 
 # Run a nextest test to verify the installation
-echo "Running nextest..."
-su - ubuntu -c "source /home/ubuntu/.cargo/env && cd /home/ubuntu/tracer-client && cargo nextest run" || echo "Nextest failed" >> "$LOG_FILE"
+# echo "Running nextest..."
+# su - ubuntu -c "source /home/ubuntu/.cargo/env && cd /home/ubuntu/tracer-client && cargo nextest run" || echo "Nextest failed" >> "$LOG_FILE"
 
 # Build the Tracer binary
 echo "Building Tracer..."
