@@ -88,10 +88,7 @@ impl PricingClient {
         &self,
         filters: Vec<PricingFilters>,
     ) -> Result<Option<FlattenedData>, Box<dyn std::error::Error + Send + Sync>> {
-        // Create paginated request to AWS Pricing API
         debug!("Filters used for pricing query: {:?}", filters);
-        println!("Filters used for pricing query: {:?}", filters);
-
 
         let mut response = self
             .client
@@ -108,6 +105,7 @@ impl PricingClient {
             // Propagate any AWS API errors
             // Useful for retrying the request in the method get_ec2_instance_price()
             let output = output?;
+            debug!("Raw API response: {:?}", output);
 
             // Process each product in the current page
             for product in output.price_list() {
@@ -116,7 +114,8 @@ impl PricingClient {
                     Ok(pricing) => {
                         // Convert the complex pricing data into a flattened format
                         let flat_data = FlattenedData::flatten_data(&pricing.into());
-                        data.push(flat_data);
+                        debug!("Flattened pricing data: {:?}", flat_data);
+                        return Ok(Some(flat_data));
                     }
                     Err(e) => {
                         error!("Failed to parse product data: {:?}", e);
