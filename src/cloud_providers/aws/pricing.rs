@@ -115,7 +115,7 @@ impl PricingClient {
                         // Convert the complex pricing data into a flattened format
                         let flat_data = FlattenedData::flatten_data(&pricing.into());
                         debug!("Flattened pricing data: {:?}", flat_data);
-                        return Ok(Some(flat_data));
+                        data.push(flat_data);
                     }
                     Err(e) => {
                         error!("Failed to parse product data: {:?}", e);
