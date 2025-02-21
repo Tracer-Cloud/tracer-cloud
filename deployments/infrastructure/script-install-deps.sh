@@ -118,10 +118,10 @@ su - ubuntu -c "source /home/ubuntu/.cargo/env && cd /home/ubuntu/tracer-client 
 
 # Install the binary
 echo "Installing Tracer binary..."
-sudo cp /home/ubuntu/tracer-client/target/release/tracer-client /usr/local/bin/
+sudo cp /home/ubuntu/tracer-client/target/release/tracer /usr/local/bin/
 
 echo "Setting Up test Environment $(date)"
-su - ubuntu -c "cd /home/ubuntu/tracer-client && git fetch && git checkout feature/infra_v2 && git pull"
+su - ubuntu -c "cd /home/ubuntu/tracer-client && git stash && git fetch && git checkout -f feature/infra_v2"
 
 echo "Running Env Setup Script"
 su - ubuntu -c "./deployments/scripts/prepare_test_env.sh"
