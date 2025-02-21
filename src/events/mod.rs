@@ -78,10 +78,15 @@ async fn gather_system_properties(
             region: metadata.region.clone(),
         }
         .to_filter();
-        pricing_client
-            .get_ec2_instance_price(filters)
-            .await
-            .map(|v| v.price_per_unit)
+
+        let price_data = pricing_client.get_ec2_instance_price(filters).await;
+        debug!("Price data response: {:?}", price_data);
+        println!("Price data response: {:?}", price_data);
+
+        let price_per_unit = price_data.map(|v| v.price_per_unit);
+        debug!("Extracted price per unit: {:?}", price_per_unit); // Log the extracted price
+        println!("Extracted price per unit: {:?}", price_per_unit);
+        price_per_unit
     } else {
         None
     };
