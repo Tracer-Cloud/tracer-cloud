@@ -38,5 +38,5 @@ pub struct SystemProperties {
     pub is_aws_instance: bool,
     pub system_disk_io: HashMap<String, DiskStatistic>,
     // cost analysis
-    pub ec2_cost_per_hour: Option<f64>,
+    pub price_per_unit: Option<f64>,
 }

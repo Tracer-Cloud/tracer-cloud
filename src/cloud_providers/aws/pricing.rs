@@ -164,25 +164,25 @@ mod tests {
         let filters = vec![
             Filter::builder()
                 .field("instanceType")
-                .value("t2.micro")
+                .value("t3.large")
                 .r#type(FilterType::TermMatch)
                 .build()
                 .unwrap(),
             Filter::builder()
-                .field("operatingSystem")
-                .value("Linux")
+                .field("regionCode")
+                .value("eu-north-1")
                 .r#type(FilterType::TermMatch)
                 .build()
                 .unwrap(),
             Filter::builder()
-                .field("tenancy")
-                .value("Shared")
+                .field("vcpu")
+                .value("2")
                 .r#type(FilterType::TermMatch)
                 .build()
                 .unwrap(),
             Filter::builder()
-                .field("location")
-                .value("US East (N. Virginia)")
+                .field("memory")
+                .value("8 GiB")
                 .r#type(FilterType::TermMatch)
                 .build()
                 .unwrap(),
@@ -192,7 +192,8 @@ mod tests {
         assert!(result.is_some());
 
         let price_data = result.unwrap();
-        assert_eq!(price_data.instance_type, "t2.micro");
+        println!("{:?}", price_data);
+        assert_eq!(price_data.instance_type, "t3.large");
         assert!(price_data.price_per_unit > 0.0);
         assert_eq!(price_data.unit, "Hrs");
     }

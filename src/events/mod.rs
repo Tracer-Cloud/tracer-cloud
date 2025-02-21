@@ -12,6 +12,7 @@ pub mod recorder;
 mod run_details;
 use anyhow::{Context, Result};
 use chrono::Utc;
+use log::debug;
 use run_details::{generate_run_id, generate_run_name};
 use serde_json::json;
 use sysinfo::System;
@@ -100,7 +101,7 @@ async fn gather_system_properties(
         aws_metadata,
         is_aws_instance,
         system_disk_io,
-        ec2_cost_per_hour: ec2_cost_analysis,
+        price_per_unit: ec2_cost_analysis,
     }
 }
 
@@ -116,6 +117,9 @@ pub async fn send_start_run_event(
     let logger = Logger::new();
 
     let system_properties = gather_system_properties(system, pricing_client).await;
+
+    println!("{:?}", system_properties);
+    debug!("System properties: {:?}", system_properties);
 
     let (run_name, run_id) = if let Some(tag) = tag_name {
         (tag.clone(), tag.clone())
