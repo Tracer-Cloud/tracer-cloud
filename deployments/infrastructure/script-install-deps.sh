@@ -4,6 +4,10 @@
 ROLE_ARN="${role_arn}"
 API_KEY="${api_key}"
 
+
+echo "Using ROLE_ARN: $ROLE_ARN"
+echo "Using API_KEY: $API_KEY"
+
 LOG_FILE="/home/ubuntu/install_log.txt"
 exec > >(tee -a "$LOG_FILE") 2>&1  # Log both stdout & stderr
 
@@ -42,8 +46,8 @@ sudo chmod a+r /etc/apt/keyrings/docker.asc
 
 # Add the repository to Apt sources:
 echo \
-  "deb [arch=$$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $$(. /etc/os-release && echo "$${UBUNTU_CODENAME:-$${VERSION_CODENAME}}") stable" | \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
 
@@ -107,7 +111,7 @@ cd /home/ubuntu/tracer-client
 
 # Install cargo-nextest
 echo "Installing cargo-nextest..."
-su - ubuntu -c "source $$HOME/.cargo/env && cargo install --locked cargo-nextest"
+su - ubuntu -c "source $HOME/.cargo/env && cargo install --locked cargo-nextest"
 
 # Run a nextest test to verify the installation
 # echo "Running nextest..."
@@ -137,15 +141,15 @@ mkdir -p /home/ubuntu/.config/tracer/
 # Write the configuration to tracer.toml
 cat <<EOL > /home/ubuntu/.config/tracer/tracer.toml
 polling_interval_ms = 1500
-api_key = "$API_KEY"
 service_url = "https://app.tracer.bio/api"
+api_key = "$API_KEY"
+aws_role_arn = "$ROLE_ARN"
 process_polling_interval_ms = 5
 batch_submission_interval_ms = 10000
 new_run_pause_ms = 600000
 file_size_not_changing_period_ms = 60000
 process_metrics_send_interval_ms = 10000
 aws_region = "us-east-2"
-aws_role_arn = "$ROLE_ARN"
 db_url = "postgres://postgres:tracer-test@tracer-database.cdgizpzxtdp6.us-east-1.rds.amazonaws.com:5432/postgres"
 EOL
 
