@@ -155,6 +155,8 @@ export R_LIBS_USER=/usr/local/lib/R/site-library
 
 # Persist the setting for future sessions
 echo 'export R_LIBS_USER=/usr/local/lib/R/site-library' >> ~/.bashrc
+source ~/.bashrc
+
 # Ensure the directory exists and has correct permissions
 sudo mkdir -p "$R_LIBS_USER"
 sudo chmod -R 777 "$R_LIBS_USER"
