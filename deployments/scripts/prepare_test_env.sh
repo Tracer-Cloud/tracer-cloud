@@ -179,8 +179,7 @@ nextflow -version
 
 # Set Nextflow work directory
 # docker version
-# export NXF_WORK=/home/ubuntu/nextflow_work
-export NXF_WORK=~/nextflow_work
+export NXF_WORK=/nextflow_work
 # Clean up
 unset JAVA_TOOL_OPTIONS
 echo "Setup complete."
@@ -195,21 +194,21 @@ echo "Setup complete."
 git clone https://github.com/TracerBio/tracer-workflow-templates.git /tmp/temp-scripts
 
 # Create necessary directories and copy files
-mkdir -p ~/workspace/bashrc_scripts
-cp -R /tmp/temp-scripts/shell-tracer-autoinstrumentation/ ~/workspace/bashrc_scripts
+mkdir -p /workspace/bashrc_scripts
+cp -R /tmp/temp-scripts/shell-tracer-autoinstrumentation/ /workspace/bashrc_scripts
 
-mkdir -p ~/workspace/nextflow_scripts
-cp -R /tmp/temp-scripts/nextflow-tracer-autoinstrumentation/ ~/workspace/nextflow_scripts
+mkdir -p /workspace/nextflow_scripts
+cp -R /tmp/temp-scripts/nextflow-tracer-autoinstrumentation/ /workspace/nextflow_scripts
 
-mkdir -p ~/workspace/tracer-workflow-templates/data
-cp -R /tmp/temp-scripts/data/ ~/workspace/tracer-workflow-templates
+mkdir -p /workspace/tracer-workflow-templates/data
+cp -R /tmp/temp-scripts/data/ /workspace/tracer-workflow-templates
 
-mkdir -p ~/workspace/data
-cp -R /tmp/temp-scripts/data/ ~/workspace/data
+mkdir -p /workspace/data
+cp -R /tmp/temp-scripts/data/ /workspace/data
 
 # Clean up temporary files
 rm -rf /tmp/temp-scripts
 
 # Set executable permissions
-chmod -R +x ~/workspace/bashrc_scripts
-chmod -R +x ~/workspace/nextflow_scripts
+chmod -R +x /workspace/bashrc_scripts
+chmod -R +x /workspace/nextflow_scripts
