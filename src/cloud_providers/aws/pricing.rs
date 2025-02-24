@@ -55,22 +55,31 @@ impl PricingClient {
             if retry_count > 0 {
                 let delay = INITIAL_RETRY_DELAY * (2_u64.pow(retry_count - 1)); // Exponential backoff
                 debug!("Retry {} after {} seconds", retry_count, delay);
+                println!("Retry {} after {} seconds", retry_count, delay);
                 sleep(Duration::from_secs(delay)).await;
             }
 
             // Attempt to get pricing data
             match self.attempt_get_ec2_price(filters.clone()).await {
-                Ok(Some(data)) => return Some(data),
-                Ok(None) => return None, // No matching data found, don't retry
+                Ok(Some(data)) => {
+                    println!("Successfully retrieved pricing data.");
+                    return Some(data);
+                },
+                Ok(None) => {
+                    println!("No matching data found, don't retry.");
+                    return None; // No matching data found, don't retry
+                },
                 Err(e) => {
                     last_error = Some(e);
                     retry_count += 1;
                     warn!("Attempt {} failed, will retry", retry_count);
+                    println!("Attempt {} failed, will retry", retry_count);
                 }
             }
         }
 
         error!("All retries failed. Last error: {:?}", last_error);
+        println!("All retries failed. Last error: {:?}", last_error);
         None
     }
 
@@ -104,18 +113,25 @@ impl PricingClient {
             // Propagate any AWS API errors
             // Useful for retrying the request in the method get_ec2_instance_price()
             let output = output?;
+            
+            // Print the raw API response
+            println!("API Response: {:?}", output);
 
             // Process each product in the current page
             for product in output.price_list() {
                 // Parse the JSON pricing data using serde_query
                 match serde_json::from_str::<Query<PricingData>>(product) {
                     Ok(pricing) => {
+                        // Print and log the parsed pricing data
+                        println!("Parsed pricing data: {:?}", pricing);
+                        debug!("Parsed pricing data: {:?}", pricing);
                         // Convert the complex pricing data into a flattened format
                         let flat_data = FlattenedData::flatten_data(&pricing.into());
                         data.push(flat_data);
                     }
                     Err(e) => {
                         error!("Failed to parse product data: {:?}", e);
+                        println!("Failed to parse product data: {:?}", e);
                         continue; // Skip invalid products
                     }
                 }
@@ -123,6 +139,7 @@ impl PricingClient {
         }
 
         debug!("Processed pricing data length: {}", data.len());
+        println!("Processed pricing data length: {}", data.len());
 
         // Return the most expensive instance from the results
         // if data is empty the reduce will return OK(None)
