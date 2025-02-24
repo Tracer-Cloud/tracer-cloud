@@ -215,8 +215,11 @@ mod tests {
 
     fn setup_test_unix_listener() -> UnixListener {
         let _ = env_logger::builder().is_test(true).try_init();
-        if std::fs::metadata(SOCKET_PATH).is_ok() {
-            std::fs::remove_file(SOCKET_PATH).expect("Failed to remove existing socket file");
+
+        if let Ok(metadata) = std::fs::metadata(SOCKET_PATH) {
+            if metadata.is_file() {
+                std::fs::remove_file(SOCKET_PATH).expect("Failed to remove existing socket file");
+            }
         }
 
         UnixListener::bind(SOCKET_PATH).expect("Failed to bind to unix socket")
@@ -248,6 +251,8 @@ mod tests {
             .as_str(),
         )
         .await;
+
+        std::fs::remove_file(SOCKET_PATH).expect("Failed to remove socket file after test");
 
         Ok(())
     }
