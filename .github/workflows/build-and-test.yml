@@ -14,6 +14,7 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
+    needs: []
 
     steps:
     - uses: actions/checkout@v4.1.4
@@ -51,6 +52,7 @@ jobs:
   run-integrations:
       name: Build and Test Integrations
       runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
+      needs: []
 
       steps:
       - uses: actions/checkout@v4.1.4
