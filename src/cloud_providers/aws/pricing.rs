@@ -64,11 +64,11 @@ impl PricingClient {
                 Ok(Some(data)) => {
                     println!("Successfully retrieved pricing data.");
                     return Some(data);
-                },
+                }
                 Ok(None) => {
                     println!("No matching data found, don't retry.");
                     return None; // No matching data found, don't retry
-                },
+                }
                 Err(e) => {
                     last_error = Some(e);
                     retry_count += 1;
@@ -113,7 +113,7 @@ impl PricingClient {
             // Propagate any AWS API errors
             // Useful for retrying the request in the method get_ec2_instance_price()
             let output = output?;
-            
+
             // Print the raw API response
             println!("API Response: {:?}", output);
 
@@ -123,10 +123,9 @@ impl PricingClient {
                 match serde_json::from_str::<Query<PricingData>>(product) {
                     Ok(pricing) => {
                         // Print and log the parsed pricing data
-                        println!("Parsed pricing data: {:?}", pricing);
-                        debug!("Parsed pricing data: {:?}", pricing);
                         // Convert the complex pricing data into a flattened format
                         let flat_data = FlattenedData::flatten_data(&pricing.into());
+                        println!("Flattened pricing data: {:?}", flat_data); // Print statement
                         data.push(flat_data);
                     }
                     Err(e) => {
