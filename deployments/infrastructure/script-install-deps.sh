@@ -75,9 +75,7 @@ source /etc/profile
 # Install Rust for ubuntu user
 echo "Installing Rust..."
 su - ubuntu -c '
-curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-echo "source $$HOME/.cargo/env" >> /home/ubuntu/.bashrc && \
-. $$HOME/.cargo/env'
+curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
 
 # Ensure Rust is installed correctly
 su - ubuntu -c "source $$HOME/.cargo/env && rustc --version"
@@ -154,5 +152,7 @@ db_url = "postgres://postgres:tracer-test@tracer-database.cdgizpzxtdp6.us-east-1
 EOL
 
 echo "Configuration file created at /home/ubuntu/.config/tracer/tracer.toml"
+
+source ~/.bashrc
 
 echo "Tracer setup successfully $(date)"

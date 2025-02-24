@@ -194,21 +194,25 @@ echo "Setup complete."
 git clone https://github.com/TracerBio/tracer-workflow-templates.git /tmp/temp-scripts
 
 # Create necessary directories and copy files
-mkdir -p /workspace/bashrc_scripts
-cp -R /tmp/temp-scripts/shell-tracer-autoinstrumentation/ /workspace/bashrc_scripts
+sudo mkdir -p /workspace/bashrc_scripts
+sudo cp -R /tmp/temp-scripts/shell-tracer-autoinstrumentation/ /workspace/bashrc_scripts
 
-mkdir -p /workspace/nextflow_scripts
-cp -R /tmp/temp-scripts/nextflow-tracer-autoinstrumentation/ /workspace/nextflow_scripts
+sudo mkdir -p /workspace/nextflow_scripts
+sudo cp -R /tmp/temp-scripts/nextflow-tracer-autoinstrumentation/ /workspace/nextflow_scripts
 
-mkdir -p /workspace/tracer-workflow-templates/data
-cp -R /tmp/temp-scripts/data/ /workspace/tracer-workflow-templates
+sudo mkdir -p /workspace/tracer-workflow-templates/data
+sudo cp -R /tmp/temp-scripts/data/ /workspace/tracer-workflow-templates
 
-mkdir -p /workspace/data
-cp -R /tmp/temp-scripts/data/ /workspace/data
+sudo mkdir -p /workspace/data
+sudo cp -R /tmp/temp-scripts/data/ /workspace/data
 
 # Clean up temporary files
 rm -rf /tmp/temp-scripts
 
 # Set executable permissions
-chmod -R +x /workspace/bashrc_scripts
-chmod -R +x /workspace/nextflow_scripts
+sudo chmod -R +x /workspace/bashrc_scripts
+sudo chmod -R +x /workspace/nextflow_scripts
+
+sudo chown -R $USER:$USER /workspace/
+
+source ~/.bashrc
