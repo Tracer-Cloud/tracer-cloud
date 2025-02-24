@@ -29,18 +29,6 @@ echo "Installing Java ..."
 sudo apt install --quiet --yes openjdk-17-jdk
 
 # Install Miniconda
-# echo "Installing Miniconda..."
-# wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-# sudo bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda
-# rm Miniconda3-latest-Linux-x86_64.sh
-# # export PATH="/opt/conda/bin:$PATH"
-# echo 'export PATH="/opt/conda/bin:$PATH"' >> ~/.bashrc
-# 
-# sudo chown -R $USER:$USER /opt/conda/
-# 
-# source ~/.bashrc
-
-# Install Miniconda
 echo "Installing Miniconda..."
 
 # Detect system architecture
@@ -57,13 +45,19 @@ fi
 
 mkdir -p ~/miniconda3
 wget "https://repo.anaconda.com/miniconda/$INSTALLER" -O ~/miniconda3/miniconda.sh
-bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
-rm ~/miniconda3/miniconda.sh
-source ~/miniconda3/bin/activate
-conda init --all
-echo "Completed Miniconda Installation..."
-# sudo chown -R $USER:$USER /opt/conda/
 
+sudo bash ~/miniconda3/miniconda.sh -b -u -p /opt/conda
+rm ~/miniconda3/miniconda.sh
+    
+# Add Conda to PATH
+echo 'export PATH="/opt/conda/bin:$PATH"' >> ~/.bashrc
+sudo chown -R $USER:$USER /opt/conda/
+
+# Apply the changes to the current shell session
+source ~/.bashrc
+
+
+echo "Completed Miniconda Installation..."
 
 
 # Configure Conda and install Nextflow + packages
