@@ -50,11 +50,14 @@ sudo bash ~/miniconda3/miniconda.sh -b -u -p /opt/conda
 rm ~/miniconda3/miniconda.sh
     
 # Add Conda to PATH
+export PATH="/opt/conda/bin:$PATH"
 echo 'export PATH="/opt/conda/bin:$PATH"' >> ~/.bashrc
-sudo chown -R $USER:$USER /opt/conda/
 
 # Apply the changes to the current shell session
 source ~/.bashrc
+sudo chown -R $USER:$USER /opt/conda/
+
+
 
 
 echo "Completed Miniconda Installation..."
