@@ -50,6 +50,8 @@ impl PricingClient {
         let mut retry_count = 0;
         let mut last_error = None;
 
+        println!("random pirnt"); // to delete
+
         // Retry loop with exponential backoff
         while retry_count < MAX_RETRIES {
             if retry_count > 0 {
