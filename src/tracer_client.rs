@@ -158,8 +158,10 @@ impl TracerClient {
     }
 
     pub async fn submit_batched_data(&mut self) -> Result<()> {
-
-        println!("Submitting batched data for pipeline {}", self.pipeline_name);
+        println!(
+            "Submitting batched data for pipeline {}",
+            self.pipeline_name
+        );
         let run_name = if let Some(run) = &self.current_run {
             &run.name
         } else {
