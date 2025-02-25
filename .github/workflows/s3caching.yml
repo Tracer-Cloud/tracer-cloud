@@ -6,13 +6,6 @@ on:
   pull_request:
     branches:
       - "**"
-  workflow_call:
-    inputs:
-      rust-version:
-        type: string
-        required: false
-        default: nightly
-
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -23,7 +16,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ inputs.rust-version }}
+          toolchain: stable
           override: true
           components: rustfmt, clippy
       - name: Set up cargo cache
