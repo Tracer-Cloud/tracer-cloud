@@ -132,7 +132,12 @@ impl FileWatcher {
             let file_path = file.path();
             let file_path_string = file_path.to_str().unwrap();
             let directory = file_path.parent().unwrap().to_str().unwrap();
-            let metadata = file.metadata().unwrap();
+
+            let metadata = match file.metadata() {
+                Ok(meta) => meta,
+                Err(_) => continue, // Skip files that can't be accessed
+            };
+
             let last_update = metadata.modified().unwrap();
             let size = metadata.len();
 
