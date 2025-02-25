@@ -109,12 +109,11 @@ impl FileWatcher {
     }
 
     pub fn gather_all_files_from_directory(
-        all_files: &mut HashMap<String, FileInfo>,
+        _all_files: &mut HashMap<String, FileInfo>,
         directory: &Path,
     ) {
         if !directory.exists() {
             println!("Warning: Directory does not exist: {}", directory.display());
-            return;
         }
 
         // match directory.read_dir() {
