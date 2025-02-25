@@ -1,4 +1,4 @@
-name: Rust Cache S3
+name: Rust Cache
 on:
   push:
     branches:
@@ -6,79 +6,55 @@ on:
   pull_request:
     branches:
       - "**"
-
-env:
-  CARGO_TERM_COLOR: always
-  S3_BUCKET: cargo-actions-build-cache
-  AWS_REGION: "us-east-1"
-  CACHE_TAR: rust-cache.tar.gz
+    inputs:
+      rust-version:
+        type: string
+        required: false
+        default: nightly
 
 jobs:
-  build-and-test:
-    name: Build and Test
+  check:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4.1.4
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Check out
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      # Prepariamo le directory prima di scaricare la cache
-      - name: Prepare cargo directories
+          profile: minimal
+          toolchain: ${{ inputs.rust-version }}
+          override: true
+          components: rustfmt, clippy
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - name: Lint
         run: |
-          mkdir -p ~/.cargo/registry/cache
-          mkdir -p ~/.cargo/registry/index
-          mkdir -p ~/.cargo/registry/src
-          mkdir -p ~/.cargo/git/db
-          mkdir -p ~/.cargo/git/checkouts
-
-      # Scarichiamo e verifichiamo la cache
-      - name: Load Rust build cache from S3
+          cargo fmt --all -- --check
+          cargo clippy -- -D warnings
+      - name: Install cargo check tools
         run: |
-          if aws s3 ls "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION >/dev/null 2>&1; then
-            echo "Cache found. Downloading from S3..."
-            aws s3 cp "s3://$S3_BUCKET/$CACHE_TAR" . --region $AWS_REGION
-            echo "Extracting cache..."
-            tar -xzf "$CACHE_TAR" -C ~/.cargo
-            echo "Cache extracted successfully"
-          
-            # Debug: mostra il contenuto della cache
-            echo "Cache contents:"
-            ls -la ~/.cargo/registry/cache
-            ls -la ~/.cargo/registry/src
-            ls -la ~/.cargo/git/db
-          else
-            echo "No cache found, continuing without restoring."
-          fi
-
-      # Prima di buildare, verifichiamo che cargo possa leggere la cache
-      - name: Verify cargo cache
+          cargo install --locked cargo-deny || true
+          cargo install --locked cargo-outdated || true
+          cargo install --locked cargo-udeps || true
+          cargo install --locked cargo-audit || true
+          cargo install --locked cargo-pants || true
+      - name: Check
         run: |
-          echo "Cargo registry contents:"
-          ls -la ~/.cargo/registry/cache/
-          echo "Cargo git contents:"
-          ls -la ~/.cargo/git/db/
-          cargo --version
-          echo "Cache size:"
-          du -sh ~/.cargo/registry/cache ~/.cargo/git/db
-
+          cargo deny check
+          cargo outdated --exit-code 1
+          cargo udeps
+          rm -rf ~/.cargo/advisory-db
+          cargo audit
+          cargo pants
       - name: Build
-        run: |
-          # Puliamo la cache degli artefatti compilati, ma manteniamo i download
-          cargo clean
-          RUST_LOG=debug cargo build -v
-
-      - name: Save Rust build cache to S3
-        if: success()  # Salviamo solo se il build è riuscito
-        run: |
-          echo "Creating new cache archive..."
-          tar -czf "$CACHE_TAR" -C ~/.cargo registry git
-          echo "Cache size before upload:"
-          du -sh "$CACHE_TAR"
-          echo "Uploading cache to S3..."
-          aws s3 cp "$CACHE_TAR" "s3://$S3_BUCKET/$CACHE_TAR" --region $AWS_REGION
+        run: cargo build
