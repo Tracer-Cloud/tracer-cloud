@@ -186,20 +186,8 @@ mod tests {
                 .build()
                 .unwrap(),
             Filter::builder()
-                .field("operatingSystem")
-                .value("Linux")
-                .r#type(FilterType::TermMatch)
-                .build()
-                .unwrap(),
-            Filter::builder()
-                .field("tenancy")
-                .value("Shared")
-                .r#type(FilterType::TermMatch)
-                .build()
-                .unwrap(),
-            Filter::builder()
-                .field("location")
-                .value("US East (N. Virginia)")
+                .field("regionCode")
+                .value("us-east-1")
                 .r#type(FilterType::TermMatch)
                 .build()
                 .unwrap(),
