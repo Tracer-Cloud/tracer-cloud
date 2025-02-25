@@ -181,7 +181,7 @@ resource "aws_iam_policy" "ec2_general_access" {
       {
         Effect = "Allow"
         Action = [
-          "pricing:*" # Allow all S3 actions
+          "pricing:*" # Allow pricing actions
         ]
         Resource = "*"
       },

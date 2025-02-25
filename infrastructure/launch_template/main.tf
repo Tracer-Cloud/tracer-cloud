@@ -1,3 +1,32 @@
+data "aws_vpc" "default" {
+  default = true
+}
+
+variable "region" {
+  description = "The AWS region to deploy resources"
+  default     = "us-east-1"
+}
+
+variable "api_key" {
+  description = "API key for Tracer service"
+  type        = string
+  sensitive   = true # This prevents it from being logged in Terraform outputs
+  default     = "your-secret-api-key"
+}
+
+provider "aws" {
+  region  = var.region
+  profile = "default"
+}
+
+
+variable "perm_key" {
+  description = "Permission Key for accessing the instance"
+  type        = string
+  default     = "tracer-from-ami"
+}
+
+
 # ---------------------------
 # Security Group for EC2
 # ---------------------------
@@ -125,8 +154,7 @@ resource "aws_iam_role_policy" "s3_full_access" {
 resource "aws_launch_template" "tracer_demo" {
   name_prefix   = "tracer-demo"
   image_id      = "ami-08963412c7663a4b8"
-  instance_type = "t4g.medium"
-  # "t3.medium" The architecture (arm64) of the selected AMI is not supported by this instance type.
+  instance_type = "c6g.large"
 
   key_name = var.perm_key
 
