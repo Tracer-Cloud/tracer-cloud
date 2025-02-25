@@ -117,129 +117,129 @@ impl FileWatcher {
             return;
         }
 
-        match directory.read_dir() {
-            Ok(files) => {
-                // Process files
-                for file in files {
-                    match file {
-                        Ok(file) => {
-                            if file.path().is_dir() {
-                                Self::gather_all_files_from_directory(all_files, &file.path());
-                                continue;
-                            }
-
-                            let file_path = file.path();
-                            let file_path_string = match file_path.to_str() {
-                                Some(path) => path,
-                                None => {
-                                    println!(
-                                        "Warning: Could not convert file path to string: {}",
-                                        file_path.display()
-                                    );
-                                    continue;
-                                }
-                            };
-
-                            let directory = match file_path.parent() {
-                                Some(parent) => match parent.to_str() {
-                                    Some(dir) => dir,
-                                    None => {
-                                        println!("Warning: Could not convert parent directory to string: {}", parent.display());
-                                        continue;
-                                    }
-                                },
-                                None => {
-                                    println!(
-                                        "Warning: File has no parent directory: {}",
-                                        file_path.display()
-                                    );
-                                    continue;
-                                }
-                            };
-
-                            let metadata = match file.metadata() {
-                                Ok(meta) => meta,
-                                Err(e) => {
-                                    println!(
-                                        "Warning: Could not read metadata for file {}: {}",
-                                        file_path.display(),
-                                        e
-                                    );
-                                    continue;
-                                }
-                            };
-
-                            let last_update = match metadata.modified() {
-                                Ok(time) => time.into(),
-                                Err(e) => {
-                                    println!(
-                                        "Warning: Could not get modification time for file {}: {}",
-                                        file_path.display(),
-                                        e
-                                    );
-                                    continue;
-                                }
-                            };
-
-                            let file_name = match file_path.file_name() {
-                                Some(name) => {
-                                    match name.to_str() {
-                                        Some(name_str) => name_str.to_string(),
-                                        None => {
-                                            println!("Warning: Could not convert file name to string: {}", file_path.display());
-                                            continue;
-                                        }
-                                    }
-                                }
-                                None => {
-                                    println!("Warning: File has no name: {}", file_path.display());
-                                    continue;
-                                }
-                            };
-
-                            let size = metadata.len();
-
-                            all_files.insert(
-                                file_path_string.to_string(),
-                                FileInfo {
-                                    name: file_name,
-                                    directory: directory.to_string(),
-                                    size,
-                                    last_update,
-                                },
-                            );
-                        }
-                        Err(e) => {
-                            println!(
-                                "Error reading directory entry in {}: {}",
-                                directory.display(),
-                                e
-                            );
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                println!("Error reading directory {}: {}", directory.display(), e);
-
-                // Handle common error cases with more specific messages
-                if e.kind() == std::io::ErrorKind::PermissionDenied {
-                    println!(
-                        "Permission denied when accessing directory: {}",
-                        directory.display()
-                    );
-                } else if e.kind() == std::io::ErrorKind::NotFound {
-                    println!("Directory not found: {}", directory.display());
-                } else if e.raw_os_error() == Some(40) {
-                    // FilesystemLoop error code
-                    println!(
-                        "Symbolic link loop detected in directory: {}",
-                        directory.display()
-                    );
-                    println!("There are too many levels of symbolic links, possibly creating a circular reference.");
-                }
-            }
-        }
+        // match directory.read_dir() {
+        //     Ok(files) => {
+        //         // Process files
+        //         for file in files {
+        //             match file {
+        //                 Ok(file) => {
+        //                     if file.path().is_dir() {
+        //                         Self::gather_all_files_from_directory(all_files, &file.path());
+        //                         continue;
+        //                     }
+        //
+        //                     let file_path = file.path();
+        //                     let file_path_string = match file_path.to_str() {
+        //                         Some(path) => path,
+        //                         None => {
+        //                             println!(
+        //                                 "Warning: Could not convert file path to string: {}",
+        //                                 file_path.display()
+        //                             );
+        //                             continue;
+        //                         }
+        //                     };
+        //
+        //                     let directory = match file_path.parent() {
+        //                         Some(parent) => match parent.to_str() {
+        //                             Some(dir) => dir,
+        //                             None => {
+        //                                 println!("Warning: Could not convert parent directory to string: {}", parent.display());
+        //                                 continue;
+        //                             }
+        //                         },
+        //                         None => {
+        //                             println!(
+        //                                 "Warning: File has no parent directory: {}",
+        //                                 file_path.display()
+        //                             );
+        //                             continue;
+        //                         }
+        //                     };
+        //
+        //                     let metadata = match file.metadata() {
+        //                         Ok(meta) => meta,
+        //                         Err(e) => {
+        //                             println!(
+        //                                 "Warning: Could not read metadata for file {}: {}",
+        //                                 file_path.display(),
+        //                                 e
+        //                             );
+        //                             continue;
+        //                         }
+        //                     };
+        //
+        //                     let last_update = match metadata.modified() {
+        //                         Ok(time) => time.into(),
+        //                         Err(e) => {
+        //                             println!(
+        //                                 "Warning: Could not get modification time for file {}: {}",
+        //                                 file_path.display(),
+        //                                 e
+        //                             );
+        //                             continue;
+        //                         }
+        //                     };
+        //
+        //                     let file_name = match file_path.file_name() {
+        //                         Some(name) => {
+        //                             match name.to_str() {
+        //                                 Some(name_str) => name_str.to_string(),
+        //                                 None => {
+        //                                     println!("Warning: Could not convert file name to string: {}", file_path.display());
+        //                                     continue;
+        //                                 }
+        //                             }
+        //                         }
+        //                         None => {
+        //                             println!("Warning: File has no name: {}", file_path.display());
+        //                             continue;
+        //                         }
+        //                     };
+        //
+        //                     let size = metadata.len();
+        //
+        //                     all_files.insert(
+        //                         file_path_string.to_string(),
+        //                         FileInfo {
+        //                             name: file_name,
+        //                             directory: directory.to_string(),
+        //                             size,
+        //                             last_update,
+        //                         },
+        //                     );
+        //                 }
+        //                 Err(e) => {
+        //                     println!(
+        //                         "Error reading directory entry in {}: {}",
+        //                         directory.display(),
+        //                         e
+        //                     );
+        //                 }
+        //             }
+        //         }
+        //     }
+        //     Err(e) => {
+        //         println!("Error reading directory {}: {}", directory.display(), e);
+        //
+        //         // Handle common error cases with more specific messages
+        //         if e.kind() == std::io::ErrorKind::PermissionDenied {
+        //             println!(
+        //                 "Permission denied when accessing directory: {}",
+        //                 directory.display()
+        //             );
+        //         } else if e.kind() == std::io::ErrorKind::NotFound {
+        //             println!("Directory not found: {}", directory.display());
+        //         } else if e.raw_os_error() == Some(40) {
+        //             // FilesystemLoop error code
+        //             println!(
+        //                 "Symbolic link loop detected in directory: {}",
+        //                 directory.display()
+        //             );
+        //             println!("There are too many levels of symbolic links, possibly creating a circular reference.");
+        //         }
+        //     }
+        // }
     }
 
     pub fn gather_pattern_from_directory(
