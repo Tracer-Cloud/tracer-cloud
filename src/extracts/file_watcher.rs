@@ -137,7 +137,7 @@ impl FileWatcher {
                 Ok(meta) => meta,
                 Err(_) => continue, // Skip files that can't be accessed
             };
-            
+
             let last_update = metadata.modified().unwrap();
             let size = metadata.len();
 
