@@ -6,7 +6,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV RUST_LOG=debug
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV AWS_DEFAULT_REGION=us-east-1
-ENV CARGO_HOME=/root/.cargo
 
 # Install system dependencies based on Cargo.toml requirements
 RUN apt-get update && apt-get install -y \
@@ -27,8 +26,8 @@ RUN apt-get update && apt-get install -y \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN rustup default stable
 
-# Create directories for Tracer and cargo
-RUN mkdir -p /opt/tracer /etc/tracer /root/.cargo/registry /root/.cargo/git
+# Create directories for Tracer
+RUN mkdir -p /opt/tracer /etc/tracer
 
 # Copy the entire project
 COPY . /opt/tracer/src
@@ -36,8 +35,7 @@ WORKDIR /opt/tracer/src
 
 # Build Tracer with release profile
 # This step will use the mounted cache volumes when available
-RUN cargo build --release || (echo "Fallback to building without cache" && cargo build --release)
-
+RUN cargo build --release
 # Create symbolic link and set permissions
 RUN chmod +x /opt/tracer/src/target/release/tracer && \
     ln -s /opt/tracer/src/target/release/tracer /usr/local/bin/tracer
