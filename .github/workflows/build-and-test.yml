@@ -16,50 +16,47 @@ jobs:
     runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
 
     steps:
-    - name: Check out
-      uses: actions/checkout@v4.1.4
+      - name: Check out
+        uses: actions/checkout@v4.1.4
 
-    - name: Install Rust
-      uses: actions/setup-rust@v1
-      with:
-        rust-version: stable
-        components: rustfmt, clippy
+      - name: Setup Rust toolchain
+        run : rustup toolchain install stable --profile minimal
 
-    - name: Set up cargo cache
-      uses: actions/cache@v3
-      continue-on-error: false
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: ${{ runner.os }}-cargo-
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
-    - name: Set up cargo Nextest
-      run: |
-        which cargo-nextest || cargo install cargo-nextest
+      - name: Set up cargo Nextest
+        run: |
+          which cargo-nextest || cargo install cargo-nextest
 
-    # - name: Copy config
-    #   run: mkdir -p $HOME/.config/tracer && cp tracer.toml $HOME/.config/tracer/tracer.toml
+      # - name: Copy config
+      #   run: mkdir -p $HOME/.config/tracer && cp tracer.toml $HOME/.config/tracer/tracer.toml
 
-    - name: Check Formatting
-      run: cargo fmt -- --check
+      - name: Check Formatting
+        run: cargo fmt -- --check
 
-    - name: Lint with Clippy
-      run: make clippy
+      - name: Lint with Clippy
+        run: make clippy
 
-    - name: Run tests
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION: "us-east-2"
-        AWS_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
-        RUST_LOG: "debug"
-        RUST_BACKTRACE: 1
-      run: make test-tracer
+      - name: Run tests
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: "us-east-2"
+          AWS_ENDPOINT: "https://s3.us-east-2.amazonaws.com"
+          RUST_LOG: "debug"
+          RUST_BACKTRACE: 1
+        run: make test-tracer
 
 
   run-integrations:
@@ -70,11 +67,8 @@ jobs:
       steps:
       - uses: actions/checkout@v4.1.4
 
-      - name: Install Rust
-        uses: actions/setup-rust@v1
-        with:
-          rust-version: stable
-          components: rustfmt, clippy
+      - name: Setup Rust toolchain
+        run: rustup toolchain install stable --profile minimal
 
       - name: Set up cargo cache
         uses: actions/cache@v3
