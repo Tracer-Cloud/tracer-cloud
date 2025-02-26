@@ -57,7 +57,7 @@ jobs:
             os: ubuntu-latest
           - target: x86_64-apple-darwin
             os: macos-latest
-            
+
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4.1.4
@@ -79,8 +79,8 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-${{ matrix.target }}-
 
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
