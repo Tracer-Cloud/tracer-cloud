@@ -1,0 +1,78 @@
+name: Cross Platform Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-assets:
+    permissions: write-all
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main  # Use main for pushes
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Cache Rust dependencies
+        id: cache-deps
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: cargo-deps-${{ matrix.target }}-stable-v1
+          restore-keys: |
+            cargo-deps-${{ matrix.target }}-stable-
+
+      - name: Cache build artifacts
+        id: cache-build
+        uses: actions/cache@v3
+        with:
+          path: |
+            target/
+          key: cargo-build-${{ matrix.target }}-stable-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cargo-build-${{ matrix.target }}-stable-
+
+      - name: Debug cache and context
+        run: |
+          echo "Dependency cache hit: ${{ steps.cache-deps.outputs.cache-hit }}"
+          echo "Build cache hit: ${{ steps.cache-build.outputs.cache-hit }}"
+          echo "SHA: ${{ github.sha }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Target: ${{ matrix.target }}"
+          echo "Runner OS: ${{ runner.os }}"
+          echo "Cargo.toml hash: $(sha256sum Cargo.toml || shasum -a 256 Cargo.toml)"
+          echo "Cargo.lock hash: $(sha256sum Cargo.lock || shasum -a 256 Cargo.lock)"
+
+      - name: Install cross-compilation tools and build for each target
+        uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
+        if: startsWith(matrix.os, 'ubuntu')
+
+      - uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: tracer
+          target: ${{ matrix.target }}
+          token: ${{ secrets.GITHUB_TOKEN }}
