@@ -135,12 +135,12 @@ jobs:
         run: |
           mkdir -p release-files
           # Copy and rename the binary
-          cp target/${{ matrix.target }}/release/tracer release-files/${{ matrix.binary_name }}
-          chmod +x release-files/${{ matrix.binary_name }}
+          cp target/${{ matrix.target }}/release/tracer release-files/${{ matrix.target }}
+          chmod +x release-files/${{ matrix.target }}
 
           # Create tar.gz file
-          tar -czf release-files/${{ matrix.binary_name }}.tar.gz -C release-files ${{
-            matrix.binary_name
+          tar -czf release-files/${{ matrix.target }}.tar.gz -C release-files ${{
+            matrix.target
           }}
           
           # Copy Cargo.toml and installation script to release files (only on one job to avoid duplicates)
