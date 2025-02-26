@@ -30,6 +30,9 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Install target
+        run: rustup target add ${{ matrix.target }}
+
       - name: Cache Rust dependencies
         id: cache-deps
         uses: actions/cache@v3
