@@ -20,11 +20,9 @@ jobs:
       uses: actions/checkout@v4.1.4
 
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
+      uses: actions/setup-rust@v1
       with:
-        profile: minimal
-        toolchain: stable
-        override: true
+        rust-version: stable
         components: rustfmt, clippy
 
     - name: Set up cargo cache
@@ -73,11 +71,9 @@ jobs:
       - uses: actions/checkout@v4.1.4
 
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions/setup-rust@v1
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
+          rust-version: stable
           components: rustfmt, clippy
 
       - name: Set up cargo cache
