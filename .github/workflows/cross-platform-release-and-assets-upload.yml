@@ -34,7 +34,7 @@ jobs:
           TIME=$(echo ${RELEASE_TAG} | cut -d'.' -f4)
           
           # Create SemVer compatible version string (no leading zeros)
-          CARGO_VERSION="${YEAR}.${MONTH}.${DAY}.${TIME}"
+          CARGO_VERSION="${YEAR}.${MONTH}.${DAY}+${TIME}"
           
           # Update Cargo.toml with the SemVer compatible version
           sed -i.bak "s/^version = .*/version = \"${CARGO_VERSION}\"/" Cargo.toml
