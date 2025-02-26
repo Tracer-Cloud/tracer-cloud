@@ -55,7 +55,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.4
         with:
-          ref: main  # Ensure we’re on the main branch after create-release updates
+          ref: main  # Use main after create-release push, but caching will be ref-agnostic
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -73,27 +73,29 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-deps-${{ matrix.target }}-stable-v1  # Stable key
+          key: cargo-deps-${{ matrix.target }}-stable-v1  # Remove runner.os for ref-agnostic scope
           restore-keys: |
-            ${{ runner.os }}-cargo-deps-${{ matrix.target }}-stable-
+            cargo-deps-${{ matrix.target }}-stable-
 
       - name: Cache build artifacts
         id: cache-build
         uses: actions/cache@v3
         with:
-          path: target/
-          key: ${{ runner.os }}-cargo-build-${{ matrix.target }}-stable-${{ github.sha }}
+          path: |
+            target/
+          key: cargo-build-${{ matrix.target }}-stable-${{ hashFiles('Cargo.lock') }}  # Remove runner.os for ref-agnostic scope
           restore-keys: |
-            ${{ runner.os }}-cargo-build-${{ matrix.target }}-stable-
+            cargo-build-${{ matrix.target }}-stable-
 
-      - name: Debug cache status
+      - name: Debug cache and context
         run: |
           echo "Dependency cache hit: ${{ steps.cache-deps.outputs.cache-hit }}"
           echo "Build cache hit: ${{ steps.cache-build.outputs.cache-hit }}"
-          echo "Current SHA: ${{ github.sha }}"
+          echo "SHA: ${{ github.sha }}"
           echo "Ref: ${{ github.ref }}"
           echo "Event: ${{ github.event_name }}"
           echo "Target: ${{ matrix.target }}"
+          echo "Runner OS: ${{ runner.os }}"
           echo "Cargo.toml hash: $(sha256sum Cargo.toml || shasum -a 256 Cargo.toml)"
           echo "Cargo.lock hash: $(sha256sum Cargo.lock || shasum -a 256 Cargo.lock)"
 
