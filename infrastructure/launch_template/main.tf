@@ -1,3 +1,13 @@
+terraform {
+  backend "s3" {
+    bucket         = "tracer-cloud-terraform-state"
+    key            = "launch_template/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "tf-launch-template-state"
+  }
+}
+
 data "aws_vpc" "default" {
   default = true
 }
