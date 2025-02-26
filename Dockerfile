@@ -34,8 +34,8 @@ COPY . /opt/tracer/src
 WORKDIR /opt/tracer/src
 
 # Build Tracer with release profile
-# This step will use the mounted cache volumes when available
 RUN cargo build --release
+
 # Create symbolic link and set permissions
 RUN chmod +x /opt/tracer/src/target/release/tracer && \
     ln -s /opt/tracer/src/target/release/tracer /usr/local/bin/tracer
