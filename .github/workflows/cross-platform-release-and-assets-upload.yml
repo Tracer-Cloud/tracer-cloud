@@ -77,7 +77,7 @@ jobs:
           CARGO_BUILD_TARGET: ${{ matrix.target }}
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tracer-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/tracer
