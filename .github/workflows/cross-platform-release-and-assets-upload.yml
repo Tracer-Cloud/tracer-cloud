@@ -71,8 +71,14 @@ jobs:
           target: ${{ matrix.target }}
         if: startsWith(matrix.os, 'ubuntu')
 
-      - uses: taiki-e/upload-rust-binary-action@v1
+      - name: Build the binary
+        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          CARGO_BUILD_TARGET: ${{ matrix.target }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
         with:
-          bin: tracer
-          target: ${{ matrix.target }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          name: tracer-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/tracer
+          retention-days: 30
