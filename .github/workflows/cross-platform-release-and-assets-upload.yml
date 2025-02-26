@@ -27,14 +27,22 @@ jobs:
       - name: Update version in Cargo.toml
         run: |
           RELEASE_TAG=${{ steps.create_tag.outputs.release_tag }}
+          # Extract date components and remove leading zeros
+          YEAR=$(echo ${RELEASE_TAG} | cut -d'v' -f2 | cut -d'.' -f1)
+          MONTH=$(echo ${RELEASE_TAG} | cut -d'.' -f2 | sed 's/^0*//')
+          DAY=$(echo ${RELEASE_TAG} | cut -d'.' -f3 | sed 's/^0*//')
+          TIME=$(echo ${RELEASE_TAG} | cut -d'.' -f4)
+          
+          # Create SemVer compatible version string (no leading zeros)
+          CARGO_VERSION="${YEAR}.${MONTH}.${DAY}.${TIME}"
+          
+          # Update Cargo.toml with the SemVer compatible version
+          sed -i.bak "s/^version = .*/version = \"${CARGO_VERSION}\"/" Cargo.toml
+          
+          # Update installation script with the original tag
           if [[ "${RELEASE_TAG}" == *"-dev" ]] ; then
-            export TRACER_VERSION_DEVELOP="${RELEASE_TAG}"
-            sed -i.bak "s/^version = .*/version = \"${TRACER_VERSION_DEVELOP:0:$((${#TRACER_VERSION_DEVELOP} - 4))}\"/" Cargo.toml
-            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
             sed -i.bak "s/^TRACER_VERSION_DEVELOP=\".*/TRACER_VERSION_DEVELOP=\"${RELEASE_TAG}\"/" installation-script.sh
           else
-            sed -i.bak "s/^version = .*/version = \"${RELEASE_TAG}\"/" Cargo.toml
-            sed -i.bak "s/^version = \"v/version = \"/" Cargo.toml
             sed -i.bak "s/^TRACER_VERSION=\".*/TRACER_VERSION=\"${RELEASE_TAG}\"/" installation-script.sh
           fi
 
