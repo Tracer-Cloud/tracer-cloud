@@ -72,10 +72,9 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ matrix.target }}-stable-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-stable-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-cargo-${{ matrix.target }}-stable-
-            ${{ runner.os }}-cargo-${{ matrix.target }}-
 
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
