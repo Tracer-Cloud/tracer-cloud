@@ -91,6 +91,11 @@ jobs:
           echo "Dependency cache hit: ${{ steps.cache-deps.outputs.cache-hit }}"
           echo "Build cache hit: ${{ steps.cache-build.outputs.cache-hit }}"
           echo "Current SHA: ${{ github.sha }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Target: ${{ matrix.target }}"
+          echo "Cargo.toml hash: $(sha256sum Cargo.toml || shasum -a 256 Cargo.toml)"
+          echo "Cargo.lock hash: $(sha256sum Cargo.lock || shasum -a 256 Cargo.lock)"
 
       - name: Install cross-compilation tools
         uses: taiki-e/setup-cross-toolchain-action@v1
