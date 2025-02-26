@@ -134,20 +134,21 @@ jobs:
       - name: Prepare binary for release
         run: |
           mkdir -p release-files
-          # Copy and rename the binary
-          cp target/${{ matrix.target }}/release/tracer release-files/${{ matrix.target }}
-          chmod +x release-files/${{ matrix.target }}
-      
-          # Create tar.gz file with the desired name
-          tar -czf release-files/tracer-${{ matrix.target }}.tar.gz -C release-files ${{
-            matrix.target
-          }}
+          # Copy the binary to the release directory
+          cp target/${{ matrix.target }}/release/tracer release-files/tracer
+
+          # Make the binary executable
+          chmod +x release-files/tracer
+
+          # Create tar.gz file with the desired name and correct file structure
+          tar -czf release-files/tracer-${{ matrix.target }}.tar.gz -C release-files tracer
 
           # Copy Cargo.toml and installation script to release files (only on one job to avoid duplicates)
           if [ "${{ matrix.target }}" = "x86_64-unknown-linux-gnu" ]; then
-          cp Cargo.toml release-files/
-          cp installation-script.sh release-files/
+            cp Cargo.toml release-files/
+            cp installation-script.sh release-files/
           fi
+      
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
