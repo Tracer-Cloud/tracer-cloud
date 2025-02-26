@@ -13,7 +13,7 @@ env:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
 
     steps:
       - name: Check out
@@ -65,11 +65,11 @@ jobs:
 
 
   run-integrations:
-    name: Build and Test Integrations
-    runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
-    needs: []
+      name: Build and Test Integrations
+      runs-on: linux-arm64-16c-64r-600ssd-ubuntu24
+      needs: []
 
-    steps:
+      steps:
       - uses: actions/checkout@v4.1.4
 
       - name: Install Rust
@@ -93,7 +93,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Cache Docker images
+      - name: Cache Docker images.
         uses: ScribeMD/docker-cache@0.5.0
         with:
           key: ${{ runner.os }}-cargo-${{ hashFiles('tracer-client/Cargo.lock') }}
@@ -110,28 +110,6 @@ jobs:
           echo "AWS_ENDPOINT=https://s3.us-east-2.amazonaws.com" >> .env
           echo "RUST_LOG=debug" >> .env
           echo "DATABASE_URL=postgres://postgres:postgres@db:5432/tracer_db" >> .env
-
-      - name: Prepare cache directories for Docker
-        run: |
-          mkdir -p ~/.cargo/registry ~/.cargo/git ./target
-          sudo chmod -R 777 ~/.cargo ./target
-
-      - name: Update docker-compose.yml for cache sharing
-        run: |
-          cat > docker-compose.override.yml << EOF
-          version: '3'
-          services:
-            integrations_tests:
-              volumes:
-                - ~/.cargo/registry:/root/.cargo/registry
-                - ~/.cargo/git:/root/.cargo/git
-                - ./target:/opt/tracer/src/target
-            parallel_tests:
-              volumes:
-                - ~/.cargo/registry:/root/.cargo/registry
-                - ~/.cargo/git:/root/.cargo/git
-                - ./target:/opt/tracer/src/target
-          EOF
 
       - name: Build Test Images
         run: |
