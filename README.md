@@ -2,10 +2,7 @@
 🦡 Tracer Linux Agent
 </h1>
 
-<p align="center">
-  <img src="/docs/images/tracer-banner-image.jpeg" 
-  alt="Tracer hero gif" width="80%"> 
-</p>
+![Tracer Banner](docs/images/tracer-banner-image.jpeg)
 
 ## How to Test Tracer:
 - Ensure you have docker running
@@ -16,10 +13,6 @@
 
 
 ## How to check if Tracer Daemon Is Running:
-
-![Tracer Banner](docs/images/tracer-banner-image.jpeg)
-
-# How to check if Tracer Daemon Is Running:
 
 ```bash
 $ ps -e | grep tracer
