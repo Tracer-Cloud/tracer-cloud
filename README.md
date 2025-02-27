@@ -1,4 +1,4 @@
-<h1 align="center">
+<h1 align="left">
 🦡 Tracer Linux Agent
 </h1>
 
