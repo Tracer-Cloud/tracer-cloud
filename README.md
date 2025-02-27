@@ -4,6 +4,11 @@
 
 ![Tracer Banner](docs/images/tracer-banner-image.jpeg)
 
+## 🚀 Quickstart Installation
+```bash
+curl -s https://install.tracer.cloud | sudo bash
+ ```
+
 ## How to Test Tracer:
 - Ensure you have docker running
 - Use cargo nextest run to run the tests
