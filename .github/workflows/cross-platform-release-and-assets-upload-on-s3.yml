@@ -1,4 +1,4 @@
-name: Cross Platform Release
+name: Development Release On S3
 
 on:
   push:
